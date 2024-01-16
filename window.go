@@ -1,0 +1,497 @@
+package gfx
+
+import (
+	"context"
+	"fmt"
+	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/go-gl/mathgl/mgl32"
+	"image/color"
+	"math"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+type Window struct {
+	win *glfw.Window
+
+	title      atomic.Value
+	width      atomic.Int32
+	height     atomic.Int32
+	fullscreen atomic.Bool
+
+	targetFramerate atomic.Uint32
+	clearColor      mgl32.Vec4
+
+	objects []WindowObject
+
+	keyEventHandlers      []*KeyEventHandler
+	keyEventHandlersMutex sync.Mutex
+	inputEnabled          atomic.Bool
+
+	tranTarget      WindowObject
+	tranQuad        *Shape
+	tranQuadShowing bool
+	tranQuadHiding  bool
+	tranQuadOpacity float64
+	tranSpeed       float64
+
+	initialized atomic.Bool
+	cancelFunc  context.CancelFunc
+	stateMutex  sync.Mutex
+}
+
+func (w *Window) clearScreen() {
+	gl.ClearColor(w.clearColor[0], w.clearColor[1], w.clearColor[2], w.clearColor[3])
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+}
+
+func (w *Window) initAssets() error {
+	if err := initFonts(); err != nil {
+		return fmt.Errorf("error initializing fonts: %w", err)
+	}
+
+	if err := initShaders(); err != nil {
+		return fmt.Errorf("error initializing shaders: %w", err)
+	}
+
+	return nil
+}
+
+func (w *Window) initTransitionQuad() {
+	w.tranQuad = NewQuad()
+	w.tranQuad.
+		SetColor(w.ClearColor()).
+		SetOpacity(0).
+		MaintainAspectRatio(false)
+	w.tranQuad.Init(w)
+}
+
+func (w *Window) initObjects() {
+	for _, o := range w.objects {
+		o.Init(w)
+	}
+}
+
+func (w *Window) updateObjects(deltaTime int64) {
+	for _, o := range w.objects {
+		if !o.Closed() {
+			o.Update(deltaTime)
+		}
+	}
+}
+
+func (w *Window) drawObjects(deltaTime int64) {
+	for _, o := range w.objects {
+		if !o.Closed() {
+			o.Draw(deltaTime)
+		}
+	}
+}
+
+func (w *Window) closeObjects() {
+	for _, o := range w.objects {
+		o.Close()
+	}
+}
+
+func (w *Window) tick(deltaTime int64) {
+	if w.tranQuadShowing {
+		w.tranQuadOpacity += w.tranSpeed
+		w.tranQuad.SetOpacity(uint8(math.Min(255.0, w.tranQuadOpacity*255.0)))
+		if w.tranQuad.Opacity() == 255 {
+			w.tranQuadShowing = false
+			w.tranQuadHiding = true
+			w.tranQuadOpacity = 1
+
+			for _, o := range w.objects {
+				o.SetEnabled(false).SetVisibility(false)
+			}
+
+			w.tranTarget.SetEnabled(true).SetVisibility(true)
+		}
+
+		w.updateObjects(deltaTime)
+		w.drawObjects(deltaTime)
+
+		gl.Enable(gl.BLEND)
+		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		w.tranQuad.Draw(deltaTime)
+	} else if w.tranQuadHiding {
+		w.tranQuadOpacity -= w.tranSpeed
+		w.tranQuad.SetOpacity(uint8(math.Max(0, w.tranQuadOpacity*255.0)))
+		if w.tranQuad.Opacity() == 0 {
+			w.tranQuadHiding = false
+			w.tranQuadOpacity = 0
+			gl.Disable(gl.BLEND)
+		}
+
+		w.tranTarget.Update(deltaTime)
+		w.tranTarget.Draw(deltaTime)
+
+		gl.Enable(gl.BLEND)
+		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+		w.tranQuad.Draw(deltaTime)
+	} else {
+		w.updateObjects(deltaTime)
+		w.drawObjects(deltaTime)
+	}
+}
+
+func (w *Window) keyEventCallback(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
+	if !w.inputEnabled.Load() {
+		return
+	}
+
+	w.keyEventHandlersMutex.Lock()
+	if w.keyEventHandlers == nil {
+		w.keyEventHandlersMutex.Unlock()
+		return
+	}
+
+	for _, h := range w.keyEventHandlers {
+		if h.Key == key && h.Action == action {
+			h.Callback(w, key, action)
+		}
+	}
+
+	w.keyEventHandlersMutex.Unlock()
+}
+
+func (w *Window) close() {
+	w.stateMutex.Lock()
+	w.closeObjects()
+	w.stateMutex.Unlock()
+
+	w.win.SetKeyCallback(nil)
+	w.win.SetShouldClose(true)
+
+	windowCount.Add(-1)
+	if windowCount.Load() == 0 {
+		glfw.Terminate()
+	}
+}
+
+func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
+	if w.initialized.Load() {
+		cancelFunc()
+		return
+	}
+
+	w.cancelFunc = cancelFunc
+
+	go func() {
+		window, err := newGlfwWindow(w.Title(), w.Width(), w.Height())
+		if err != nil {
+			cancelFunc()
+			panic(err)
+		}
+
+		if err = w.initAssets(); err != nil {
+			cancelFunc()
+			panic(err)
+		}
+
+		w.initialized.Store(true)
+
+		runtime.LockOSThread()
+
+		w.stateMutex.Lock()
+		w.win = window
+		w.win.SetKeyCallback(w.keyEventCallback)
+		w.initTransitionQuad()
+		w.initObjects()
+		w.stateMutex.Unlock()
+
+		now := time.Now().UnixMicro()
+		lastTick := now
+		deltaTime := now
+		drawInterval := int64(1000000 / w.targetFramerate.Load())
+
+		for {
+			if w.win.ShouldClose() {
+				w.close()
+				cancelFunc()
+				return
+			}
+			select {
+			case <-ctx.Done():
+				w.close()
+				return
+			default:
+			}
+
+			now = time.Now().UnixMicro()
+			deltaTime = now - lastTick
+			if deltaTime < drawInterval {
+				time.Sleep(time.Microsecond * time.Duration(drawInterval-deltaTime))
+			}
+			deltaTime = time.Now().UnixMicro() - lastTick
+			lastTick = time.Now().UnixMicro()
+
+			w.stateMutex.Lock()
+			w.clearScreen()
+			w.tick(deltaTime)
+			w.win.SwapBuffers()
+			w.stateMutex.Unlock()
+
+			glfw.PollEvents()
+		}
+	}()
+}
+
+func (w *Window) Close() {
+	if w.initialized.Load() {
+		w.cancelFunc()
+	}
+}
+
+func (w *Window) AddKeyEventHandler(key glfw.Key, action glfw.Action, callback func(window *Window, key glfw.Key, action glfw.Action)) *KeyEventHandler {
+	w.keyEventHandlersMutex.Lock()
+	if w.keyEventHandlers == nil {
+		w.keyEventHandlers = make([]*KeyEventHandler, 0)
+	}
+	handler := &KeyEventHandler{
+		Key:      key,
+		Action:   action,
+		Callback: callback,
+	}
+	w.keyEventHandlers = append(w.keyEventHandlers, handler)
+	w.keyEventHandlersMutex.Unlock()
+	return handler
+}
+
+func (w *Window) RemoveKeyEventHandler(handler *KeyEventHandler) {
+	if w.keyEventHandlers == nil {
+		return
+	}
+
+	w.keyEventHandlersMutex.Lock()
+	index := -1
+	for i, h := range w.keyEventHandlers {
+		if h == handler {
+			index = i
+			break
+		}
+	}
+	if index != -1 {
+		w.keyEventHandlers = append(w.keyEventHandlers[:index], w.keyEventHandlers[index+1:]...)
+	}
+	w.keyEventHandlersMutex.Unlock()
+}
+
+func (w *Window) SetInputEnabled(enabled bool) *Window {
+	w.inputEnabled.Store(enabled)
+	return w
+}
+
+func (w *Window) ClearColor() color.RGBA {
+	return FloatArrayToRgba(w.clearColor)
+}
+
+func (w *Window) SetClearColor(rgba color.RGBA) *Window {
+	w.stateMutex.Lock()
+	w.clearColor[0] = float32(rgba.R) / 255.0
+	w.clearColor[1] = float32(rgba.G) / 255.0
+	w.clearColor[2] = float32(rgba.B) / 255.0
+	w.clearColor[3] = float32(rgba.A) / 255.0
+	w.stateMutex.Unlock()
+	return w
+}
+
+func (w *Window) Object(name string) WindowObject {
+	for _, obj := range w.objects {
+		if obj.Name() == name {
+			return obj
+		}
+		o := obj.Child(name)
+		if o != nil {
+			return o
+		}
+	}
+	return nil
+}
+
+func (w *Window) AddObjects(objects ...WindowObject) {
+	w.objects = append(w.objects, objects...)
+}
+
+func (w *Window) RemoveObjectAt(index int) {
+	if index < 0 || index > len(w.objects)-1 {
+		return
+	}
+	w.objects = append(w.objects[:index], w.objects[index+1:]...)
+}
+
+func (w *Window) TransitionTo(name string, speed ...float64) {
+	w.stateMutex.Lock()
+	if len(speed) > 0 {
+		w.tranSpeed = speed[0]
+	} else {
+		w.tranSpeed = 0.1
+	}
+
+	if w.tranQuadShowing || w.tranQuadHiding {
+		w.stateMutex.Unlock()
+		return
+	}
+
+	w.tranTarget = w.Object(name)
+	w.tranQuadShowing = true
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) Title() string {
+	if t, ok := w.title.Load().(string); ok {
+		return t
+	}
+	return NoLabel
+}
+
+func (w *Window) SetTitle(title string) *Window {
+	w.title.Store(title)
+
+	if w.win != nil {
+		w.stateMutex.Lock()
+		w.win.SetTitle(w.title.Load().(string))
+		w.stateMutex.Unlock()
+	}
+
+	return w
+}
+
+func (w *Window) Width() int32 {
+	return w.width.Load()
+}
+
+func (w *Window) SetWidth(width int) *Window {
+	w.width.Store(int32(width))
+	if w.win != nil {
+		w.stateMutex.Lock()
+		w.win.SetSize(int(w.width.Load()), int(w.height.Load()))
+		w.stateMutex.Unlock()
+	}
+	return w
+}
+
+func (w *Window) Height() int32 {
+	return w.height.Load()
+}
+
+func (w *Window) SetHeight(height int) *Window {
+	w.height.Store(int32(height))
+	if w.win != nil {
+		w.stateMutex.Lock()
+		w.win.SetSize(int(w.width.Load()), int(w.height.Load()))
+		w.stateMutex.Unlock()
+	}
+	return w
+}
+
+func (w *Window) AspectRatio() float32 {
+	return float32(w.Width()) / float32(w.Height())
+}
+
+func (w *Window) AspectRatioInv() float32 {
+	return float32(w.Height()) / float32(w.Width())
+}
+
+func (w *Window) AspectRatio2D() mgl32.Vec2 {
+	width := w.Width()
+	height := w.Height()
+
+	switch {
+	case width > height:
+		return mgl32.Vec2{1, float32(width) / float32(height)}
+	case height > width:
+		return mgl32.Vec2{float32(height) / float32(width), 1}
+	default:
+		return mgl32.Vec2{1, 1}
+	}
+}
+
+func (w *Window) AspectRatio2DInv() mgl32.Vec2 {
+	width := w.Width()
+	height := w.Height()
+
+	switch {
+	case width > height:
+		return mgl32.Vec2{float32(height) / float32(width), 1}
+	case height > width:
+		return mgl32.Vec2{1, float32(width) / float32(height)}
+	default:
+		return mgl32.Vec2{1, 1}
+	}
+}
+
+func (w *Window) ScaleX(x float32) float32 {
+	width := w.Width()
+	height := w.Height()
+
+	if width > height {
+		x *= float32(height) / float32(width)
+	}
+
+	return x
+}
+
+func (w *Window) ScaleY(y float32) float32 {
+	width := w.Width()
+	height := w.Height()
+
+	if height > width {
+		y *= float32(width) / float32(height)
+	}
+
+	return y
+}
+
+func (w *Window) ScaleVec(vec mgl32.Vec3) mgl32.Vec3 {
+	width := w.Width()
+	height := w.Height()
+
+	aspectRatio := float32(height) / float32(width)
+	if height > width {
+		aspectRatio = float32(width) / float32(height)
+	}
+
+	if width > height {
+		vec[0] *= aspectRatio
+	} else if height > width {
+		vec[1] *= aspectRatio
+	}
+
+	return vec
+}
+
+func (w *Window) IsFullscreen() bool {
+	return w.fullscreen.Load()
+}
+
+func (w *Window) EnableFullscreen(isEnabled bool) *Window {
+	w.fullscreen.Store(isEnabled)
+	return w
+}
+
+func (w *Window) TargetFramerate() uint32 {
+	return w.targetFramerate.Load()
+}
+
+func (w *Window) SetTargetFramerate(framerate int) *Window {
+	w.targetFramerate.Store(uint32(framerate))
+	return w
+}
+
+func NewWindow() *Window {
+	w := &Window{
+		objects:          make([]WindowObject, 0),
+		keyEventHandlers: make([]*KeyEventHandler, 0),
+	}
+	w.SetWidth(defaultWinWidth)
+	w.SetHeight(defaultWinHeight)
+	w.SetTargetFramerate(defaultTargetFramerate)
+	w.inputEnabled.Store(true)
+	return w
+}
