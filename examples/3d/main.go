@@ -14,7 +14,7 @@ var (
 	windowTitle     = "GFX Test"
 	windowWidth     = 1900
 	windowHeight    = 1000
-	targetFramerate = 120
+	targetFramerate = 60
 	backgroundColor = gfx.Black
 )
 
