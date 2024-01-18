@@ -66,11 +66,11 @@ type BoundingBox struct {
 	clickBegun        bool
 	lastMouseLeftDown bool
 
-	onMouseEnterHandlers []func(*WindowObject, *MouseState)
-	onMouseLeaveHandlers []func(*WindowObject, *MouseState)
-	onMouseDownHandlers  []func(*WindowObject, *MouseState)
-	onMouseUpHandlers    []func(*WindowObject, *MouseState)
-	onClickHandlers      []func(*WindowObject, *MouseState)
+	onMouseEnterHandlers []func(WindowObject, *MouseState)
+	onMouseLeaveHandlers []func(WindowObject, *MouseState)
+	onMouseDownHandlers  []func(WindowObject, *MouseState)
+	onMouseUpHandlers    []func(WindowObject, *MouseState)
+	onClickHandlers      []func(WindowObject, *MouseState)
 }
 
 func (b *BoundingBox) Init(window *Window) bool {
@@ -121,7 +121,11 @@ func (b *BoundingBox) Update(_ int64) bool {
 		b.mouseOver = true
 		if !b.clickBegun {
 			for _, f := range b.onMouseEnterHandlers {
-				f(b.parent.Load(), mouseState)
+				if parent := b.parent.Load(); parent != nil {
+					f(*parent, mouseState)
+				} else {
+					f(b, mouseState)
+				}
 			}
 		}
 	}
@@ -130,7 +134,11 @@ func (b *BoundingBox) Update(_ int64) bool {
 		b.mouseOver = false
 		if !b.clickBegun {
 			for _, f := range b.onMouseLeaveHandlers {
-				f(b.parent.Load(), mouseState)
+				if parent := b.parent.Load(); parent != nil {
+					f(*parent, mouseState)
+				} else {
+					f(b, mouseState)
+				}
 			}
 		}
 	}
@@ -138,20 +146,36 @@ func (b *BoundingBox) Update(_ int64) bool {
 	if !b.clickBegun && b.mouseOver && leftDown && !b.lastMouseLeftDown {
 		b.clickBegun = true
 		for _, f := range b.onMouseDownHandlers {
-			f(b.parent.Load(), mouseState)
+			if parent := b.parent.Load(); parent != nil {
+				f(*parent, mouseState)
+			} else {
+				f(b, mouseState)
+			}
 		}
 	} else if b.clickBegun && b.mouseOver && !leftDown {
 		b.clickBegun = false
 		for _, f := range b.onClickHandlers {
-			f(b.parent.Load(), mouseState)
+			if parent := b.parent.Load(); parent != nil {
+				f(*parent, mouseState)
+			} else {
+				f(b, mouseState)
+			}
 		}
 		for _, f := range b.onMouseUpHandlers {
-			f(b.parent.Load(), mouseState)
+			if parent := b.parent.Load(); parent != nil {
+				f(*parent, mouseState)
+			} else {
+				f(b, mouseState)
+			}
 		}
 	} else if b.clickBegun && !b.mouseOver && !leftDown {
 		b.clickBegun = false
 		for _, f := range b.onMouseUpHandlers {
-			f(b.parent.Load(), mouseState)
+			if parent := b.parent.Load(); parent != nil {
+				f(*parent, mouseState)
+			} else {
+				f(b, mouseState)
+			}
 		}
 	}
 
@@ -159,23 +183,23 @@ func (b *BoundingBox) Update(_ int64) bool {
 	return true
 }
 
-func (b *BoundingBox) OnMouseEnter(handler func(sender *WindowObject, mouseState *MouseState)) {
+func (b *BoundingBox) OnMouseEnter(handler func(sender WindowObject, mouseState *MouseState)) {
 	b.onMouseEnterHandlers = append(b.onMouseEnterHandlers, handler)
 }
 
-func (b *BoundingBox) OnMouseLeave(handler func(sender *WindowObject, mouseState *MouseState)) {
+func (b *BoundingBox) OnMouseLeave(handler func(sender WindowObject, mouseState *MouseState)) {
 	b.onMouseLeaveHandlers = append(b.onMouseLeaveHandlers, handler)
 }
 
-func (b *BoundingBox) OnMouseDown(handler func(sender *WindowObject, mouseState *MouseState)) {
+func (b *BoundingBox) OnMouseDown(handler func(sender WindowObject, mouseState *MouseState)) {
 	b.onMouseDownHandlers = append(b.onMouseDownHandlers, handler)
 }
 
-func (b *BoundingBox) OnMouseUp(handler func(sender *WindowObject, mouseState *MouseState)) {
+func (b *BoundingBox) OnMouseUp(handler func(sender WindowObject, mouseState *MouseState)) {
 	b.onMouseUpHandlers = append(b.onMouseUpHandlers, handler)
 }
 
-func (b *BoundingBox) OnClick(handler func(sender *WindowObject, mouseState *MouseState)) {
+func (b *BoundingBox) OnClick(handler func(sender WindowObject, mouseState *MouseState)) {
 	b.onClickHandlers = append(b.onClickHandlers, handler)
 }
 

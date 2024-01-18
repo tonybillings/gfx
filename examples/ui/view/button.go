@@ -7,15 +7,14 @@ import (
 	"tonysoft.com/gfx/examples/ui/textures"
 )
 
-func onClick(button *gfx.WindowObject, _ *gfx.MouseState) {
+func onClick(button gfx.WindowObject, _ *gfx.MouseState) {
 	clickCount := 0
-	btn := *button
-	if count, ok := btn.Tag().(int); ok { // use a map[string]any to store multiple values
+	if count, ok := button.Tag().(int); ok { // use a map[string]any to store multiple values
 		clickCount = count
 	}
 	clickCount++
-	btn.SetTag(clickCount)
-	btn.(*gfx.Button).SetText(strconv.Itoa(clickCount))
+	button.SetTag(clickCount)
+	button.(*gfx.Button).SetText(strconv.Itoa(clickCount))
 }
 
 // NewButtonView In this example, the buttons are aligned/anchored to the

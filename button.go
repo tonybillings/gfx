@@ -191,7 +191,7 @@ func (b *Button) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	return b
 }
 
-func (b *Button) onMouseEnter(_ *WindowObject, _ *MouseState) {
+func (b *Button) onMouseEnter(_ WindowObject, _ *MouseState) {
 	if b.mouseEnterFillColorSet.Load() {
 		b.fill.SetColor(b.mouseEnterFillColor)
 	}
@@ -203,7 +203,7 @@ func (b *Button) onMouseEnter(_ *WindowObject, _ *MouseState) {
 	}
 }
 
-func (b *Button) onMouseLeave(_ *WindowObject, _ *MouseState) {
+func (b *Button) onMouseLeave(_ WindowObject, _ *MouseState) {
 	if b.mouseEnterFillColorSet.Load() {
 		b.fill.SetColor(b.mouseLeaveFillColor)
 	}
@@ -215,7 +215,7 @@ func (b *Button) onMouseLeave(_ *WindowObject, _ *MouseState) {
 	}
 }
 
-func (b *Button) onMouseDown(_ *WindowObject, _ *MouseState) {
+func (b *Button) onMouseDown(_ WindowObject, _ *MouseState) {
 	if b.mouseDownFillColorSet.Load() {
 		b.fill.SetColor(b.mouseDownFillColor)
 	}
@@ -227,7 +227,7 @@ func (b *Button) onMouseDown(_ *WindowObject, _ *MouseState) {
 	}
 }
 
-func (b *Button) onMouseUp(_ *WindowObject, _ *MouseState) {
+func (b *Button) onMouseUp(_ WindowObject, _ *MouseState) {
 	if b.mouseDownFillColorSet.Load() {
 		b.fill.SetColor(b.mouseUpFillColor)
 	}
@@ -239,7 +239,7 @@ func (b *Button) onMouseUp(_ *WindowObject, _ *MouseState) {
 	}
 }
 
-func (b *Button) OnClick(handler func(sender *WindowObject, mouseState *MouseState)) *Button {
+func (b *Button) OnClick(handler func(sender WindowObject, mouseState *MouseState)) *Button {
 	b.box.OnClick(handler)
 	return b
 }
