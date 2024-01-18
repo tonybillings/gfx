@@ -82,6 +82,9 @@ type WindowObject interface {
 	RemoveChild(WindowObject)
 	Child(string) WindowObject
 	Children() []WindowObject
+
+	Tag() any
+	SetTag(any) WindowObject
 }
 
 type WindowObjectBase struct {
@@ -118,7 +121,7 @@ type WindowObjectBase struct {
 	parent   atomic.Pointer[WindowObject]
 	children []WindowObject
 
-	Tag atomic.Pointer[any]
+	tag atomic.Value
 }
 
 /******************************************************************************
@@ -561,6 +564,15 @@ func (o *WindowObjectBase) Child(name string) WindowObject {
 
 func (o *WindowObjectBase) Children() []WindowObject {
 	return o.children
+}
+
+func (o *WindowObjectBase) Tag() any {
+	return o.tag.Load()
+}
+
+func (o *WindowObjectBase) SetTag(value any) WindowObject {
+	o.tag.Store(value)
+	return o
 }
 
 /******************************************************************************

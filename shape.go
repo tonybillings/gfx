@@ -13,6 +13,8 @@ const (
 	defaultSquareName   = "Square"
 	defaultDotName      = "Dot"
 	defaultCircleName   = "Circle"
+
+	thicknessEpsilon = 0.00001
 )
 
 type Shape struct {
@@ -74,7 +76,9 @@ func (s *Shape) initVerticesTriangle() {
 	b := [2]float32{-.87, -.5}
 	c := [2]float32{.87, -.5}
 
-	if s.thickness > 0.00001 {
+	s.stateMutex.Lock()
+
+	if s.thickness > thicknessEpsilon {
 		centroid := [2]float32{
 			(a[0] + b[0] + c[0]) / 3.0,
 			(a[1] + b[1] + c[1]) / 3.0,
@@ -115,6 +119,8 @@ func (s *Shape) initVerticesTriangle() {
 		s.vertexCount = 3
 		s.drawMode = gl.TRIANGLES
 	}
+
+	s.stateMutex.Unlock()
 }
 
 func (s *Shape) initVerticesTriangleWithUV() {
@@ -122,7 +128,9 @@ func (s *Shape) initVerticesTriangleWithUV() {
 	b := [2]float32{-.87, -.5}
 	c := [2]float32{.87, -.5}
 
-	if s.thickness > 0.00001 {
+	s.stateMutex.Lock()
+
+	if s.thickness > thicknessEpsilon {
 		centroid := [2]float32{
 			(a[0] + b[0] + c[0]) / 3.0,
 			(a[1] + b[1] + c[1]) / 3.0,
@@ -164,13 +172,18 @@ func (s *Shape) initVerticesTriangleWithUV() {
 		s.vertexCount = 3
 		s.drawMode = gl.TRIANGLES
 	}
+
+	s.stateMutex.Unlock()
 }
 
 func (s *Shape) initVerticesQuadrangle() {
-	topLeft := [2]float32{-1.0, 1.0}
-	bottomRight := [2]float32{1.0, -1.0}
+	xAspectRatioInv := s.WorldScale().Y() / s.WorldScale().X()
 
-	if s.thickness > 0.00001 {
+	s.stateMutex.Lock()
+
+	if s.thickness > thicknessEpsilon {
+		topLeft := [2]float32{-1.0, 1.0}
+		bottomRight := [2]float32{1.0, -1.0}
 		center := [2]float32{
 			(topLeft[0] + bottomRight[0]) / 2.0,
 			(topLeft[1] + bottomRight[1]) / 2.0,
@@ -178,7 +191,7 @@ func (s *Shape) initVerticesQuadrangle() {
 
 		interpolate := func(p [2]float32) [2]float32 {
 			return [2]float32{
-				p[0] + (center[0]-p[0])*s.thickness,
+				p[0] + (center[0]-p[0])*s.thickness*xAspectRatioInv,
 				p[1] + (center[1]-p[1])*s.thickness,
 			}
 		}
@@ -216,13 +229,19 @@ func (s *Shape) initVerticesQuadrangle() {
 		s.vertexCount = 6
 		s.drawMode = gl.TRIANGLES
 	}
+
+	s.stateMutex.Unlock()
 }
 
 func (s *Shape) initVerticesQuadrangleWithUV() {
+	xAspectRatioInv := s.WorldScale().Y() / s.WorldScale().X()
+
 	topLeft := [2]float32{-1.0, 1.0}
 	bottomRight := [2]float32{1.0, -1.0}
 
-	if s.thickness > 0.00001 {
+	s.stateMutex.Lock()
+
+	if s.thickness > thicknessEpsilon {
 		center := [2]float32{
 			(topLeft[0] + bottomRight[0]) / 2.0,
 			(topLeft[1] + bottomRight[1]) / 2.0,
@@ -230,7 +249,7 @@ func (s *Shape) initVerticesQuadrangleWithUV() {
 
 		interpolate := func(p [2]float32) [2]float32 {
 			return [2]float32{
-				p[0] + (center[0]-p[0])*s.thickness,
+				p[0] + (center[0]-p[0])*s.thickness*xAspectRatioInv,
 				p[1] + (center[1]-p[1])*s.thickness,
 			}
 		}
@@ -278,6 +297,8 @@ func (s *Shape) initVerticesQuadrangleWithUV() {
 		s.vertexCount = 6
 		s.drawMode = gl.TRIANGLES
 	}
+
+	s.stateMutex.Unlock()
 }
 
 func (s *Shape) initVerticesPolygon() {
@@ -285,13 +306,16 @@ func (s *Shape) initVerticesPolygon() {
 	maxAngle := 2 * math.Pi * float64(s.length)
 	angleIncrement := maxAngle / float64(s.sides-1)
 
-	if maxAngle < 0.00001 {
+	s.stateMutex.Lock()
+
+	if maxAngle < thicknessEpsilon {
 		s.vertices = make([]float32, 0)
 		s.vertexCount = 0
+		s.stateMutex.Unlock()
 		return
 	}
 
-	if s.thickness > 0.00001 {
+	if s.thickness > thicknessEpsilon {
 		vertices := make([]float32, 0, s.sides*2*2)
 		innerRadius := radius - s.thickness
 
@@ -338,6 +362,8 @@ func (s *Shape) initVerticesPolygon() {
 		s.vertexCount = int32(len(triangulatedVertices) / 2)
 		s.drawMode = gl.TRIANGLES
 	}
+
+	s.stateMutex.Unlock()
 }
 
 func (s *Shape) initVerticesPolygonWithUV() {
@@ -345,13 +371,16 @@ func (s *Shape) initVerticesPolygonWithUV() {
 	maxAngle := 2 * math.Pi * float64(s.length)
 	angleIncrement := maxAngle / float64(s.sides-1)
 
-	if maxAngle < 0.00001 {
+	s.stateMutex.Lock()
+
+	if maxAngle < thicknessEpsilon {
 		s.vertices = make([]float32, 0)
 		s.vertexCount = 0
+		s.stateMutex.Unlock()
 		return
 	}
 
-	if s.thickness > 0.00001 {
+	if s.thickness > thicknessEpsilon {
 		innerRadius := radius - s.thickness
 		vertices := make([]float32, 0, s.sides*4*2)
 
@@ -402,11 +431,11 @@ func (s *Shape) initVerticesPolygonWithUV() {
 		s.vertexCount = int32(len(triangulatedVertices) / 4)
 		s.drawMode = gl.TRIANGLES
 	}
+
+	s.stateMutex.Unlock()
 }
 
 func (s *Shape) initVertices() {
-	s.stateMutex.Lock()
-
 	switch s.sides {
 	case 3:
 		if s.textureFilename == "" {
@@ -427,8 +456,6 @@ func (s *Shape) initVertices() {
 			s.initVerticesPolygonWithUV()
 		}
 	}
-
-	s.stateMutex.Unlock()
 }
 
 func (s *Shape) initBlurTextureVertices() {
@@ -679,10 +706,6 @@ func (s *Shape) Init(window *Window) (ok bool) {
 
 func (s *Shape) Update(deltaTime int64) (ok bool) {
 	if !s.WindowObjectBase.Update(deltaTime) {
-		return false
-	}
-
-	if !s.WindowObjectBase.updateChildren(deltaTime) {
 		return false
 	}
 

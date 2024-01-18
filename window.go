@@ -38,6 +38,9 @@ type Window struct {
 	tranQuadOpacity float64
 	tranSpeed       float64
 
+	mouseTrackingEnabled atomic.Bool
+	mouseState           MouseState
+
 	initialized atomic.Bool
 	cancelFunc  context.CancelFunc
 	stateMutex  sync.Mutex
@@ -471,7 +474,7 @@ func (w *Window) IsFullscreen() bool {
 }
 
 func (w *Window) EnableFullscreen(isEnabled bool) *Window {
-	w.fullscreen.Store(isEnabled)
+	w.fullscreen.Store(isEnabled) // TODO: implement fullscreen mode
 	return w
 }
 
@@ -484,11 +487,48 @@ func (w *Window) SetTargetFramerate(framerate int) *Window {
 	return w
 }
 
+func (w *Window) Mouse() *MouseState {
+	return &w.mouseState
+}
+
+func (w *Window) EnableMouseTracking() *Window {
+	if w.mouseTrackingEnabled.Load() {
+		return w
+	}
+	w.mouseTrackingEnabled.Store(true)
+
+	w.win.SetCursorPosCallback(func(window *glfw.Window, x float64, y float64) {
+		w.mouseState.UpdatePosition(x, y)
+	})
+
+	w.win.SetMouseButtonCallback(func(window *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
+		switch button {
+		case glfw.MouseButtonLeft:
+			switch action {
+			case glfw.Press:
+				w.mouseState.UpdateButton(0, true)
+			case glfw.Release:
+				w.mouseState.UpdateButton(0, false)
+			}
+		case glfw.MouseButtonRight:
+			switch action {
+			case glfw.Press:
+				w.mouseState.UpdateButton(1, true)
+			case glfw.Release:
+				w.mouseState.UpdateButton(1, false)
+			}
+		}
+	})
+
+	return w
+}
+
 func NewWindow() *Window {
 	w := &Window{
 		objects:          make([]WindowObject, 0),
 		keyEventHandlers: make([]*KeyEventHandler, 0),
 	}
+
 	w.SetWidth(defaultWinWidth)
 	w.SetHeight(defaultWinHeight)
 	w.SetTargetFramerate(defaultTargetFramerate)

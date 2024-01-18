@@ -50,3 +50,45 @@ func FloatArrayToRgba(array [4]float32) color.RGBA {
 		B: uint8(array[2] * 255.0),
 		A: uint8(array[3] * 255.0)}
 }
+
+func Lighten(rgba color.RGBA, pct float64) color.RGBA {
+	r := (float64(rgba.R) * pct) + float64(rgba.R)
+	if r > 255 {
+		r = 255
+	}
+	g := (float64(rgba.G) * pct) + float64(rgba.G)
+	if g > 255 {
+		g = 255
+	}
+	b := (float64(rgba.B) * pct) + float64(rgba.B)
+	if b > 255 {
+		b = 255
+	}
+	return color.RGBA{
+		R: uint8(r),
+		G: uint8(g),
+		B: uint8(b),
+		A: rgba.A,
+	}
+}
+
+func Darken(rgba color.RGBA, pct float64) color.RGBA {
+	r := float64(rgba.R) - (float64(rgba.R) * pct)
+	if r < 0 {
+		r = 0
+	}
+	g := float64(rgba.G) - (float64(rgba.G) * pct)
+	if g < 0 {
+		g = 0
+	}
+	b := float64(rgba.B) - (float64(rgba.B) * pct)
+	if b < 0 {
+		b = 0
+	}
+	return color.RGBA{
+		R: uint8(r),
+		G: uint8(g),
+		B: uint8(b),
+		A: rgba.A,
+	}
+}
