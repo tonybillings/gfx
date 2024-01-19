@@ -17,6 +17,15 @@ func onClick(button gfx.WindowObject, _ *gfx.MouseState) {
 	button.(*gfx.Button).SetText(strconv.Itoa(clickCount))
 }
 
+func onDepressed(button gfx.WindowObject, _ *gfx.MouseState) {
+	blur := button.(*gfx.Button).BlurIntensity()
+	if blur < 1 {
+		blur = 1
+	}
+	blur *= 1.01
+	button.(*gfx.Button).SetBlurIntensity(blur)
+}
+
 // NewButtonView In this example, the buttons are aligned/anchored to the
 // corners, regardless of their size (scale) or the size/ratio of the window.
 func NewButtonView(window *gfx.Window) gfx.WindowObject {
@@ -94,6 +103,33 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetPositionX(1 - (window.ScaleY(btnWidth) * window.AspectRatioInv())).
 		SetPositionY(1 - (window.ScaleX(btnHeight) * window.AspectRatio()))
 
+	btnWidth = .1
+	btnHeight = .1
+
+	button5 := gfx.NewButton(true) // true = will be a circular button
+	button5.
+		SetBorderThickness(.05).
+		SetBorderColor(gfx.Opacity(gfx.White, .1)).
+		SetFillColor(gfx.Red).
+		SetMouseEnterFillColor(color.RGBA{R: 255, G: 50, B: 50, A: 255}).
+		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
+		MaintainAspectRatio(false).
+		SetBlurEnabled(true).
+		SetScaleX(btnWidth).SetScaleY(btnHeight).
+		SetPositionX(-.8 + (window.ScaleY(btnWidth) * window.AspectRatioInv()))
+
+	button6 := gfx.NewButton(true) // true = will be a circular button
+	button6.
+		SetBorderThickness(.05).
+		SetBorderColor(gfx.Opacity(gfx.White, .1)).
+		SetFillColor(gfx.Green).
+		SetMouseEnterFillColor(color.RGBA{R: 150, G: 255, B: 150, A: 255}).
+		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
+		MaintainAspectRatio(true).
+		SetBlurEnabled(true).
+		SetScaleX(btnWidth).SetScaleY(btnHeight).
+		SetPositionX(.8 - (window.ScaleY(btnWidth) * window.AspectRatioInv()))
+
 	lbl1 := gfx.NewLabel()
 	lbl1.
 		SetText("<- false").
@@ -116,6 +152,8 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 	container.AddChild(button2)
 	container.AddChild(button3)
 	container.AddChild(button4)
+	container.AddChild(button5)
+	container.AddChild(button6)
 	container.AddChild(lbl1)
 	container.AddChild(lbl2)
 	container.AddChild(lbl3)

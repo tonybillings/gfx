@@ -581,6 +581,7 @@ func (o *WindowObjectBase) SetTag(value any) WindowObject {
 
 func NewObject(parent WindowObject) *WindowObjectBase {
 	w := &WindowObjectBase{
+		blurIntensity:       0.0001,
 		color:               RgbaToFloatArray(White),
 		position:            [3]float32{0, 0, 0},
 		rotation:            [3]float32{0, 0, 0},

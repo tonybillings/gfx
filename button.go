@@ -15,7 +15,7 @@ type Button struct {
 	fill   *Shape
 	border *Shape
 	label  *Label
-	box    *BoundingBox
+	bounds BoundingObject
 
 	mouseEnterFillColorSet   atomic.Bool
 	mouseEnterBorderColorSet atomic.Bool
@@ -187,7 +187,25 @@ func (b *Button) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	b.fill.MaintainAspectRatio(maintainAspectRatio)
 	b.border.MaintainAspectRatio(maintainAspectRatio)
 	b.label.MaintainAspectRatio(maintainAspectRatio)
-	b.box.MaintainAspectRatio(maintainAspectRatio)
+	b.bounds.MaintainAspectRatio(maintainAspectRatio)
+	return b
+}
+
+func (b *Button) BlurEnabled() bool {
+	return b.fill.BlurEnabled()
+}
+
+func (b *Button) SetBlurEnabled(isEnabled bool) WindowObject {
+	b.fill.SetBlurEnabled(isEnabled)
+	return b
+}
+
+func (b *Button) BlurIntensity() float32 {
+	return b.fill.BlurIntensity()
+}
+
+func (b *Button) SetBlurIntensity(intensity float32) WindowObject {
+	b.fill.SetBlurIntensity(intensity)
 	return b
 }
 
@@ -239,8 +257,13 @@ func (b *Button) onMouseUp(_ WindowObject, _ *MouseState) {
 	}
 }
 
+func (b *Button) OnDepressed(handler func(sender WindowObject, mouseState *MouseState)) *Button {
+	b.bounds.OnDepressed(handler)
+	return b
+}
+
 func (b *Button) OnClick(handler func(sender WindowObject, mouseState *MouseState)) *Button {
-	b.box.OnClick(handler)
+	b.bounds.OnClick(handler)
 	return b
 }
 
@@ -248,26 +271,37 @@ func (b *Button) OnClick(handler func(sender WindowObject, mouseState *MouseStat
  New Button Function
 ******************************************************************************/
 
-func NewButton() *Button {
-	b := &Button{
-		WindowObjectBase: *NewObject(nil),
-		fill:             NewQuad(),
-		border:           NewSquare(thicknessEpsilon * 2),
-		label:            NewLabel(),
-		box:              NewBoundingBox(),
+func NewButton(isCircular ...bool) *Button {
+	var b *Button
+	if len(isCircular) > 0 && isCircular[0] {
+		b = &Button{
+			WindowObjectBase: *NewObject(nil),
+			fill:             NewDot(),
+			border:           NewCircle(thicknessEpsilon * 2),
+			label:            NewLabel(),
+			bounds:           NewBoundingRadius(),
+		}
+	} else {
+		b = &Button{
+			WindowObjectBase: *NewObject(nil),
+			fill:             NewQuad(),
+			border:           NewSquare(thicknessEpsilon * 2),
+			label:            NewLabel(),
+			bounds:           NewBoundingBox(),
+		}
 	}
 
 	b.SetName(defaultButtonName)
 	b.AddChild(b.fill)
 	b.AddChild(b.border)
 	b.AddChild(b.label)
-	b.AddChild(b.box)
-	b.box.SetParent(b)
+	b.AddChild(b.bounds)
+	b.bounds.SetParent(b)
 
-	b.box.OnMouseEnter(b.onMouseEnter)
-	b.box.OnMouseLeave(b.onMouseLeave)
-	b.box.OnMouseDown(b.onMouseDown)
-	b.box.OnMouseUp(b.onMouseUp)
+	b.bounds.OnMouseEnter(b.onMouseEnter)
+	b.bounds.OnMouseLeave(b.onMouseLeave)
+	b.bounds.OnMouseDown(b.onMouseDown)
+	b.bounds.OnMouseUp(b.onMouseUp)
 
 	return b
 }

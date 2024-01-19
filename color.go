@@ -92,3 +92,12 @@ func Darken(rgba color.RGBA, pct float64) color.RGBA {
 		A: rgba.A,
 	}
 }
+
+func Opacity(rgba color.RGBA, pct float64) color.RGBA {
+	return color.RGBA{
+		R: rgba.R,
+		G: rgba.G,
+		B: rgba.B,
+		A: uint8(255.0 * pct),
+	}
+}

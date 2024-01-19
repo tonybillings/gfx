@@ -1,38 +1,28 @@
 #version 410
 
 in vec2 UV;
-
 out vec4 FragColor;
 
 uniform sampler2D tex2D;
 uniform float blurAmount;
 
-const int SAMPLES = 9;
-
-const float weights[SAMPLES] = float[](
-    0.0093, 0.028002, 0.065984, 0.121703, 0.175037,
-    0.121703, 0.065984, 0.028002, 0.0093
-);
-
-const float weightSum = 0.6097;
-
 void main() {
     vec2 texOffset = 1.0 / textureSize(tex2D, 0);
     float xOffset = texOffset.x * blurAmount;
 
-    vec4 color = texture(tex2D, UV) * weights[SAMPLES / 2];
+    int samples = int(5.0 + 4.0 * blurAmount);
+    samples = clamp(samples, 1, 25);
 
-    for(int i = 1; i <= SAMPLES / 2; i++) {
-        float weightPos = weights[(SAMPLES / 2) + i];
-        float weightNeg = weights[(SAMPLES / 2) - i];
+    float weightSum = 0.0;
+    vec4 color = vec4(0.0);
 
-        vec2 offsetPos = vec2(xOffset * float(i), 0.0);
-        vec2 offsetNeg = -offsetPos;
-
-        color += texture(tex2D, UV + offsetPos) * weightPos;
-        color += texture(tex2D, UV + offsetNeg) * weightNeg;
+    for(int i = -samples / 2; i <= samples / 2; i++) {
+        float weight = exp(-0.5 * (i*i) / (blurAmount * blurAmount));
+        weightSum += weight;
+        vec2 offset = vec2(xOffset * float(i), 0.0);
+        color += texture(tex2D, UV + offset) * weight;
     }
 
-    color *= 1.0 / weightSum;
+    color /= weightSum;
     FragColor = color;
 }
