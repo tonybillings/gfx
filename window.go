@@ -18,16 +18,20 @@ import (
 type Window struct {
 	win *glfw.Window
 
-	title                   atomic.Value
-	width                   atomic.Int32
-	height                  atomic.Int32
-	lastWidth               atomic.Int32
-	lastHeight              atomic.Int32
-	lastPositionX           atomic.Int32
-	lastPositionY           atomic.Int32
+	title         atomic.Value
+	width         atomic.Int32
+	height        atomic.Int32
+	lastWidth     atomic.Int32
+	lastHeight    atomic.Int32
+	lastPositionX atomic.Int32
+	lastPositionY atomic.Int32
+
 	fullscreen              atomic.Bool
 	fullscreenButtonEnabled atomic.Bool
-	quitButtonEnabled       atomic.Bool
+	fullscreenRequested     atomic.Bool
+	windowRequested         atomic.Bool
+
+	quitButtonEnabled atomic.Bool
 
 	targetFramerate atomic.Uint32
 	clearColor      mgl32.Vec4
@@ -249,6 +253,16 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 			deltaTime = time.Now().UnixMicro() - lastTick
 			lastTick = time.Now().UnixMicro()
 
+			if w.fullscreenRequested.Load() {
+				w.fullscreenRequested.Store(false)
+				w.enableFullscreenMode()
+				w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
+			} else if w.windowRequested.Load() {
+				w.windowRequested.Store(false)
+				w.enableWindowedMode()
+				w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
+			}
+
 			w.stateMutex.Lock()
 			w.clearScreen()
 			w.tick(deltaTime)
@@ -305,33 +319,53 @@ func (w *Window) SetInputEnabled(enabled bool) *Window {
 	return w
 }
 
+func (w *Window) enableFullscreenMode() {
+	primaryMonitor := glfw.GetPrimaryMonitor()
+	vidMode := primaryMonitor.GetVideoMode()
+
+	x, y := w.win.GetPos()
+	w.lastPositionX.Store(int32(x))
+	w.lastPositionY.Store(int32(y))
+	w.lastWidth.Store(w.width.Load())
+	w.lastHeight.Store(w.height.Load())
+	w.width.Store(int32(vidMode.Width))
+	w.height.Store(int32(vidMode.Height))
+	w.win.SetMonitor(primaryMonitor, 0, 0, vidMode.Width, vidMode.Height, vidMode.RefreshRate)
+	w.fullscreen.Store(true)
+}
+
+func (w *Window) enableWindowedMode() {
+	primaryMonitor := glfw.GetPrimaryMonitor()
+	vidMode := primaryMonitor.GetVideoMode()
+
+	w.win.SetMonitor(nil, int(w.lastPositionX.Load()), int(w.lastPositionY.Load()), int(w.lastWidth.Load()), int(w.lastHeight.Load()), vidMode.RefreshRate)
+	w.width.Store(w.lastWidth.Load())
+	w.height.Store(w.lastHeight.Load())
+	w.lastWidth.Store(int32(vidMode.Width))
+	w.lastHeight.Store(int32(vidMode.Height))
+	w.fullscreen.Store(false)
+}
+
+func (w *Window) FullscreenEnabled(enabled bool) *Window {
+	if enabled {
+		w.fullscreenRequested.Store(true)
+	} else {
+		w.windowRequested.Store(true)
+	}
+	return w
+}
+
 func (w *Window) EnableFullscreenButton() *Window {
 	if !w.fullscreenButtonEnabled.Load() {
 		w.fullscreenButtonEnabled.Store(true)
-		primaryMonitor := glfw.GetPrimaryMonitor()
-		vidMode := primaryMonitor.GetVideoMode()
 
 		w.AddKeyEventHandler(glfw.KeyF11, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 			fullscreen := w.win.GetMonitor() != nil
 			if fullscreen {
-				w.win.SetMonitor(nil, int(w.lastPositionX.Load()), int(w.lastPositionY.Load()), int(w.lastWidth.Load()), int(w.lastHeight.Load()), vidMode.RefreshRate)
-				w.width.Store(w.lastWidth.Load())
-				w.height.Store(w.lastHeight.Load())
-				w.lastWidth.Store(int32(vidMode.Width))
-				w.lastHeight.Store(int32(vidMode.Height))
-				w.fullscreen.Store(false)
+				w.enableWindowedMode()
 			} else {
-				x, y := w.win.GetPos()
-				w.lastPositionX.Store(int32(x))
-				w.lastPositionY.Store(int32(y))
-				w.lastWidth.Store(w.width.Load())
-				w.lastHeight.Store(w.height.Load())
-				w.width.Store(int32(vidMode.Width))
-				w.height.Store(int32(vidMode.Height))
-				w.win.SetMonitor(primaryMonitor, 0, 0, vidMode.Width, vidMode.Height, vidMode.RefreshRate)
-				w.fullscreen.Store(true)
+				w.enableFullscreenMode()
 			}
-
 			w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
 		})
 	}

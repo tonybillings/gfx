@@ -22,7 +22,7 @@ func onDepressed(button gfx.WindowObject, _ *gfx.MouseState) {
 	if blur < 1 {
 		blur = 1
 	}
-	blur *= 1.01
+	blur *= 1.02
 	button.(*gfx.Button).SetBlurIntensity(blur)
 }
 
