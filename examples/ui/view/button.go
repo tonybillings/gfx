@@ -26,6 +26,16 @@ func onDepressed(button gfx.WindowObject, _ *gfx.MouseState) {
 	button.(*gfx.Button).SetBlurIntensity(blur)
 }
 
+func anchorTopRight(button gfx.WindowObject) {
+	button.SetPositionX(1 - (button.Window().ScaleY(button.Scale().X()) * button.Window().AspectRatioInv()))
+	button.SetPositionY(1 - (button.Window().ScaleX(button.Scale().Y()) * button.Window().AspectRatio()))
+}
+
+func anchorBottomRight(button gfx.WindowObject) {
+	button.SetPositionX(1 - (button.Window().ScaleY(button.Scale().X()) * button.Window().AspectRatioInv()))
+	button.SetPositionY(-1 + (button.Window().ScaleX(button.Scale().Y()) * button.Window().AspectRatio()))
+}
+
 // NewButtonView In this example, the buttons are aligned/anchored to the
 // corners, regardless of their size (scale) or the size/ratio of the window.
 func NewButtonView(window *gfx.Window) gfx.WindowObject {
@@ -69,7 +79,10 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		MaintainAspectRatio(true).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
 		SetPositionX(1 - (window.ScaleY(btnWidth) * window.AspectRatioInv())).
-		SetPositionY(-1 + (window.ScaleX(btnHeight) * window.AspectRatio()))
+		SetPositionY(-1 + (window.ScaleX(btnHeight) * window.AspectRatio())).
+		OnResize(func(_, _, _, _ int32) {
+			anchorBottomRight(button2)
+		})
 
 	button3 := gfx.NewButton()
 	button3.
@@ -101,7 +114,10 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		MaintainAspectRatio(true).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
 		SetPositionX(1 - (window.ScaleY(btnWidth) * window.AspectRatioInv())).
-		SetPositionY(1 - (window.ScaleX(btnHeight) * window.AspectRatio()))
+		SetPositionY(1 - (window.ScaleX(btnHeight) * window.AspectRatio())).
+		OnResize(func(_, _, _, _ int32) {
+			anchorTopRight(button4)
+		})
 
 	btnWidth = .1
 	btnHeight = .1

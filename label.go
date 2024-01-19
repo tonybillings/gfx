@@ -102,13 +102,14 @@ func (l *Label) Draw(_ int64) (ok bool) {
 
 	worldPos := l.WorldPosition()
 	worldScale := l.WorldScale()
+	width := l.window.Width()
+	height := l.window.Height()
 
 	l.stateMutex.Lock()
 	if l.stateChanged.Load() {
 		l.stateChanged.Store(false)
 
-		winWidth, winHeight := l.window.win.GetSize()
-		img := rasterizeText(winWidth, winHeight, l.text, l.fontFamily, worldScale[1]*l.fontSize,
+		img := rasterizeText(int(width), int(height), l.text, l.fontFamily, worldScale[1]*l.fontSize,
 			worldPos,
 			FloatArrayToRgba(l.color),
 			l.alignment,
@@ -131,6 +132,8 @@ func (l *Label) Draw(_ int64) (ok bool) {
 	gl.BindTexture(gl.TEXTURE_2D, l.texture)
 	gl.Uniform1i(l.textureUniformLoc, 0)
 
+	gl.Viewport(0, 0, width, height)
+
 	gl.BindVertexArray(l.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, l.vbo)
 
@@ -142,6 +145,10 @@ func (l *Label) Draw(_ int64) (ok bool) {
 	gl.UseProgram(0)
 
 	return true
+}
+
+func (l *Label) Resize(_, _, _, _ int32) {
+	l.stateChanged.Store(true)
 }
 
 func (l *Label) SetColor(rgba color.RGBA) WindowObject {

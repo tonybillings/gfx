@@ -8,6 +8,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"image/color"
 	"math"
+	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -17,10 +18,16 @@ import (
 type Window struct {
 	win *glfw.Window
 
-	title      atomic.Value
-	width      atomic.Int32
-	height     atomic.Int32
-	fullscreen atomic.Bool
+	title                   atomic.Value
+	width                   atomic.Int32
+	height                  atomic.Int32
+	lastWidth               atomic.Int32
+	lastHeight              atomic.Int32
+	lastPositionX           atomic.Int32
+	lastPositionY           atomic.Int32
+	fullscreen              atomic.Bool
+	fullscreenButtonEnabled atomic.Bool
+	quitButtonEnabled       atomic.Bool
 
 	targetFramerate atomic.Uint32
 	clearColor      mgl32.Vec4
@@ -97,6 +104,14 @@ func (w *Window) drawObjects(deltaTime int64) {
 func (w *Window) closeObjects() {
 	for _, o := range w.objects {
 		o.Close()
+	}
+}
+
+func (w *Window) resizeObjects(oldWidth, oldHeight, newWidth, newHeight int32) {
+	for _, o := range w.objects {
+		if !o.Closed() {
+			o.Resize(oldWidth, oldHeight, newWidth, newHeight)
+		}
 	}
 }
 
@@ -290,6 +305,54 @@ func (w *Window) SetInputEnabled(enabled bool) *Window {
 	return w
 }
 
+func (w *Window) EnableFullscreenButton() *Window {
+	if !w.fullscreenButtonEnabled.Load() {
+		w.fullscreenButtonEnabled.Store(true)
+		primaryMonitor := glfw.GetPrimaryMonitor()
+		vidMode := primaryMonitor.GetVideoMode()
+
+		w.AddKeyEventHandler(glfw.KeyF11, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
+			fullscreen := w.win.GetMonitor() != nil
+			if fullscreen {
+				w.win.SetMonitor(nil, int(w.lastPositionX.Load()), int(w.lastPositionY.Load()), int(w.lastWidth.Load()), int(w.lastHeight.Load()), vidMode.RefreshRate)
+				w.width.Store(w.lastWidth.Load())
+				w.height.Store(w.lastHeight.Load())
+				w.lastWidth.Store(int32(vidMode.Width))
+				w.lastHeight.Store(int32(vidMode.Height))
+				w.fullscreen.Store(false)
+			} else {
+				x, y := w.win.GetPos()
+				w.lastPositionX.Store(int32(x))
+				w.lastPositionY.Store(int32(y))
+				w.lastWidth.Store(w.width.Load())
+				w.lastHeight.Store(w.height.Load())
+				w.width.Store(int32(vidMode.Width))
+				w.height.Store(int32(vidMode.Height))
+				w.win.SetMonitor(primaryMonitor, 0, 0, vidMode.Width, vidMode.Height, vidMode.RefreshRate)
+				w.fullscreen.Store(true)
+			}
+
+			w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
+		})
+	}
+	return w
+}
+
+func (w *Window) EnableQuitButton(cancelFuncs ...context.CancelFunc) *Window {
+	if !w.quitButtonEnabled.Load() {
+		w.quitButtonEnabled.Store(true)
+
+		w.AddKeyEventHandler(glfw.KeyEscape, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
+			for _, cancelFunc := range cancelFuncs {
+				cancelFunc()
+			}
+			time.Sleep(time.Second)
+			os.Exit(0)
+		})
+	}
+	return w
+}
+
 func (w *Window) ClearColor() color.RGBA {
 	return FloatArrayToRgba(w.clearColor)
 }
@@ -471,11 +534,6 @@ func (w *Window) ScaleVec(vec mgl32.Vec3) mgl32.Vec3 {
 
 func (w *Window) IsFullscreen() bool {
 	return w.fullscreen.Load()
-}
-
-func (w *Window) EnableFullscreen(isEnabled bool) *Window {
-	w.fullscreen.Store(isEnabled) // TODO: implement fullscreen mode
-	return w
 }
 
 func (w *Window) TargetFramerate() uint32 {

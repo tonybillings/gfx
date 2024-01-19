@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/go-gl/glfw/v3.3/glfw"
 	"os"
 	"os/signal"
 	"syscall"
@@ -51,9 +50,8 @@ func main() {
 
 	win.AddObjects(NewTestView(ctx, win))
 
-	win.AddKeyEventHandler(glfw.KeyEscape, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
-		cancelFunc()
-	})
+	win.EnableQuitButton(cancelFunc)
+	win.EnableFullscreenButton()
 
 	go waitForInterruptSignal(ctx, cancelFunc)
 	win.Init(ctx, cancelFunc)

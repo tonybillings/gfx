@@ -616,6 +616,21 @@ func (s *Shape) initBlurVao() {
 	s.stateMutex.Unlock()
 }
 
+func (s *Shape) uninitBlurVao() {
+	s.stateMutex.Lock()
+
+	gl.DeleteVertexArrays(1, &s.blurTextureVao)
+	gl.DeleteBuffers(1, &s.blurTextureVbo)
+
+	gl.DeleteFramebuffers(1, &s.blurShapeFrameBuffer)
+
+	gl.DeleteTextures(1, &s.blurShapeTexture)
+	gl.DeleteTextures(1, &s.blurXTexture)
+	gl.DeleteTextures(1, &s.blurXYTexture)
+
+	s.stateMutex.Unlock()
+}
+
 /******************************************************************************
  OpenGL Initialization
 ******************************************************************************/
@@ -641,18 +656,9 @@ func (s *Shape) uninitGl() {
 	gl.BindVertexArray(0)
 	gl.DeleteBuffers(1, &s.vbo)
 	gl.DeleteVertexArrays(1, &s.vao)
-
-	gl.BindVertexArray(s.blurTextureVao)
-	gl.DisableVertexAttribArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-	gl.BindVertexArray(0)
-	gl.DeleteBuffers(1, &s.blurTextureVbo)
-	gl.DeleteVertexArrays(1, &s.blurTextureVao)
-
 	gl.DeleteTextures(1, &s.texture)
-	gl.DeleteTextures(1, &s.blurShapeTexture)
-	gl.DeleteTextures(1, &s.blurXTexture)
-	gl.DeleteTextures(1, &s.blurXYTexture)
+
+	s.uninitBlurVao()
 
 	s.stateMutex.Unlock()
 }
@@ -683,7 +689,7 @@ func (s *Shape) setShaderScaleUniform(worldScale mgl32.Vec3) {
 	}
 }
 
-func (s *Shape) renderTexture(texture uint32, tex2DLoc int32) {
+func (s *Shape) renderBlurTexture(texture uint32, tex2DLoc int32) {
 	gl.BindVertexArray(s.blurTextureVao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, s.blurTextureVbo)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
@@ -771,18 +777,18 @@ func (s *Shape) Draw(deltaTime int64) (ok bool) {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, s.blurXTexture, 0)
 		gl.ClearColor(0, 0, 0, 0)
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-		s.renderTexture(s.blurShapeTexture, s.blurTex2DUniformLoc)
+		s.renderBlurTexture(s.blurShapeTexture, s.blurTex2DUniformLoc)
 
 		gl.UseProgram(s.blurYShader)
 		gl.Uniform1f(s.blurAmountUniformLoc, s.blurIntensity)
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, s.blurXYTexture, 0)
 		gl.ClearColor(0, 0, 0, 0)
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-		s.renderTexture(s.blurXTexture, s.blurTex2DUniformLoc)
+		s.renderBlurTexture(s.blurXTexture, s.blurTex2DUniformLoc)
 
 		gl.UseProgram(s.textureShader)
 		gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-		s.renderTexture(s.blurXYTexture, s.textureTex2DUniformLoc)
+		s.renderBlurTexture(s.blurXYTexture, s.textureTex2DUniformLoc)
 	} else {
 		gl.DrawArrays(s.drawMode, 0, s.vertexCount)
 	}
@@ -801,6 +807,11 @@ func (s *Shape) Draw(deltaTime int64) (ok bool) {
 func (s *Shape) Close() {
 	s.label.Close()
 	s.WindowObjectBase.Close()
+}
+
+func (s *Shape) Resize(_, _, _, _ int32) {
+	s.uninitBlurVao()
+	s.initBlurVao()
 }
 
 /******************************************************************************

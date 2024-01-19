@@ -306,6 +306,8 @@ func (l *SignalLine) Draw(deltaTime int64) (ok bool) {
 	gl.BindVertexArray(l.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, l.vbo)
 
+	gl.Viewport(0, 0, l.window.Width(), l.window.Height())
+
 	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(l.vertices)*sizeOfFloat32, gl.Ptr(l.vertices))
 
 	gl.DrawArrays(gl.LINE_STRIP_ADJACENCY, 0, l.vertexCount)

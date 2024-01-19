@@ -36,6 +36,9 @@ type WindowObject interface {
 	Close()
 	Closed() bool
 
+	Resize(int32, int32, int32, int32)
+	OnResize(func(int32, int32, int32, int32))
+
 	Visible() bool
 	SetVisibility(bool) WindowObject
 	Enabled() bool
@@ -106,6 +109,8 @@ type WindowObjectBase struct {
 	position mgl32.Vec3
 	rotation mgl32.Vec3
 	scale    mgl32.Vec3
+
+	onResizeHandlers []func(int32, int32, int32, int32)
 
 	maintainAspectRatio bool
 
@@ -237,6 +242,22 @@ func (o *WindowObjectBase) Close() {
 
 func (o *WindowObjectBase) Closed() bool {
 	return o.closed.Load()
+}
+
+func (o *WindowObjectBase) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	for _, f := range o.onResizeHandlers {
+		f(oldWidth, oldHeight, newWidth, newHeight)
+	}
+
+	for _, c := range o.children {
+		if !c.Closed() {
+			c.Resize(oldWidth, oldHeight, newWidth, newHeight)
+		}
+	}
+}
+
+func (o *WindowObjectBase) OnResize(handler func(oldWidth, oldHeight, newWidth, newHeight int32)) {
+	o.onResizeHandlers = append(o.onResizeHandlers, handler)
 }
 
 func (o *WindowObjectBase) Visible() bool {
