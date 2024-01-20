@@ -50,8 +50,8 @@ func main() {
 
 	win.AddObjects(view.NewButtonView(win))
 
-	win.EnableQuitButton(cancelFunc)
-	win.EnableFullscreenButton()
+	win.EnableQuitKey(cancelFunc)
+	win.EnableFullscreenKey()
 
 	go waitForInterruptSignal(ctx, cancelFunc)
 	win.Init(ctx, cancelFunc)

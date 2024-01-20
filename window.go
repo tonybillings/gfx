@@ -355,7 +355,7 @@ func (w *Window) FullscreenEnabled(enabled bool) *Window {
 	return w
 }
 
-func (w *Window) EnableFullscreenButton() *Window {
+func (w *Window) EnableFullscreenKey() *Window {
 	if !w.fullscreenButtonEnabled.Load() {
 		w.fullscreenButtonEnabled.Store(true)
 
@@ -372,7 +372,7 @@ func (w *Window) EnableFullscreenButton() *Window {
 	return w
 }
 
-func (w *Window) EnableQuitButton(cancelFuncs ...context.CancelFunc) *Window {
+func (w *Window) EnableQuitKey(cancelFuncs ...context.CancelFunc) *Window {
 	if !w.quitButtonEnabled.Load() {
 		w.quitButtonEnabled.Store(true)
 
