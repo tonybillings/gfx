@@ -17,6 +17,10 @@ const (
 	thicknessEpsilon = 0.00001
 )
 
+/******************************************************************************
+ Shape
+******************************************************************************/
+
 type Shape struct {
 	WindowObjectBase
 
@@ -715,6 +719,12 @@ func (s *Shape) Update(deltaTime int64) (ok bool) {
 		return false
 	}
 
+	if s.stateChanged.Load() {
+		s.stateChanged.Store(false)
+		s.initVertices()
+		s.initVao(true)
+	}
+
 	return s.label.Update(deltaTime)
 }
 
@@ -830,8 +840,6 @@ func (s *Shape) SetTexture(pathToPng string) *Shape {
 	s.textureFilename = pathToPng
 	s.stateChanged.Store(true)
 	s.stateMutex.Unlock()
-	s.initVertices()
-	s.initVao(true)
 	s.initTexture()
 	return s
 }
@@ -851,8 +859,6 @@ func (s *Shape) SetSides(sides uint) *Shape {
 	s.sides = sides
 	s.stateChanged.Store(true)
 	s.stateMutex.Unlock()
-	s.initVertices()
-	s.initVao(true)
 	return s
 }
 
@@ -873,8 +879,6 @@ func (s *Shape) SetThickness(thickness float32) *Shape {
 	s.thickness = thickness
 	s.stateChanged.Store(true)
 	s.stateMutex.Unlock()
-	s.initVertices()
-	s.initVao(true)
 	return s
 }
 
@@ -895,8 +899,6 @@ func (s *Shape) SetLength(length float32) *Shape {
 	s.length = length
 	s.stateChanged.Store(true)
 	s.stateMutex.Unlock()
-	s.initVertices()
-	s.initVao(true)
 	return s
 }
 

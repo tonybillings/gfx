@@ -24,7 +24,7 @@ type Label struct {
 	fontSize     float32
 	cacheEnabled bool
 
-	alignment TextAlignment
+	alignment Alignment
 
 	texture           uint32
 	textureWidth      int
@@ -279,14 +279,14 @@ func (l *Label) SetFontSize(size float32) *Label {
 	return l
 }
 
-func (l *Label) Alignment() TextAlignment {
+func (l *Label) Alignment() Alignment {
 	l.stateMutex.Lock()
 	alignment := l.alignment
 	l.stateMutex.Unlock()
 	return alignment
 }
 
-func (l *Label) SetAlignment(alignment TextAlignment) *Label {
+func (l *Label) SetAlignment(alignment Alignment) *Label {
 	l.stateMutex.Lock()
 	l.alignment = alignment
 	l.stateChanged.Store(true)

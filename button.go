@@ -10,10 +10,8 @@ const (
 )
 
 type Button struct {
-	WindowObjectBase
+	View
 
-	fill   *Shape
-	border *Shape
 	label  *Label
 	bounds BoundingObject
 
@@ -31,12 +29,9 @@ type Button struct {
 	mouseDownBorderColor  color.RGBA
 	mouseDownTextColor    color.RGBA
 
-	mouseLeaveFillColor   color.RGBA
-	mouseLeaveBorderColor color.RGBA
-	mouseLeaveTextColor   color.RGBA
-	mouseUpFillColor      color.RGBA
-	mouseUpBorderColor    color.RGBA
-	mouseUpTextColor      color.RGBA
+	originalFillColor   color.RGBA
+	originalBorderColor color.RGBA
+	originalTextColor   color.RGBA
 }
 
 /******************************************************************************
@@ -44,37 +39,104 @@ type Button struct {
 ******************************************************************************/
 
 func (b *Button) Init(window *Window) (ok bool) {
-	if !b.WindowObjectBase.Init(window) {
+	b.label.Init(window)
+	b.bounds.Init(window)
+	if !b.View.Init(window) {
+		return false
+	}
+	b.originalFillColor = b.fill.Color()
+	b.originalBorderColor = b.border.Color()
+	b.originalTextColor = b.label.Color()
+	return true
+}
+
+func (b *Button) Update(deltaTime int64) (ok bool) {
+	if !b.enabled.Load() {
 		return false
 	}
 
-	b.initialized.Store(true)
-	return true
+	b.label.Update(deltaTime)
+	b.bounds.Update(deltaTime)
+	return b.View.Update(deltaTime)
+}
+
+func (b *Button) Draw(deltaTime int64) (ok bool) {
+	if !b.visible.Load() {
+		return false
+	}
+
+	if !b.View.Draw(deltaTime) {
+		return false
+	}
+
+	return b.label.Draw(deltaTime)
+}
+
+func (b *Button) Close() {
+	b.label.Close()
+	b.bounds.Close()
+	b.View.Close()
 }
 
 /******************************************************************************
  Button Functions
 ******************************************************************************/
 
-func (b *Button) Texture() string {
-	return b.fill.Texture()
+func (b *Button) onMouseEnter(_ WindowObject, _ *MouseState) {
+	if b.mouseEnterFillColorSet.Load() {
+		b.fill.SetColor(b.mouseEnterFillColor)
+	}
+	if b.mouseEnterBorderColorSet.Load() {
+		b.border.SetColor(b.mouseEnterBorderColor)
+	}
+	if b.mouseEnterTextColorSet.Load() {
+		b.label.SetColor(b.mouseEnterTextColor)
+	}
 }
 
-func (b *Button) SetTexture(pathToPng string) *Button {
-	b.fill.SetTexture(pathToPng)
+func (b *Button) onMouseLeave(_ WindowObject, _ *MouseState) {
+	if b.mouseEnterFillColorSet.Load() {
+		b.fill.SetColor(b.originalFillColor)
+	}
+	if b.mouseEnterBorderColorSet.Load() {
+		b.border.SetColor(b.originalBorderColor)
+	}
+	if b.mouseEnterTextColorSet.Load() {
+		b.label.SetColor(b.originalTextColor)
+	}
+}
+
+func (b *Button) onMouseDown(_ WindowObject, _ *MouseState) {
+	if b.mouseDownFillColorSet.Load() {
+		b.fill.SetColor(b.mouseDownFillColor)
+	}
+	if b.mouseDownBorderColorSet.Load() {
+		b.border.SetColor(b.mouseDownBorderColor)
+	}
+	if b.mouseDownTextColorSet.Load() {
+		b.label.SetColor(b.mouseDownTextColor)
+	}
+}
+
+func (b *Button) onMouseUp(_ WindowObject, _ *MouseState) {
+	if b.mouseDownFillColorSet.Load() {
+		b.fill.SetColor(b.originalFillColor)
+	}
+	if b.mouseDownBorderColorSet.Load() {
+		b.border.SetColor(b.originalBorderColor)
+	}
+	if b.mouseDownTextColorSet.Load() {
+		b.label.SetColor(b.originalTextColor)
+	}
+}
+
+func (b *Button) OnDepressed(handler func(sender WindowObject, mouseState *MouseState)) *Button {
+	b.bounds.OnPMouseDepressed(handler)
 	return b
 }
 
-func (b *Button) FillColor() color.RGBA {
-	return b.fill.Color()
-}
-
-func (b *Button) SetFillColor(rgba color.RGBA) *Button {
-	b.fill.SetColor(rgba)
-	b.stateMutex.Lock()
-	b.mouseLeaveFillColor = rgba
-	b.mouseUpFillColor = rgba
-	b.stateMutex.Unlock()
+func (b *Button) OnClick(handler func(sender WindowObject, mouseState *MouseState)) *Button {
+	b.bounds.OnPMouseClick(handler)
 	return b
 }
 
@@ -90,36 +152,6 @@ func (b *Button) SetMouseDownFillColor(rgba color.RGBA) *Button {
 	b.mouseDownFillColorSet.Store(true)
 	b.stateMutex.Lock()
 	b.mouseDownFillColor = rgba
-	b.stateMutex.Unlock()
-	return b
-}
-
-func (b *Button) SetColor(rgba color.RGBA) WindowObject {
-	b.SetFillColor(rgba)
-	return b.SetBorderColor(rgba)
-}
-
-func (b *Button) BorderThickness() float32 {
-	return b.border.Thickness()
-}
-
-func (b *Button) SetBorderThickness(thickness float32) *Button {
-	if thickness <= thicknessEpsilon {
-		thickness = thicknessEpsilon * 2
-	}
-	b.border.SetThickness(thickness)
-	return b
-}
-
-func (b *Button) BorderColor() color.RGBA {
-	return b.border.Color()
-}
-
-func (b *Button) SetBorderColor(rgba color.RGBA) *Button {
-	b.border.SetColor(rgba)
-	b.stateMutex.Lock()
-	b.mouseLeaveBorderColor = rgba
-	b.mouseUpBorderColor = rgba
 	b.stateMutex.Unlock()
 	return b
 }
@@ -151,10 +183,6 @@ func (b *Button) SetText(text string) *Button {
 
 func (b *Button) SetTextColor(rgba color.RGBA) *Button {
 	b.label.SetColor(rgba)
-	b.stateMutex.Lock()
-	b.mouseLeaveTextColor = rgba
-	b.mouseUpTextColor = rgba
-	b.stateMutex.Unlock()
 	return b
 }
 
@@ -184,87 +212,16 @@ func (b *Button) Label() *Label {
 }
 
 func (b *Button) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	b.fill.MaintainAspectRatio(maintainAspectRatio)
-	b.border.MaintainAspectRatio(maintainAspectRatio)
+	b.View.MaintainAspectRatio(maintainAspectRatio)
 	b.label.MaintainAspectRatio(maintainAspectRatio)
 	b.bounds.MaintainAspectRatio(maintainAspectRatio)
 	return b
 }
 
-func (b *Button) BlurEnabled() bool {
-	return b.fill.BlurEnabled()
-}
-
-func (b *Button) SetBlurEnabled(isEnabled bool) WindowObject {
-	b.fill.SetBlurEnabled(isEnabled)
-	return b
-}
-
-func (b *Button) BlurIntensity() float32 {
-	return b.fill.BlurIntensity()
-}
-
-func (b *Button) SetBlurIntensity(intensity float32) WindowObject {
-	b.fill.SetBlurIntensity(intensity)
-	return b
-}
-
-func (b *Button) onMouseEnter(_ WindowObject, _ *MouseState) {
-	if b.mouseEnterFillColorSet.Load() {
-		b.fill.SetColor(b.mouseEnterFillColor)
-	}
-	if b.mouseEnterBorderColorSet.Load() {
-		b.border.SetColor(b.mouseEnterBorderColor)
-	}
-	if b.mouseEnterTextColorSet.Load() {
-		b.label.SetColor(b.mouseEnterTextColor)
-	}
-}
-
-func (b *Button) onMouseLeave(_ WindowObject, _ *MouseState) {
-	if b.mouseEnterFillColorSet.Load() {
-		b.fill.SetColor(b.mouseLeaveFillColor)
-	}
-	if b.mouseEnterBorderColorSet.Load() {
-		b.border.SetColor(b.mouseLeaveBorderColor)
-	}
-	if b.mouseEnterTextColorSet.Load() {
-		b.label.SetColor(b.mouseLeaveTextColor)
-	}
-}
-
-func (b *Button) onMouseDown(_ WindowObject, _ *MouseState) {
-	if b.mouseDownFillColorSet.Load() {
-		b.fill.SetColor(b.mouseDownFillColor)
-	}
-	if b.mouseDownBorderColorSet.Load() {
-		b.border.SetColor(b.mouseDownBorderColor)
-	}
-	if b.mouseDownTextColorSet.Load() {
-		b.label.SetColor(b.mouseDownTextColor)
-	}
-}
-
-func (b *Button) onMouseUp(_ WindowObject, _ *MouseState) {
-	if b.mouseDownFillColorSet.Load() {
-		b.fill.SetColor(b.mouseUpFillColor)
-	}
-	if b.mouseDownBorderColorSet.Load() {
-		b.border.SetColor(b.mouseUpBorderColor)
-	}
-	if b.mouseDownTextColorSet.Load() {
-		b.label.SetColor(b.mouseUpTextColor)
-	}
-}
-
-func (b *Button) OnDepressed(handler func(sender WindowObject, mouseState *MouseState)) *Button {
-	b.bounds.OnDepressed(handler)
-	return b
-}
-
-func (b *Button) OnClick(handler func(sender WindowObject, mouseState *MouseState)) *Button {
-	b.bounds.OnClick(handler)
-	return b
+func (b *Button) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	b.label.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	b.bounds.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	b.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
 
 /******************************************************************************
@@ -272,36 +229,35 @@ func (b *Button) OnClick(handler func(sender WindowObject, mouseState *MouseStat
 ******************************************************************************/
 
 func NewButton(isCircular ...bool) *Button {
-	var b *Button
+	b := &Button{
+		View: *NewView(),
+	}
+
 	if len(isCircular) > 0 && isCircular[0] {
-		b = &Button{
-			WindowObjectBase: *NewObject(nil),
-			fill:             NewDot(),
-			border:           NewCircle(thicknessEpsilon * 2),
-			label:            NewLabel(),
-			bounds:           NewBoundingRadius(),
-		}
+		b.fill = NewDot()
+		b.border = NewCircle(thicknessEpsilon * 2)
+		b.label = NewLabel()
+		b.bounds = NewBoundingRadius()
 	} else {
-		b = &Button{
-			WindowObjectBase: *NewObject(nil),
-			fill:             NewQuad(),
-			border:           NewSquare(thicknessEpsilon * 2),
-			label:            NewLabel(),
-			bounds:           NewBoundingBox(),
-		}
+		b.fill = NewQuad()
+		b.border = NewSquare(thicknessEpsilon * 2)
+		b.label = NewLabel()
+		b.bounds = NewBoundingBox()
 	}
 
 	b.SetName(defaultButtonName)
-	b.AddChild(b.fill)
-	b.AddChild(b.border)
-	b.AddChild(b.label)
-	b.AddChild(b.bounds)
+	b.fill.SetParent(b)
+	b.border.SetParent(b)
+	b.label.SetParent(b)
 	b.bounds.SetParent(b)
+
+	b.fill.SetColor(Black)
+	b.border.SetColor(Black)
 
 	b.bounds.OnMouseEnter(b.onMouseEnter)
 	b.bounds.OnMouseLeave(b.onMouseLeave)
-	b.bounds.OnMouseDown(b.onMouseDown)
-	b.bounds.OnMouseUp(b.onMouseUp)
+	b.bounds.OnPMouseDown(b.onMouseDown)
+	b.bounds.OnPMouseUp(b.onMouseUp)
 
 	return b
 }

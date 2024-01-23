@@ -16,20 +16,6 @@ import (
 	"sync"
 )
 
-type TextAlignment int
-
-const (
-	TopLeft TextAlignment = iota
-	MiddleLeft
-	BottomLeft
-	TopCenter
-	Center
-	BottomCenter
-	TopRight
-	MiddleRight
-	BottomRight
-)
-
 const (
 	DefaultFont = "default"
 	SquareFont  = "square"
@@ -148,7 +134,7 @@ func getFontOrDefault(fontName string) *truetype.Font {
 }
 
 func rasterizeText(windowWidth, windowHeight int, text string, fontFamily string, fontSize float32,
-	position mgl32.Vec3, rgba color.RGBA, alignment TextAlignment, useCache bool) *image.RGBA {
+	position mgl32.Vec3, rgba color.RGBA, alignment Alignment, useCache bool) *image.RGBA {
 
 	id := fmt.Sprintf("%d%d%s%s%f%v%v%d", windowWidth, windowHeight, text, fontFamily, fontSize, position, rgba, alignment)
 

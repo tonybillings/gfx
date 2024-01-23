@@ -82,7 +82,9 @@ type WindowObject interface {
 	Parent() WindowObject
 	SetParent(WindowObject, ...bool) WindowObject
 	AddChild(WindowObject) WindowObject
+	AddChildren(...WindowObject) WindowObject
 	RemoveChild(WindowObject)
+	RemoveChildren()
 	Child(string) WindowObject
 	Children() []WindowObject
 
@@ -543,6 +545,21 @@ func (o *WindowObjectBase) AddChild(child WindowObject) WindowObject {
 	return o
 }
 
+func (o *WindowObjectBase) AddChildren(children ...WindowObject) WindowObject {
+	if children == nil || len(children) == 0 {
+		return o
+	}
+
+	o.stateMutex.Lock()
+	o.children = append(o.children, children...)
+	for _, c := range o.children {
+		c.SetParent(o)
+	}
+	o.stateChanged.Store(true)
+	o.stateMutex.Unlock()
+	return o
+}
+
 func (o *WindowObjectBase) RemoveChild(child WindowObject) {
 	if child == nil {
 		return
@@ -561,6 +578,13 @@ func (o *WindowObjectBase) RemoveChild(child WindowObject) {
 		o.children = append(o.children[:removeAt], o.children[removeAt+1:]...)
 	}
 
+	o.stateChanged.Store(true)
+	o.stateMutex.Unlock()
+}
+
+func (o *WindowObjectBase) RemoveChildren() {
+	o.stateMutex.Lock()
+	o.children = make([]WindowObject, 0)
 	o.stateChanged.Store(true)
 	o.stateMutex.Unlock()
 }

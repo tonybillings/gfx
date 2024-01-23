@@ -45,38 +45,42 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 	btnHeight := float32(.25)
 	textSize := float32(.2)
 
+	// window.SwapMouseButtons(true) // uncomment for lefties!
+
 	button1 := gfx.NewButton()
 	button1.
-		SetTexture("button.png").
-		SetBorderThickness(.1).
-		SetBorderColor(gfx.Magenta).
 		SetMouseEnterBorderColor(gfx.Purple).
 		SetMouseDownBorderColor(gfx.Blue).
-		SetFillColor(gfx.Blue).
 		SetMouseEnterFillColor(gfx.Red).
 		SetMouseDownFillColor(gfx.Orange).
+		SetMouseEnterTextColor(gfx.Green).
+		SetMouseDownTextColor(gfx.Yellow).
 		SetText("Click me!").
 		SetTextSize(textSize).
 		SetTextColor(gfx.Red).
-		SetMouseEnterTextColor(gfx.Green).
-		SetMouseDownTextColor(gfx.Yellow).
 		OnClick(onClick).
-		MaintainAspectRatio(false).
+		MaintainAspectRatio(false).(*gfx.Button). // *see note...
+		SetTexture("button.png").
+		SetBorderColor(gfx.Magenta).
+		SetBorderThickness(.1).
+		SetFillColor(gfx.Blue).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
 		SetPositionX(-1 + btnWidth).SetPositionY(1 - btnHeight)
 
+	// *Be careful when method-chaining, particularly when calling shadowed methods.
+	// Here, we want to call Button's version of MaintainAspectRatio, so where this
+	// call exists in the chain is important.  Also, since this function returns a
+	// WindowObject interface, we use type assertion to keep the chain going.
+
 	button2 := gfx.NewButton()
 	button2.
-		SetBorderThickness(.05).
-		SetBorderColor(gfx.White).
-		SetFillColor(color.RGBA{R: 160, G: 160, B: 255, A: 255}).
-		SetMouseDownFillColor(gfx.Darken(button2.FillColor(), .2)).
-		SetMouseEnterFillColor(gfx.Lighten(button2.FillColor(), .2)).
 		SetText("Click me!").
 		SetTextSize(textSize).
 		SetTextColor(gfx.White).
 		OnClick(onClick).
-		MaintainAspectRatio(true).
+		SetBorderThickness(.05).
+		SetBorderColor(gfx.White).
+		SetFillColor(color.RGBA{R: 160, G: 160, B: 255, A: 255}).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
 		SetPositionX(1 - (window.ScaleY(btnWidth) * window.AspectRatioInv())).
 		SetPositionY(-1 + (window.ScaleX(btnHeight) * window.AspectRatio())).
@@ -84,34 +88,39 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 			anchorBottomRight(button2)
 		})
 
+	// Can't put these calls in the chain above, even with type assertion, if
+	// we want to call button2.FillColor() after it has been set.
+	button2.
+		SetMouseDownFillColor(gfx.Darken(button2.FillColor(), .2)).
+		SetMouseEnterFillColor(gfx.Lighten(button2.FillColor(), .2))
+
 	button3 := gfx.NewButton()
 	button3.
-		SetBorderThickness(0).
-		SetBorderColor(gfx.Blue).
-		SetFillColor(gfx.Orange).
-		SetMouseDownFillColor(gfx.Darken(button3.FillColor(), .2)).
-		SetMouseEnterFillColor(gfx.Lighten(button3.FillColor(), .2)).
+		SetMouseDownFillColor(gfx.Darken(gfx.Orange, .2)).
+		SetMouseEnterFillColor(gfx.Lighten(gfx.Orange, .2)).
 		SetText("Click me!").
 		SetTextSize(textSize).
 		SetTextColor(gfx.White).
 		OnClick(onClick).
-		MaintainAspectRatio(false).
+		MaintainAspectRatio(false).(*gfx.Button).
+		SetBorderThickness(0).
+		SetBorderColor(gfx.Blue).
+		SetFillColor(gfx.Orange).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
 		SetPositionX(-1 + btnWidth).SetPositionY(-1 + btnHeight)
 
 	button4 := gfx.NewButton()
 	button4.
-		SetTexture("button.png").
-		SetBorderThickness(.1).
-		SetBorderColor(gfx.Magenta).
-		SetFillColor(gfx.Blue).
 		SetMouseDownFillColor(gfx.Darken(button4.FillColor(), .4)).
 		SetMouseEnterFillColor(color.RGBA{R: 40, G: 40, B: 255, A: 255}).
 		SetText("Click me!").
 		SetTextSize(textSize).
 		SetTextColor(gfx.Red).
 		OnClick(onClick).
-		MaintainAspectRatio(true).
+		SetTexture("button.png").
+		SetBorderThickness(.1).
+		SetBorderColor(gfx.Magenta).
+		SetFillColor(gfx.Blue).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
 		SetPositionX(1 - (window.ScaleY(btnWidth) * window.AspectRatioInv())).
 		SetPositionY(1 - (window.ScaleX(btnHeight) * window.AspectRatio())).
@@ -124,24 +133,23 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 
 	button5 := gfx.NewButton(true) // true = will be a circular button
 	button5.
+		SetMouseEnterFillColor(color.RGBA{R: 255, G: 50, B: 50, A: 255}).
+		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
+		MaintainAspectRatio(false).(*gfx.Button).
 		SetBorderThickness(.05).
 		SetBorderColor(gfx.Opacity(gfx.White, .1)).
 		SetFillColor(gfx.Red).
-		SetMouseEnterFillColor(color.RGBA{R: 255, G: 50, B: 50, A: 255}).
-		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
-		MaintainAspectRatio(false).
 		SetBlurEnabled(true).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
 		SetPositionX(-.8 + (window.ScaleY(btnWidth) * window.AspectRatioInv()))
 
 	button6 := gfx.NewButton(true) // true = will be a circular button
 	button6.
+		SetMouseEnterFillColor(color.RGBA{R: 150, G: 255, B: 150, A: 255}).
+		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
 		SetBorderThickness(.05).
 		SetBorderColor(gfx.Opacity(gfx.White, .1)).
 		SetFillColor(gfx.Green).
-		SetMouseEnterFillColor(color.RGBA{R: 150, G: 255, B: 150, A: 255}).
-		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
-		MaintainAspectRatio(true).
 		SetBlurEnabled(true).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
 		SetPositionX(.8 - (window.ScaleY(btnWidth) * window.AspectRatioInv()))

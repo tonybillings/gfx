@@ -51,6 +51,7 @@ type Window struct {
 
 	mouseTrackingEnabled atomic.Bool
 	mouseState           MouseState
+	mouseStateMutex      sync.Mutex
 
 	initialized atomic.Bool
 	cancelFunc  context.CancelFunc
@@ -60,6 +61,33 @@ type Window struct {
 func (w *Window) clearScreen() {
 	gl.ClearColor(w.clearColor[0], w.clearColor[1], w.clearColor[2], w.clearColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+}
+
+func (w *Window) enableFullscreenMode() {
+	primaryMonitor := glfw.GetPrimaryMonitor()
+	vidMode := primaryMonitor.GetVideoMode()
+
+	x, y := w.win.GetPos()
+	w.lastPositionX.Store(int32(x))
+	w.lastPositionY.Store(int32(y))
+	w.lastWidth.Store(w.width.Load())
+	w.lastHeight.Store(w.height.Load())
+	w.width.Store(int32(vidMode.Width))
+	w.height.Store(int32(vidMode.Height))
+	w.win.SetMonitor(primaryMonitor, 0, 0, vidMode.Width, vidMode.Height, vidMode.RefreshRate)
+	w.fullscreen.Store(true)
+}
+
+func (w *Window) enableWindowedMode() {
+	primaryMonitor := glfw.GetPrimaryMonitor()
+	vidMode := primaryMonitor.GetVideoMode()
+
+	w.win.SetMonitor(nil, int(w.lastPositionX.Load()), int(w.lastPositionY.Load()), int(w.lastWidth.Load()), int(w.lastHeight.Load()), vidMode.RefreshRate)
+	w.width.Store(w.lastWidth.Load())
+	w.height.Store(w.lastHeight.Load())
+	w.lastWidth.Store(int32(vidMode.Width))
+	w.lastHeight.Store(int32(vidMode.Height))
+	w.fullscreen.Store(false)
 }
 
 func (w *Window) initAssets() error {
@@ -285,11 +313,13 @@ func (w *Window) AddKeyEventHandler(key glfw.Key, action glfw.Action, callback f
 	if w.keyEventHandlers == nil {
 		w.keyEventHandlers = make([]*KeyEventHandler, 0)
 	}
+
 	handler := &KeyEventHandler{
 		Key:      key,
 		Action:   action,
 		Callback: callback,
 	}
+
 	w.keyEventHandlers = append(w.keyEventHandlers, handler)
 	w.keyEventHandlersMutex.Unlock()
 	return handler
@@ -317,33 +347,6 @@ func (w *Window) RemoveKeyEventHandler(handler *KeyEventHandler) {
 func (w *Window) SetInputEnabled(enabled bool) *Window {
 	w.inputEnabled.Store(enabled)
 	return w
-}
-
-func (w *Window) enableFullscreenMode() {
-	primaryMonitor := glfw.GetPrimaryMonitor()
-	vidMode := primaryMonitor.GetVideoMode()
-
-	x, y := w.win.GetPos()
-	w.lastPositionX.Store(int32(x))
-	w.lastPositionY.Store(int32(y))
-	w.lastWidth.Store(w.width.Load())
-	w.lastHeight.Store(w.height.Load())
-	w.width.Store(int32(vidMode.Width))
-	w.height.Store(int32(vidMode.Height))
-	w.win.SetMonitor(primaryMonitor, 0, 0, vidMode.Width, vidMode.Height, vidMode.RefreshRate)
-	w.fullscreen.Store(true)
-}
-
-func (w *Window) enableWindowedMode() {
-	primaryMonitor := glfw.GetPrimaryMonitor()
-	vidMode := primaryMonitor.GetVideoMode()
-
-	w.win.SetMonitor(nil, int(w.lastPositionX.Load()), int(w.lastPositionY.Load()), int(w.lastWidth.Load()), int(w.lastHeight.Load()), vidMode.RefreshRate)
-	w.width.Store(w.lastWidth.Load())
-	w.height.Store(w.lastHeight.Load())
-	w.lastWidth.Store(int32(vidMode.Width))
-	w.lastHeight.Store(int32(vidMode.Height))
-	w.fullscreen.Store(false)
 }
 
 func (w *Window) FullscreenEnabled(enabled bool) *Window {
@@ -579,8 +582,17 @@ func (w *Window) SetTargetFramerate(framerate int) *Window {
 	return w
 }
 
+func (w *Window) SwapMouseButtons(swapped bool) {
+	w.mouseStateMutex.Lock()
+	w.mouseState.ButtonsSwapped = swapped
+	w.mouseStateMutex.Unlock()
+}
+
 func (w *Window) Mouse() *MouseState {
-	return &w.mouseState
+	w.mouseStateMutex.Lock()
+	ms := w.mouseState
+	w.mouseStateMutex.Unlock()
+	return &ms
 }
 
 func (w *Window) EnableMouseTracking() *Window {
@@ -590,26 +602,17 @@ func (w *Window) EnableMouseTracking() *Window {
 	w.mouseTrackingEnabled.Store(true)
 
 	w.win.SetCursorPosCallback(func(window *glfw.Window, x float64, y float64) {
-		w.mouseState.UpdatePosition(x, y)
+		width, height := window.GetSize()
+		w.mouseStateMutex.Lock()
+		w.mouseState.X = float32(((x / float64(width)) * 2.0) - 1.0)
+		w.mouseState.Y = float32(((y / float64(height)) * -2.0) + 1.0)
+		w.mouseStateMutex.Unlock()
 	})
 
 	w.win.SetMouseButtonCallback(func(window *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
-		switch button {
-		case glfw.MouseButtonLeft:
-			switch action {
-			case glfw.Press:
-				w.mouseState.UpdateButton(0, true)
-			case glfw.Release:
-				w.mouseState.UpdateButton(0, false)
-			}
-		case glfw.MouseButtonRight:
-			switch action {
-			case glfw.Press:
-				w.mouseState.UpdateButton(1, true)
-			case glfw.Release:
-				w.mouseState.UpdateButton(1, false)
-			}
-		}
+		w.mouseStateMutex.Lock()
+		w.mouseState.Update(button, action)
+		w.mouseStateMutex.Unlock()
 	})
 
 	return w

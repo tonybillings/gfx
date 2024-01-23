@@ -55,6 +55,8 @@ See the code in the `examples` directory to get started or execute the `run.sh` 
 
 ![signals](img/signal.png)  
 
+![inspector](img/inspector.png)
+
 ![square](img/square.png)  
 
 ![dot](img/dot.png)  
