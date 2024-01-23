@@ -27,13 +27,13 @@ func onDepressed(button gfx.WindowObject, _ *gfx.MouseState) {
 }
 
 func anchorTopRight(button gfx.WindowObject) {
-	button.SetPositionX(1 - (button.Window().ScaleY(button.Scale().X()) * button.Window().AspectRatioInv()))
-	button.SetPositionY(1 - (button.Window().ScaleX(button.Scale().Y()) * button.Window().AspectRatio()))
+	button.SetPositionX(1 - button.Window().ScaleX(button.Scale().X()))
+	button.SetPositionY(1 - button.Window().ScaleY(button.Scale().Y()))
 }
 
 func anchorBottomRight(button gfx.WindowObject) {
-	button.SetPositionX(1 - (button.Window().ScaleY(button.Scale().X()) * button.Window().AspectRatioInv()))
-	button.SetPositionY(-1 + (button.Window().ScaleX(button.Scale().Y()) * button.Window().AspectRatio()))
+	button.SetPositionX(1 - button.Window().ScaleX(button.Scale().X()))
+	button.SetPositionY(-1 + button.Window().ScaleY(button.Scale().Y()))
 }
 
 // NewButtonView In this example, the buttons are aligned/anchored to the
