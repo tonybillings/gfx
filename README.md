@@ -15,6 +15,8 @@ time-sensitive process, etc).  The underlying graphics framework is OpenGL.
  |----------------------------------------------------------------|:-:|
  | Dead-simple API for rendering basic/common shapes              | ✅ |
  | Performant line-graph intended for realtime signal analysis    | ✅ |
+ | Hi/Low/Band-pass and custom (user-defined) filtering           | ✅ |
+ | Common UI controls including Label, Button, and Slider         | ✅ |
  | Texture and blur support (for blur, 2D only)                   | ✅ |
  | Ambient, diffuse, specular lighting support (3D only)          | ✅ |
  | Camera, light, and custom viewport support (3D only)           | ✅ |
