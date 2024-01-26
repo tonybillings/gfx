@@ -9,12 +9,11 @@ import (
 )
 
 var (
-	windowTitle       = "GFX Test"
-	windowWidth       = 1900
-	windowHeight      = 1000
-	targetFramerate   = 60   // decrease to assign more CPU time to sample acquisition efforts
-	signalSampleCount = 2000 // the number of samples considered when calculating min/max/avg/std, etc
-	backgroundColor   = gfx.Black
+	windowTitle     = "GFX Test"
+	windowWidth     = 1900
+	windowHeight    = 1000
+	targetFramerate = 60
+	backgroundColor = gfx.Black
 )
 
 func panicOnErr(err error) {
@@ -48,7 +47,7 @@ func main() {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	win.AddObjects(NewTestView(ctx, win))
+	win.AddObjects(New2DView())
 
 	win.EnableQuitKey(cancelFunc)
 	win.EnableFullscreenKey()

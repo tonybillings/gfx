@@ -15,8 +15,12 @@ import (
 	"time"
 )
 
+/******************************************************************************
+ Window
+******************************************************************************/
+
 type Window struct {
-	win *glfw.Window
+	glwin *glfw.Window
 
 	title         atomic.Value
 	width         atomic.Int32
@@ -58,6 +62,10 @@ type Window struct {
 	stateMutex  sync.Mutex
 }
 
+/******************************************************************************
+ Window Functions
+******************************************************************************/
+
 func (w *Window) clearScreen() {
 	gl.ClearColor(w.clearColor[0], w.clearColor[1], w.clearColor[2], w.clearColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -67,14 +75,14 @@ func (w *Window) enableFullscreenMode() {
 	primaryMonitor := glfw.GetPrimaryMonitor()
 	vidMode := primaryMonitor.GetVideoMode()
 
-	x, y := w.win.GetPos()
+	x, y := w.glwin.GetPos()
 	w.lastPositionX.Store(int32(x))
 	w.lastPositionY.Store(int32(y))
 	w.lastWidth.Store(w.width.Load())
 	w.lastHeight.Store(w.height.Load())
 	w.width.Store(int32(vidMode.Width))
 	w.height.Store(int32(vidMode.Height))
-	w.win.SetMonitor(primaryMonitor, 0, 0, vidMode.Width, vidMode.Height, vidMode.RefreshRate)
+	w.glwin.SetMonitor(primaryMonitor, 0, 0, vidMode.Width, vidMode.Height, vidMode.RefreshRate)
 	w.fullscreen.Store(true)
 }
 
@@ -82,7 +90,7 @@ func (w *Window) enableWindowedMode() {
 	primaryMonitor := glfw.GetPrimaryMonitor()
 	vidMode := primaryMonitor.GetVideoMode()
 
-	w.win.SetMonitor(nil, int(w.lastPositionX.Load()), int(w.lastPositionY.Load()), int(w.lastWidth.Load()), int(w.lastHeight.Load()), vidMode.RefreshRate)
+	w.glwin.SetMonitor(nil, int(w.lastPositionX.Load()), int(w.lastPositionY.Load()), int(w.lastWidth.Load()), int(w.lastHeight.Load()), vidMode.RefreshRate)
 	w.width.Store(w.lastWidth.Load())
 	w.height.Store(w.lastHeight.Load())
 	w.lastWidth.Store(int32(vidMode.Width))
@@ -215,8 +223,8 @@ func (w *Window) close() {
 	w.closeObjects()
 	w.stateMutex.Unlock()
 
-	w.win.SetKeyCallback(nil)
-	w.win.SetShouldClose(true)
+	w.glwin.SetKeyCallback(nil)
+	w.glwin.SetShouldClose(true)
 
 	windowCount.Add(-1)
 	if windowCount.Load() == 0 {
@@ -249,8 +257,8 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 		runtime.LockOSThread()
 
 		w.stateMutex.Lock()
-		w.win = window
-		w.win.SetKeyCallback(w.keyEventCallback)
+		w.glwin = window
+		w.glwin.SetKeyCallback(w.keyEventCallback)
 		w.initTransitionQuad()
 		w.initObjects()
 		w.stateMutex.Unlock()
@@ -261,7 +269,7 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 		drawInterval := int64(1000000 / w.targetFramerate.Load())
 
 		for {
-			if w.win.ShouldClose() {
+			if w.glwin.ShouldClose() {
 				w.close()
 				cancelFunc()
 				return
@@ -294,7 +302,7 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 			w.stateMutex.Lock()
 			w.clearScreen()
 			w.tick(deltaTime)
-			w.win.SwapBuffers()
+			w.glwin.SwapBuffers()
 			w.stateMutex.Unlock()
 
 			glfw.PollEvents()
@@ -349,7 +357,7 @@ func (w *Window) SetInputEnabled(enabled bool) *Window {
 	return w
 }
 
-func (w *Window) FullscreenEnabled(enabled bool) *Window {
+func (w *Window) SetFullscreenEnabled(enabled bool) *Window {
 	if enabled {
 		w.fullscreenRequested.Store(true)
 	} else {
@@ -363,7 +371,7 @@ func (w *Window) EnableFullscreenKey() *Window {
 		w.fullscreenButtonEnabled.Store(true)
 
 		w.AddKeyEventHandler(glfw.KeyF11, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
-			fullscreen := w.win.GetMonitor() != nil
+			fullscreen := w.glwin.GetMonitor() != nil
 			if fullscreen {
 				w.enableWindowedMode()
 			} else {
@@ -456,9 +464,9 @@ func (w *Window) Title() string {
 func (w *Window) SetTitle(title string) *Window {
 	w.title.Store(title)
 
-	if w.win != nil {
+	if w.glwin != nil {
 		w.stateMutex.Lock()
-		w.win.SetTitle(w.title.Load().(string))
+		w.glwin.SetTitle(w.title.Load().(string))
 		w.stateMutex.Unlock()
 	}
 
@@ -471,9 +479,9 @@ func (w *Window) Width() int32 {
 
 func (w *Window) SetWidth(width int) *Window {
 	w.width.Store(int32(width))
-	if w.win != nil {
+	if w.glwin != nil {
 		w.stateMutex.Lock()
-		w.win.SetSize(int(w.width.Load()), int(w.height.Load()))
+		w.glwin.SetSize(int(w.width.Load()), int(w.height.Load()))
 		w.stateMutex.Unlock()
 	}
 	return w
@@ -485,9 +493,9 @@ func (w *Window) Height() int32 {
 
 func (w *Window) SetHeight(height int) *Window {
 	w.height.Store(int32(height))
-	if w.win != nil {
+	if w.glwin != nil {
 		w.stateMutex.Lock()
-		w.win.SetSize(int(w.width.Load()), int(w.height.Load()))
+		w.glwin.SetSize(int(w.width.Load()), int(w.height.Load()))
 		w.stateMutex.Unlock()
 	}
 	return w
@@ -601,7 +609,7 @@ func (w *Window) EnableMouseTracking() *Window {
 	}
 	w.mouseTrackingEnabled.Store(true)
 
-	w.win.SetCursorPosCallback(func(window *glfw.Window, x float64, y float64) {
+	w.glwin.SetCursorPosCallback(func(window *glfw.Window, x float64, y float64) {
 		width, height := window.GetSize()
 		w.mouseStateMutex.Lock()
 		w.mouseState.X = float32(((x / float64(width)) * 2.0) - 1.0)
@@ -609,7 +617,7 @@ func (w *Window) EnableMouseTracking() *Window {
 		w.mouseStateMutex.Unlock()
 	})
 
-	w.win.SetMouseButtonCallback(func(window *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
+	w.glwin.SetMouseButtonCallback(func(window *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
 		w.mouseStateMutex.Lock()
 		w.mouseState.Update(button, action)
 		w.mouseStateMutex.Unlock()
@@ -617,6 +625,10 @@ func (w *Window) EnableMouseTracking() *Window {
 
 	return w
 }
+
+/******************************************************************************
+ New Window Function
+******************************************************************************/
 
 func NewWindow() *Window {
 	w := &Window{

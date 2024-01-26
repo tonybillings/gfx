@@ -48,7 +48,7 @@ func main() {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	win.AddObjects(view.NewBoxView(win))
+	win.AddObjects(view.NewCubeView(win))
 
 	win.EnableQuitKey(cancelFunc)
 	win.EnableFullscreenKey()

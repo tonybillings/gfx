@@ -16,4 +16,4 @@ newmtl 01___Default
 	Ni 0.0000
 	Ke 0.0000 0.0000 0.0000
 	illum 2
-	map_Kd box.png
+	map_Kd cube.png

@@ -57,10 +57,12 @@ See the code in the `examples` directory to get started or execute the `run.sh` 
 
 ![inspector](img/inspector.png)
 
+![filters](img/filters.png)  
+
 ![square](img/square.png)  
 
 ![dot](img/dot.png)  
 
 ![pacman](img/pacman.png)  
 
-![box](img/box.png)  
+![cube](img/cube.png)  

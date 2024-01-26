@@ -10,11 +10,12 @@ import (
 )
 
 var (
-	windowTitle     = "GFX Test"
-	windowWidth     = 1900 // try changing the width/height!
-	windowHeight    = 1000
-	targetFramerate = 60
-	backgroundColor = gfx.Black
+	windowTitle       = "GFX Test"
+	windowWidth       = 1900 // try changing the width/height!
+	windowHeight      = 1000
+	targetFramerate   = 60 // decrease to assign more CPU time to sample acquisition efforts
+	backgroundColor   = gfx.Black
+	signalSampleCount = 2000 // number of samples considered when calculating min/max/avg/std, etc
 )
 
 func panicOnErr(err error) {
@@ -48,7 +49,11 @@ func main() {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	win.AddObjects(view.NewButtonView(win))
+	win.AddObjects(gfx.NewTabGroup(
+		view.NewSignalsView(ctx, win, signalSampleCount),
+		view.NewSignalInspectorView(ctx, win, signalSampleCount),
+		view.NewSliderView(ctx, win, signalSampleCount),
+		view.NewButtonView(win)))
 
 	win.EnableQuitKey(cancelFunc)
 	win.EnableFullscreenKey()

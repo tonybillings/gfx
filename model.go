@@ -11,6 +11,10 @@ const (
 	defaultModelName = "Model"
 )
 
+/******************************************************************************
+ Model
+******************************************************************************/
+
 type Model struct {
 	WindowObjectBase
 
@@ -51,85 +55,9 @@ type Model struct {
 	viewport [4]float32
 }
 
-func (m *Model) loadOBJ() {
-	if m.objFilename == "" {
-		return
-	}
-
-	m.stateMutex.Lock()
-
-	var dec *obj.Decoder
-	var err error
-
-	if fileExists(m.objFilename) && fileExists(m.mtlFilename) {
-		dec, err = obj.Decode(m.objFilename, m.mtlFilename)
-		if err != nil {
-			panic(fmt.Errorf("error decoding OBJ/MTL files: %w", err))
-		}
-	} else if fileExists(m.objFilename) {
-		dec, err = obj.Decode(m.objFilename, "")
-		if err != nil {
-			panic(fmt.Errorf("error decoding OBJ file: %w", err))
-		}
-	} else {
-		objAsset := GetAssetReader(m.objFilename)
-		mtlAsset := GetAssetReader(m.mtlFilename)
-
-		if objAsset != nil && mtlAsset != nil {
-			dec, err = obj.DecodeReader(objAsset, mtlAsset)
-			if err != nil {
-				panic(fmt.Errorf("error decoding OBJ/MTL files: %w", err))
-			}
-		} else if objAsset != nil {
-			dec, err = obj.DecodeReader(objAsset, nil)
-			if err != nil {
-				panic(fmt.Errorf("error decoding OBJ file: %w", err))
-			}
-		} else {
-			panic("a valid OBJ file must be provided")
-		}
-	}
-
-	for _, object := range dec.Objects {
-		for _, face := range object.Faces {
-			for i := 0; i < len(face.Vertices); i++ {
-				vertexStartIdx := face.Vertices[i] * 3
-				x := dec.Vertices[vertexStartIdx]
-				y := dec.Vertices[vertexStartIdx+1]
-				z := dec.Vertices[vertexStartIdx+2]
-				m.vertices = append(m.vertices, x, y, z)
-
-				normalStartIdx := face.Normals[i] * 3
-				nx := dec.Normals[normalStartIdx]
-				ny := dec.Normals[normalStartIdx+1]
-				nz := dec.Normals[normalStartIdx+2]
-				m.vertices = append(m.vertices, nx, ny, nz)
-
-				uvStartIdx := face.Uvs[i] * 2
-				u := dec.Uvs[uvStartIdx]
-				v := dec.Uvs[uvStartIdx+1]
-				m.vertices = append(m.vertices, u, v)
-			}
-		}
-	}
-
-	m.vertexCount = int32(len(m.vertices) / 8)
-	for _, mat := range dec.Materials {
-		m.materials = append(m.materials, mat)
-	}
-
-	m.stateMutex.Unlock()
-}
-
-func (m *Model) loadTexture() {
-	m.stateMutex.Lock()
-	if m.textureFilename == "" {
-		m.texture = createImage(White)
-	} else {
-		m.texture = loadImage(m.textureFilename)
-	}
-	m.stateMutex.Unlock()
-}
+/******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
 
 func (m *Model) uninitGl() {
 	if !m.Initialized() {
@@ -303,6 +231,90 @@ func (m *Model) Draw(deltaTime int64) (ok bool) {
 	return m.WindowObjectBase.drawChildren(deltaTime)
 }
 
+/******************************************************************************
+ Model Functions
+******************************************************************************/
+
+func (m *Model) loadOBJ() {
+	if m.objFilename == "" {
+		return
+	}
+
+	m.stateMutex.Lock()
+
+	var dec *obj.Decoder
+	var err error
+
+	if fileExists(m.objFilename) && fileExists(m.mtlFilename) {
+		dec, err = obj.Decode(m.objFilename, m.mtlFilename)
+		if err != nil {
+			panic(fmt.Errorf("error decoding OBJ/MTL files: %w", err))
+		}
+	} else if fileExists(m.objFilename) {
+		dec, err = obj.Decode(m.objFilename, "")
+		if err != nil {
+			panic(fmt.Errorf("error decoding OBJ file: %w", err))
+		}
+	} else {
+		objAsset := GetAssetReader(m.objFilename)
+		mtlAsset := GetAssetReader(m.mtlFilename)
+
+		if objAsset != nil && mtlAsset != nil {
+			dec, err = obj.DecodeReader(objAsset, mtlAsset)
+			if err != nil {
+				panic(fmt.Errorf("error decoding OBJ/MTL files: %w", err))
+			}
+		} else if objAsset != nil {
+			dec, err = obj.DecodeReader(objAsset, nil)
+			if err != nil {
+				panic(fmt.Errorf("error decoding OBJ file: %w", err))
+			}
+		} else {
+			panic("a valid OBJ file must be provided")
+		}
+	}
+
+	for _, object := range dec.Objects {
+		for _, face := range object.Faces {
+			for i := 0; i < len(face.Vertices); i++ {
+				vertexStartIdx := face.Vertices[i] * 3
+				x := dec.Vertices[vertexStartIdx]
+				y := dec.Vertices[vertexStartIdx+1]
+				z := dec.Vertices[vertexStartIdx+2]
+				m.vertices = append(m.vertices, x, y, z)
+
+				normalStartIdx := face.Normals[i] * 3
+				nx := dec.Normals[normalStartIdx]
+				ny := dec.Normals[normalStartIdx+1]
+				nz := dec.Normals[normalStartIdx+2]
+				m.vertices = append(m.vertices, nx, ny, nz)
+
+				uvStartIdx := face.Uvs[i] * 2
+				u := dec.Uvs[uvStartIdx]
+				v := dec.Uvs[uvStartIdx+1]
+				m.vertices = append(m.vertices, u, v)
+			}
+		}
+	}
+
+	m.vertexCount = int32(len(m.vertices) / 8)
+	for _, mat := range dec.Materials {
+		m.materials = append(m.materials, mat)
+	}
+
+	m.stateMutex.Unlock()
+}
+
+func (m *Model) loadTexture() {
+	m.stateMutex.Lock()
+	if m.textureFilename == "" {
+		m.texture = createImage(White)
+	} else {
+		m.texture = loadImage(m.textureFilename)
+	}
+	m.stateMutex.Unlock()
+}
+
 func (m *Model) Viewport() mgl32.Vec4 {
 	m.stateMutex.Lock()
 	vp := mgl32.Vec4{m.viewport[0], m.viewport[1], m.viewport[2], m.viewport[3]}
@@ -425,6 +437,10 @@ func (m *Model) RemoveMaterials() *Model {
 	m.stateMutex.Unlock()
 	return m
 }
+
+/******************************************************************************
+ New Model Function
+******************************************************************************/
 
 func NewModel() *Model {
 	m := &Model{

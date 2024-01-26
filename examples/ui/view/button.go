@@ -26,16 +26,6 @@ func onDepressed(button gfx.WindowObject, _ *gfx.MouseState) {
 	button.(*gfx.Button).SetBlurIntensity(blur)
 }
 
-func anchorTopRight(button gfx.WindowObject) {
-	button.SetPositionX(1 - button.Window().ScaleX(button.Scale().X()))
-	button.SetPositionY(1 - button.Window().ScaleY(button.Scale().Y()))
-}
-
-func anchorBottomRight(button gfx.WindowObject) {
-	button.SetPositionX(1 - button.Window().ScaleX(button.Scale().X()))
-	button.SetPositionY(-1 + button.Window().ScaleY(button.Scale().Y()))
-}
-
 // NewButtonView In this example, the buttons are aligned/anchored to the
 // corners, regardless of their size (scale) or the size/ratio of the window.
 func NewButtonView(window *gfx.Window) gfx.WindowObject {
@@ -65,7 +55,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetBorderThickness(.1).
 		SetFillColor(gfx.Blue).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetPositionX(-1 + btnWidth).SetPositionY(1 - btnHeight)
+		SetAnchor(gfx.TopLeft)
 
 	// *Be careful when method-chaining, particularly when calling shadowed methods.
 	// Here, we want to call Button's version of MaintainAspectRatio, so where this
@@ -82,11 +72,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetBorderColor(gfx.White).
 		SetFillColor(color.RGBA{R: 160, G: 160, B: 255, A: 255}).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetPositionX(1 - (window.ScaleY(btnWidth) * window.AspectRatioInv())).
-		SetPositionY(-1 + (window.ScaleX(btnHeight) * window.AspectRatio())).
-		OnResize(func(_, _, _, _ int32) {
-			anchorBottomRight(button2)
-		})
+		SetAnchor(gfx.BottomRight)
 
 	// Can't put these calls in the chain above, even with type assertion, if
 	// we want to call button2.FillColor() after it has been set.
@@ -107,7 +93,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetBorderColor(gfx.Blue).
 		SetFillColor(gfx.Orange).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetPositionX(-1 + btnWidth).SetPositionY(-1 + btnHeight)
+		SetAnchor(gfx.BottomLeft)
 
 	button4 := gfx.NewButton()
 	button4.
@@ -122,11 +108,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetBorderColor(gfx.Magenta).
 		SetFillColor(gfx.Blue).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetPositionX(1 - (window.ScaleY(btnWidth) * window.AspectRatioInv())).
-		SetPositionY(1 - (window.ScaleX(btnHeight) * window.AspectRatio())).
-		OnResize(func(_, _, _, _ int32) {
-			anchorTopRight(button4)
-		})
+		SetAnchor(gfx.TopRight)
 
 	btnWidth = .1
 	btnHeight = .1
@@ -141,7 +123,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetFillColor(gfx.Red).
 		SetBlurEnabled(true).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetPositionX(-.8 + (window.ScaleY(btnWidth) * window.AspectRatioInv()))
+		SetPositionX(-.8 + window.ScaleX(btnWidth))
 
 	button6 := gfx.NewButton(true) // true = will be a circular button
 	button6.
@@ -152,7 +134,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetFillColor(gfx.Green).
 		SetBlurEnabled(true).
 		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetPositionX(.8 - (window.ScaleY(btnWidth) * window.AspectRatioInv()))
+		SetPositionX(.8 - window.ScaleX(btnWidth))
 
 	lbl1 := gfx.NewLabel()
 	lbl1.

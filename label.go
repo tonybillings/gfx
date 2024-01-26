@@ -11,6 +11,10 @@ const (
 	NoLabel          = ""
 )
 
+/******************************************************************************
+ Label
+******************************************************************************/
+
 type Label struct {
 	WindowObjectBase
 
@@ -24,13 +28,15 @@ type Label struct {
 	fontSize     float32
 	cacheEnabled bool
 
-	alignment Alignment
-
 	texture           uint32
 	textureWidth      int
 	textureHeight     int
 	textureUniformLoc int32
 }
+
+/******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
 
 func (l *Label) initVertices() {
 	l.stateMutex.Lock()
@@ -101,18 +107,19 @@ func (l *Label) Draw(_ int64) (ok bool) {
 	gl.UseProgram(l.shader)
 
 	worldPos := l.WorldPosition()
+	worldPos[0] += -l.margin.Right + l.margin.Left
 	worldScale := l.WorldScale()
-	width := l.window.Width()
-	height := l.window.Height()
+	winWidth := l.window.Width()
+	winHeight := l.window.Height()
 
 	l.stateMutex.Lock()
 	if l.stateChanged.Load() {
 		l.stateChanged.Store(false)
 
-		img := rasterizeText(int(width), int(height), l.text, l.fontFamily, worldScale[1]*l.fontSize,
+		img := rasterizeText(int(winWidth), int(winHeight), l.text, l.fontFamily, worldScale[1]*l.fontSize,
 			worldPos,
 			FloatArrayToRgba(l.color),
-			l.alignment,
+			l.anchor,
 			l.cacheEnabled)
 		l.stateMutex.Unlock()
 
@@ -132,7 +139,7 @@ func (l *Label) Draw(_ int64) (ok bool) {
 	gl.BindTexture(gl.TEXTURE_2D, l.texture)
 	gl.Uniform1i(l.textureUniformLoc, 0)
 
-	gl.Viewport(0, 0, width, height)
+	gl.Viewport(0, 0, winWidth, winHeight)
 
 	gl.BindVertexArray(l.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, l.vbo)
@@ -147,7 +154,7 @@ func (l *Label) Draw(_ int64) (ok bool) {
 	return true
 }
 
-func (l *Label) Resize(_, _, _, _ int32) {
+func (l *Label) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 	l.stateChanged.Store(true)
 }
 
@@ -241,6 +248,10 @@ func (l *Label) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	return l
 }
 
+/******************************************************************************
+ Label Functions
+******************************************************************************/
+
 func (l *Label) Text() string {
 	l.stateMutex.Lock()
 	text := l.text
@@ -279,21 +290,6 @@ func (l *Label) SetFontSize(size float32) *Label {
 	return l
 }
 
-func (l *Label) Alignment() Alignment {
-	l.stateMutex.Lock()
-	alignment := l.alignment
-	l.stateMutex.Unlock()
-	return alignment
-}
-
-func (l *Label) SetAlignment(alignment Alignment) *Label {
-	l.stateMutex.Lock()
-	l.alignment = alignment
-	l.stateChanged.Store(true)
-	l.stateMutex.Unlock()
-	return l
-}
-
 func (l *Label) CacheEnabled() bool {
 	l.stateMutex.Lock()
 	enabled := l.cacheEnabled
@@ -309,15 +305,19 @@ func (l *Label) SetCacheEnabled(enabled bool) *Label {
 	return l
 }
 
+/******************************************************************************
+ New Label Function
+******************************************************************************/
+
 func NewLabel() *Label {
-	tl := &Label{
+	l := &Label{
 		WindowObjectBase: *NewObject(nil),
 		fontFamily:       DefaultFont,
 		fontSize:         1.0,
-		alignment:        Center,
 		cacheEnabled:     true,
 	}
 
-	tl.SetName(defaultLabelName)
-	return tl
+	l.SetAnchor(Center)
+	l.SetName(defaultLabelName)
+	return l
 }

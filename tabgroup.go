@@ -8,6 +8,10 @@ const (
 	defaultTabGroupName = "TabGroup"
 )
 
+/******************************************************************************
+ Enums
+******************************************************************************/
+
 type TabAction int
 
 const (
@@ -25,6 +29,10 @@ const (
 	NavKeysDisabled
 )
 
+/******************************************************************************
+ TabGroup
+******************************************************************************/
+
 type TabGroup struct {
 	WindowObjectBase
 	tabIdx      int
@@ -32,6 +40,36 @@ type TabGroup struct {
 	navKeys     NavKeys
 	keyHandlers []*KeyEventHandler
 }
+
+/******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
+
+func (g *TabGroup) Init(window *Window) (ok bool) {
+	if !g.WindowObjectBase.Init(window) {
+		return false
+	}
+
+	g.updateNav()
+	g.Activate(0)
+
+	g.initialized.Store(true)
+	return true
+}
+
+func (g *TabGroup) Close() {
+	if g.initialized.Load() {
+		g.WindowObjectBase.Close()
+
+		for _, h := range g.keyHandlers {
+			g.window.RemoveKeyEventHandler(h)
+		}
+	}
+}
+
+/******************************************************************************
+ TabGroup Functions
+******************************************************************************/
 
 func (g *TabGroup) updateNav() {
 	g.stateMutex.Lock()
@@ -99,28 +137,6 @@ func (g *TabGroup) activate(child WindowObject) {
 
 	for _, c := range child.Children() {
 		g.activate(c)
-	}
-}
-
-func (g *TabGroup) Init(window *Window) (ok bool) {
-	if !g.WindowObjectBase.Init(window) {
-		return false
-	}
-
-	g.updateNav()
-	g.Activate(0)
-
-	g.initialized.Store(true)
-	return true
-}
-
-func (g *TabGroup) Close() {
-	if g.initialized.Load() {
-		g.WindowObjectBase.Close()
-
-		for _, h := range g.keyHandlers {
-			g.window.RemoveKeyEventHandler(h)
-		}
 	}
 }
 
@@ -192,6 +208,10 @@ func (g *TabGroup) SetNavKeys(keys NavKeys) *TabGroup {
 
 	return g
 }
+
+/******************************************************************************
+ New TabGroup Function
+******************************************************************************/
 
 func NewTabGroup(objects ...WindowObject) *TabGroup {
 	tg := &TabGroup{

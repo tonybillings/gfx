@@ -5,6 +5,10 @@ import (
 	"sync"
 )
 
+/******************************************************************************
+ Camera
+******************************************************************************/
+
 type Camera struct {
 	position    mgl32.Vec3
 	target      mgl32.Vec3
@@ -16,6 +20,10 @@ type Camera struct {
 
 	stateMutex sync.Mutex
 }
+
+/******************************************************************************
+ Camera Functions
+******************************************************************************/
 
 func (c *Camera) View() mgl32.Mat4 {
 	c.stateMutex.Lock()
@@ -82,6 +90,10 @@ func (c *Camera) SetProjection(fovY, aspectRatio, near, far float32) *Camera {
 	c.stateMutex.Unlock()
 	return c
 }
+
+/******************************************************************************
+ New Camera Function
+******************************************************************************/
 
 func NewCamera() *Camera {
 	return &Camera{

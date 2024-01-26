@@ -8,10 +8,10 @@ import (
 	"tonysoft.com/gfx/examples/3d/textures"
 )
 
-func NewBoxView(window *gfx.Window) gfx.WindowObject {
-	gfx.AddEmbeddedAsset("box.obj", models.Assets)
-	gfx.AddEmbeddedAsset("box.mtl", models.Assets)
-	gfx.AddEmbeddedAsset("box.png", textures.Assets)
+func NewCubeView(window *gfx.Window) gfx.WindowObject {
+	gfx.AddEmbeddedAsset("cube.obj", models.Assets)
+	gfx.AddEmbeddedAsset("cube.mtl", models.Assets)
+	gfx.AddEmbeddedAsset("cube.png", textures.Assets)
 
 	camera1 := gfx.NewCamera()
 	camera1.
@@ -24,9 +24,9 @@ func NewBoxView(window *gfx.Window) gfx.WindowObject {
 
 	model := gfx.NewModel()
 	model.
-		SetOBJ("box.obj").
-		SetMTL("box.mtl").
-		SetTexture("box.png").
+		SetOBJ("cube.obj").
+		SetMTL("cube.mtl").
+		SetTexture("cube.png").
 		SetCamera(camera1).
 		AddLight(light1). // omit this for non-directional/specular lighting
 		SetName("Box")

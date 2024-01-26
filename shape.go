@@ -709,6 +709,7 @@ func (s *Shape) Init(window *Window) (ok bool) {
 	s.initVertices()
 	s.initBlurTextureVertices()
 	s.initGl()
+	s.RefreshLayout()
 	s.initialized.Store(true)
 
 	return s.initLabel(window)
@@ -819,9 +820,10 @@ func (s *Shape) Close() {
 	s.WindowObjectBase.Close()
 }
 
-func (s *Shape) Resize(_, _, _, _ int32) {
+func (s *Shape) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 	s.uninitBlurVao()
 	s.initBlurVao()
+	s.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
 
 /******************************************************************************

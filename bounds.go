@@ -6,6 +6,11 @@ import (
 	"sync/atomic"
 )
 
+const (
+	defaultBoundingRadiusName = "BoundingRadius"
+	defaultBoundingBoxName    = "BoundingBox"
+)
+
 /******************************************************************************
  Interface
 ******************************************************************************/
@@ -360,6 +365,7 @@ func NewBoundingBox() *BoundingBox {
 	}
 
 	bb.visible.Store(false)
+	bb.SetName(defaultBoundingBoxName)
 	return bb
 }
 
@@ -402,5 +408,6 @@ func NewBoundingRadius() *BoundingRadius {
 	}
 
 	br.visible.Store(false)
+	br.SetName(defaultBoundingRadiusName)
 	return br
 }

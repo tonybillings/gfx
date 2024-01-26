@@ -8,16 +8,12 @@ import (
 	"sync/atomic"
 )
 
-/******************************************************************************
- Constants
-******************************************************************************/
-
 const (
 	sizeOfFloat32 = 4 // byte count
 )
 
 /******************************************************************************
- Types
+ Interface
 ******************************************************************************/
 
 type WindowObject interface {
@@ -25,7 +21,7 @@ type WindowObject interface {
 	SetName(string) WindowObject
 
 	Window() *Window
-	SetWindow(*Window)
+	SetWindow(*Window) WindowObject
 
 	Initialized() bool
 	SetInitialized(bool)
@@ -38,6 +34,7 @@ type WindowObject interface {
 
 	Resize(int32, int32, int32, int32)
 	OnResize(func(int32, int32, int32, int32))
+	RefreshLayout()
 
 	Visible() bool
 	SetVisibility(bool) WindowObject
@@ -77,7 +74,16 @@ type WindowObject interface {
 	SetScaleX(float32) WindowObject
 	SetScaleY(float32) WindowObject
 	SetScaleZ(float32) WindowObject
+	Width() float32
+	Height() float32
+	HalfWidth() float32
+	HalfHeight() float32
+
 	MaintainAspectRatio(bool) WindowObject
+	Anchor() Alignment
+	SetAnchor(Alignment) WindowObject
+	Margin() *Margin
+	SetMargin(Margin) WindowObject
 
 	Parent() WindowObject
 	SetParent(WindowObject, ...bool) WindowObject
@@ -91,6 +97,10 @@ type WindowObject interface {
 	Tag() any
 	SetTag(any) WindowObject
 }
+
+/******************************************************************************
+ WindowObjectBase
+******************************************************************************/
 
 type WindowObjectBase struct {
 	name atomic.Pointer[string]
@@ -115,6 +125,8 @@ type WindowObjectBase struct {
 	onResizeHandlers []func(int32, int32, int32, int32)
 
 	maintainAspectRatio bool
+	anchor              Alignment
+	margin              Margin
 
 	stateMutex   sync.Mutex
 	stateChanged atomic.Bool
@@ -132,7 +144,7 @@ type WindowObjectBase struct {
 }
 
 /******************************************************************************
- WindowObjectBase
+ WindowObject Implementation
 ******************************************************************************/
 
 func (o *WindowObjectBase) initChildren(window *Window) (ok bool) {
@@ -184,18 +196,19 @@ func (o *WindowObjectBase) Window() *Window {
 	return o.window
 }
 
-func (o *WindowObjectBase) SetWindow(window *Window) {
+func (o *WindowObjectBase) SetWindow(window *Window) WindowObject {
 	o.stateMutex.Lock()
 	o.window = window
 	o.stateMutex.Unlock()
+	return o
 }
 
 func (o *WindowObjectBase) Initialized() bool {
 	return o.initialized.Load()
 }
 
-func (o *WindowObjectBase) SetInitialized(isInitialized bool) {
-	o.initialized.Store(isInitialized)
+func (o *WindowObjectBase) SetInitialized(initialized bool) {
+	o.initialized.Store(initialized)
 }
 
 func (o *WindowObjectBase) Init(window *Window) (ok bool) {
@@ -246,15 +259,79 @@ func (o *WindowObjectBase) Closed() bool {
 	return o.closed.Load()
 }
 
-func (o *WindowObjectBase) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	for _, f := range o.onResizeHandlers {
-		f(oldWidth, oldHeight, newWidth, newHeight)
+func (o *WindowObjectBase) RefreshLayout() {
+	window := o.Window()
+	if window == nil {
+		return
 	}
+
+	left := float32(-1)
+	right := float32(1)
+	top := float32(1)
+	bottom := float32(-1)
+	if p := o.Parent(); p != nil {
+		if view, ok := p.(*View); ok {
+			if view.maintainAspectRatio {
+				left *= window.ScaleX(view.Scale().X())
+				top *= window.ScaleY(view.Scale().Y())
+			} else {
+				left *= view.Scale().X()
+				top *= view.Scale().Y()
+			}
+
+			right = left * -1
+			bottom = top * -1
+		}
+	}
+
+	margin := o.Margin()
+	margin.Left = window.ScaleX(margin.Left)
+	margin.Right = window.ScaleX(margin.Right)
+	margin.Top = window.ScaleY(margin.Top)
+	margin.Bottom = window.ScaleY(margin.Bottom)
+
+	leftOffset := o.HalfWidth() + margin.Left
+	rightOffset := o.HalfWidth() + margin.Right
+	topOffset := o.HalfHeight() + margin.Top
+	bottomOffset := o.HalfHeight() + margin.Bottom
+
+	switch o.Anchor() {
+	case TopLeft:
+		o.SetPosition(mgl32.Vec3{left + leftOffset, top - topOffset})
+	case MiddleLeft:
+		o.SetPosition(mgl32.Vec3{left + leftOffset, -margin.Top + margin.Bottom})
+	case BottomLeft:
+		o.SetPosition(mgl32.Vec3{left + leftOffset, bottom + bottomOffset})
+	case TopCenter:
+		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, 1 - topOffset})
+	case Center:
+		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, -margin.Top + margin.Bottom})
+	case BottomCenter:
+		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, -1 + bottomOffset})
+	case TopRight:
+		o.SetPosition(mgl32.Vec3{right - rightOffset, top - topOffset})
+	case MiddleRight:
+		o.SetPosition(mgl32.Vec3{right - rightOffset, -margin.Top + margin.Bottom})
+	case BottomRight:
+		o.SetPosition(mgl32.Vec3{right - rightOffset, bottom + bottomOffset})
+	}
+}
+
+func (o *WindowObjectBase) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	if o.Closed() {
+		return
+	}
+
+	o.RefreshLayout()
 
 	for _, c := range o.children {
 		if !c.Closed() {
 			c.Resize(oldWidth, oldHeight, newWidth, newHeight)
 		}
+	}
+
+	for _, f := range o.onResizeHandlers {
+		f(oldWidth, oldHeight, newWidth, newHeight)
 	}
 }
 
@@ -266,8 +343,8 @@ func (o *WindowObjectBase) Visible() bool {
 	return o.visible.Load()
 }
 
-func (o *WindowObjectBase) SetVisibility(isVisible bool) WindowObject {
-	o.visible.Store(isVisible)
+func (o *WindowObjectBase) SetVisibility(visible bool) WindowObject {
+	o.visible.Store(visible)
 	return o
 }
 
@@ -275,8 +352,8 @@ func (o *WindowObjectBase) Enabled() bool {
 	return o.enabled.Load()
 }
 
-func (o *WindowObjectBase) SetEnabled(isEnabled bool) WindowObject {
-	o.enabled.Store(isEnabled)
+func (o *WindowObjectBase) SetEnabled(enabled bool) WindowObject {
+	o.enabled.Store(enabled)
 	return o
 }
 
@@ -327,14 +404,14 @@ func (o *WindowObjectBase) SetBlurIntensity(intensity float32) WindowObject {
 
 func (o *WindowObjectBase) BlurEnabled() bool {
 	o.stateMutex.Lock()
-	isEnabled := o.blurEnabled
+	enabled := o.blurEnabled
 	o.stateMutex.Unlock()
-	return isEnabled
+	return enabled
 }
 
-func (o *WindowObjectBase) SetBlurEnabled(isEnabled bool) WindowObject {
+func (o *WindowObjectBase) SetBlurEnabled(enabled bool) WindowObject {
 	o.stateMutex.Lock()
-	o.blurEnabled = isEnabled
+	o.blurEnabled = enabled
 	o.stateChanged.Store(true)
 	o.stateMutex.Unlock()
 	return o
@@ -506,9 +583,69 @@ func (o *WindowObjectBase) SetScaleZ(z float32) WindowObject {
 	return o
 }
 
+func (o *WindowObjectBase) Width() float32 {
+	width := o.WorldScale().X() * 2.0
+	if o.maintainAspectRatio {
+		if w := o.Window(); w != nil {
+			width = w.ScaleX(width)
+		} else {
+			panic("width can only be calculated once Window has been set on the object")
+		}
+	}
+	return width
+}
+
+func (o *WindowObjectBase) Height() float32 {
+	height := o.WorldScale().Y() * 2.0
+	if o.maintainAspectRatio {
+		if w := o.Window(); w != nil {
+			height = w.ScaleY(height)
+		} else {
+			panic("height can only be calculated once Window has been set on the object")
+		}
+	}
+	return height
+}
+
+func (o *WindowObjectBase) HalfWidth() float32 {
+	return o.Width() * 0.5
+}
+
+func (o *WindowObjectBase) HalfHeight() float32 {
+	return o.Height() * 0.5
+}
+
 func (o *WindowObjectBase) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	o.stateMutex.Lock()
 	o.maintainAspectRatio = maintainAspectRatio
+	o.stateMutex.Unlock()
+	return o
+}
+
+func (o *WindowObjectBase) Anchor() Alignment {
+	o.stateMutex.Lock()
+	a := o.anchor
+	o.stateMutex.Unlock()
+	return a
+}
+
+func (o *WindowObjectBase) SetAnchor(anchor Alignment) WindowObject {
+	o.stateMutex.Lock()
+	o.anchor = anchor
+	o.stateMutex.Unlock()
+	return o
+}
+
+func (o *WindowObjectBase) Margin() *Margin {
+	o.stateMutex.Lock()
+	m := o.margin
+	o.stateMutex.Unlock()
+	return &m
+}
+
+func (o *WindowObjectBase) SetMargin(margin Margin) WindowObject {
+	o.stateMutex.Lock()
+	o.margin = margin
 	o.stateMutex.Unlock()
 	return o
 }
@@ -621,7 +758,7 @@ func (o *WindowObjectBase) SetTag(value any) WindowObject {
 }
 
 /******************************************************************************
- New Functions
+ New WindowObjectBase Function
 ******************************************************************************/
 
 func NewObject(parent WindowObject) *WindowObjectBase {
@@ -632,6 +769,7 @@ func NewObject(parent WindowObject) *WindowObjectBase {
 		rotation:            [3]float32{0, 0, 0},
 		scale:               [3]float32{1, 1, 1},
 		maintainAspectRatio: true,
+		anchor:              NoAlignment,
 		children:            make([]WindowObject, 0),
 	}
 
