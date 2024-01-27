@@ -92,9 +92,15 @@ func NewSignalsView(ctx context.Context, window *gfx.Window, signalSampleCount i
 }
 
 func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampleCount int) gfx.WindowObject {
-	inspectorHelp := gfx.NewLabel()
-	inspectorHelp.
+	inspectorHelp1 := gfx.NewLabel()
+	inspectorHelp1.
 		SetText("CTRL/CMD: show signal inspector").
+		SetFontSize(.03).
+		SetPositionY(.35)
+
+	inspectorHelp2 := gfx.NewLabel()
+	inspectorHelp2.
+		SetText("F5 and F6: export signal data to CSV").
 		SetFontSize(.03).
 		SetPositionY(.25)
 
@@ -108,6 +114,7 @@ func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampl
 	sig.EnableInspector()
 	sig.SetInspectorAnchor(gfx.TopRight)
 	sig.SetInspectorMargin(gfx.Margin{Top: .05, Right: .05})
+	sig.EnableDataExportKey(glfw.KeyF5)
 
 	//sig.SetInspectorFontSize(.1)  // probably don't ever need to call this method
 	//sig.SetInspectorPanelSize(.5) // use this method to change the inspector scale
@@ -132,6 +139,7 @@ func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampl
 	sg.EnableInspector()
 	sg.SetInspectorAnchor(gfx.BottomRight)
 	sg.SetInspectorMargin(gfx.Margin{Bottom: .05, Right: .05})
+	sg.EnableDataExportKey(glfw.KeyF6)
 
 	signalCount := 3
 
@@ -202,7 +210,8 @@ func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampl
 	}(ctx, sg)
 
 	container := gfx.NewObject(nil)
-	container.AddChild(inspectorHelp)
+	container.AddChild(inspectorHelp1)
+	container.AddChild(inspectorHelp2)
 	container.AddChild(sig)
 	container.AddChild(sg)
 

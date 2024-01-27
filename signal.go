@@ -58,6 +58,9 @@ type SignalLine struct {
 	inspectorKey         glfw.Key
 	inspectorActive      atomic.Bool
 	inspectKeyRegistered atomic.Bool
+
+	dataExportKey           glfw.Key
+	dataExportKeyRegistered atomic.Bool
 }
 
 type SignalGroup struct {
@@ -72,6 +75,9 @@ type SignalGroup struct {
 	inspectorKey         glfw.Key
 	inspectorActive      atomic.Bool
 	inspectKeyRegistered atomic.Bool
+
+	dataExportKey           glfw.Key
+	dataExportKeyRegistered atomic.Bool
 }
 
 type SignalInspector struct {
@@ -368,6 +374,10 @@ func (l *SignalLine) Init(window *Window) (ok bool) {
 	l.initLayout()
 	l.initialized.Store(true)
 
+	if l.dataExportKey != glfw.KeyUnknown {
+		l.EnableDataExportKey(l.dataExportKey)
+	}
+
 	if l.inspectorKey != glfw.KeyUnknown {
 		l.EnableInspector()
 	}
@@ -534,6 +544,20 @@ func (l *SignalLine) SetWindow(window *Window) WindowObject {
 	return l
 }
 
+func (l *SignalLine) EnableDataExportKey(key glfw.Key) *SignalLine {
+	l.dataExportKey = key
+	if l.dataExportKeyRegistered.Load() || !l.initialized.Load() {
+		return l
+	}
+	l.dataExportKeyRegistered.Store(true)
+
+	l.window.AddKeyEventHandler(key, glfw.Press, func(window *Window, key glfw.Key, action glfw.Action) {
+		_ = ExportSignalDataToCsv(l)
+	})
+
+	return l
+}
+
 /******************************************************************************
  SignalGroup Functions
 ******************************************************************************/
@@ -568,6 +592,10 @@ func (g *SignalGroup) Init(window *Window) (ok bool) {
 
 	g.initLayout(window)
 	g.initialized.Store(true)
+
+	if g.dataExportKey != glfw.KeyUnknown {
+		g.EnableDataExportKey(g.dataExportKey)
+	}
 
 	if g.inspectorKey != glfw.KeyUnknown {
 		g.EnableInspector()
@@ -743,6 +771,20 @@ func (g *SignalGroup) SetWindow(window *Window) WindowObject {
 		s.SetWindow(window)
 	}
 	g.stateMutex.Unlock()
+	return g
+}
+
+func (g *SignalGroup) EnableDataExportKey(key glfw.Key) *SignalGroup {
+	g.dataExportKey = key
+	if g.dataExportKeyRegistered.Load() || !g.initialized.Load() {
+		return g
+	}
+	g.dataExportKeyRegistered.Store(true)
+
+	g.window.AddKeyEventHandler(key, glfw.Press, func(window *Window, key glfw.Key, action glfw.Action) {
+		_ = ExportSignalGroupDataToCsv(g)
+	})
+
 	return g
 }
 
@@ -944,9 +986,10 @@ func NewSignal(label string, bufferSize int) *Signal {
 
 func NewSignalLine(label string, sampleCount int) *SignalLine {
 	sl := &SignalLine{
-		View:   *NewView(),
-		Signal: *NewSignal(label, sampleCount),
-		label:  NewLabel().SetText(label),
+		View:          *NewView(),
+		Signal:        *NewSignal(label, sampleCount),
+		label:         NewLabel().SetText(label),
+		dataExportKey: glfw.KeyUnknown,
 	}
 
 	sl.fill.SetParent(sl)
@@ -957,8 +1000,8 @@ func NewSignalLine(label string, sampleCount int) *SignalLine {
 
 	sl.vertices = make([]float32, sampleCount*2)
 	sl.vertexCount = int32(sampleCount)
-	sl.inspectorKey = glfw.KeyUnknown
 
+	sl.inspectorKey = glfw.KeyUnknown
 	sl.inspector = NewSignalInspector(sl)
 	sl.inspector.MaintainAspectRatio(false)
 
@@ -980,6 +1023,7 @@ func NewSignalGroup(defaultSampleCount int, defaultLineThickness int, colors ...
 		defaultThickness:   uint(defaultLineThickness),
 		defaultColors:      colors,
 		inspectorKey:       glfw.KeyUnknown,
+		dataExportKey:      glfw.KeyUnknown,
 	}
 
 	sg.inspectorKey = glfw.KeyUnknown
