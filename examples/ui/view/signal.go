@@ -99,7 +99,7 @@ func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampl
 		SetPositionY(.25)
 
 	sig := gfx.NewSignalLine("Inspect me!", signalSampleCount)
-	sig.Label().SetFontSize(.1).SetMargin(gfx.Margin{Left: 0.0}).SetColor(gfx.Green)
+	sig.Label().SetFontSize(.1).SetMarginLeft(0.01).SetColor(gfx.Green)
 	sig.SetPositionY(.7)
 	sig.SetScale(mgl32.Vec3{.9, .25, 1})
 	sig.SetBorderColor(gfx.White)

@@ -84,6 +84,10 @@ type WindowObject interface {
 	SetAnchor(Alignment) WindowObject
 	Margin() *Margin
 	SetMargin(Margin) WindowObject
+	SetMarginTop(float32) WindowObject
+	SetMarginRight(float32) WindowObject
+	SetMarginBottom(float32) WindowObject
+	SetMarginLeft(float32) WindowObject
 
 	Parent() WindowObject
 	SetParent(WindowObject, ...bool) WindowObject
@@ -646,6 +650,34 @@ func (o *WindowObjectBase) Margin() *Margin {
 func (o *WindowObjectBase) SetMargin(margin Margin) WindowObject {
 	o.stateMutex.Lock()
 	o.margin = margin
+	o.stateMutex.Unlock()
+	return o
+}
+
+func (o *WindowObjectBase) SetMarginTop(margin float32) WindowObject {
+	o.stateMutex.Lock()
+	o.margin.Top = margin
+	o.stateMutex.Unlock()
+	return o
+}
+
+func (o *WindowObjectBase) SetMarginRight(margin float32) WindowObject {
+	o.stateMutex.Lock()
+	o.margin.Right = margin
+	o.stateMutex.Unlock()
+	return o
+}
+
+func (o *WindowObjectBase) SetMarginBottom(margin float32) WindowObject {
+	o.stateMutex.Lock()
+	o.margin.Bottom = margin
+	o.stateMutex.Unlock()
+	return o
+}
+
+func (o *WindowObjectBase) SetMarginLeft(margin float32) WindowObject {
+	o.stateMutex.Lock()
+	o.margin.Left = margin
 	o.stateMutex.Unlock()
 	return o
 }

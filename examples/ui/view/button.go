@@ -115,6 +115,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 
 	button5 := gfx.NewButton(true) // true = will be a circular button
 	button5.
+		SetText("Depress").SetTextSize(.24).SetTextColor(gfx.Green).
 		SetMouseEnterFillColor(color.RGBA{R: 255, G: 50, B: 50, A: 255}).
 		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
 		MaintainAspectRatio(false).(*gfx.Button).
@@ -127,6 +128,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 
 	button6 := gfx.NewButton(true) // true = will be a circular button
 	button6.
+		SetText("Depress").SetTextSize(.24).SetTextColor(gfx.Red).
 		SetMouseEnterFillColor(color.RGBA{R: 150, G: 255, B: 150, A: 255}).
 		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
 		SetBorderThickness(.05).

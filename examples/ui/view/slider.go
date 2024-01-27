@@ -22,9 +22,9 @@ func newRawSignalView(window *gfx.Window, signalSampleCount int, signalSource *s
 	signalSource.SetFrequencyComponent2(defaultHiFreq)
 
 	signalLine := gfx.NewSignalLine("Raw", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMargin(gfx.Margin{Left: .01})
+	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
 	signalLine.SetAnchor(gfx.TopCenter)
-	signalLine.SetMargin(gfx.Margin{Left: .3})
+	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Purple)
 	signalLine.SetThickness(2)
 	signalLine.SetScale(mgl32.Vec3{.6, .2})
@@ -132,9 +132,9 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	filter.GenerateCoefficients(defaultCoeffCount, defaultRate, defaultCutoff)
 
 	signalLine := gfx.NewSignalLine("Low-Pass", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMargin(gfx.Margin{Left: .01})
+	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
 	signalLine.SetAnchor(gfx.TopCenter)
-	signalLine.SetMargin(gfx.Margin{Left: .3})
+	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Red)
 	signalLine.SetThickness(2)
 	signalLine.SetScale(mgl32.Vec3{.6, .2})
@@ -191,7 +191,7 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	cutoffSlider.SetScaleX(.3333)
 	cutoffSlider.SetScaleY(1)
 	cutoffSlider.SetAnchor(gfx.MiddleLeft)
-	cutoffSlider.SetMargin(gfx.Margin{Left: rateSlider.WorldScale().X() * 2})
+	cutoffSlider.SetMarginLeft(rateSlider.WorldScale().X() * 2)
 	cutoffSlider.OnValueChanging(func(sender gfx.WindowObject, value float32) {
 		cutoff := (value * cutoffMax) + 0.0001
 		if cutoff > cutoffMax {
@@ -205,7 +205,7 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	coeffSlider.SetScaleX(.3333)
 	coeffSlider.SetScaleY(1)
 	coeffSlider.SetAnchor(gfx.MiddleLeft)
-	coeffSlider.SetMargin(gfx.Margin{Left: rateSlider.WorldScale().X() * 4})
+	coeffSlider.SetMarginLeft(rateSlider.WorldScale().X() * 4)
 	coeffSlider.OnValueChanging(func(sender gfx.WindowObject, value float32) {
 		coeff := (value * coeffCountMax) + 1
 		if coeff > coeffCountMax {
@@ -243,9 +243,9 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	filter.GenerateCoefficients(defaultCoeffCount, defaultRate, defaultCutoff)
 
 	signalLine := gfx.NewSignalLine("High-Pass", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMargin(gfx.Margin{Left: .01})
+	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
 	signalLine.SetAnchor(gfx.TopCenter)
-	signalLine.SetMargin(gfx.Margin{Left: .3})
+	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Blue)
 	signalLine.SetThickness(2)
 	signalLine.SetScale(mgl32.Vec3{.6, .2})
@@ -302,7 +302,7 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	cutoffSlider.SetScaleX(.3333)
 	cutoffSlider.SetScaleY(1)
 	cutoffSlider.SetAnchor(gfx.MiddleLeft)
-	cutoffSlider.SetMargin(gfx.Margin{Left: rateSlider.WorldScale().X() * 2})
+	cutoffSlider.SetMarginLeft(rateSlider.WorldScale().X() * 2)
 	cutoffSlider.OnValueChanging(func(sender gfx.WindowObject, value float32) {
 		cutoff := (value * cutoffMax) + 0.0001
 		if cutoff > cutoffMax {
@@ -316,7 +316,7 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	coeffSlider.SetScaleX(.3333)
 	coeffSlider.SetScaleY(1)
 	coeffSlider.SetAnchor(gfx.MiddleLeft)
-	coeffSlider.SetMargin(gfx.Margin{Left: rateSlider.WorldScale().X() * 4})
+	coeffSlider.SetMarginLeft(rateSlider.WorldScale().X() * 4)
 	coeffSlider.OnValueChanging(func(sender gfx.WindowObject, value float32) {
 		coeff := (value * coeffCountMax) + 1
 		if coeff > coeffCountMax {
@@ -355,9 +355,9 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	filter.GenerateCoefficients(defaultCoeffCount, defaultRate, defaultCutoffLo, defaultCutoffHi)
 
 	signalLine := gfx.NewSignalLine("Band-Pass", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMargin(gfx.Margin{Left: .01})
+	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
 	signalLine.SetAnchor(gfx.TopCenter)
-	signalLine.SetMargin(gfx.Margin{Left: .3})
+	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Red)
 	signalLine.SetThickness(2)
 	signalLine.SetScale(mgl32.Vec3{.6, .2})
@@ -416,7 +416,7 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	cutoffSliderLo.SetScaleX(.25)
 	cutoffSliderLo.SetScaleY(1)
 	cutoffSliderLo.SetAnchor(gfx.MiddleLeft)
-	cutoffSliderLo.SetMargin(gfx.Margin{Left: rateSlider.WorldScale().X() * 2})
+	cutoffSliderLo.SetMarginLeft(rateSlider.WorldScale().X() * 2)
 	cutoffSliderLo.OnValueChanging(func(sender gfx.WindowObject, value float32) {
 		cutoff := (value * cutoffMax) + 0.0001
 		if cutoff > cutoffMax {
@@ -430,7 +430,7 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	cutoffSliderHi.SetScaleX(.25)
 	cutoffSliderHi.SetScaleY(1)
 	cutoffSliderHi.SetAnchor(gfx.MiddleLeft)
-	cutoffSliderHi.SetMargin(gfx.Margin{Left: rateSlider.WorldScale().X() * 4})
+	cutoffSliderHi.SetMarginLeft(rateSlider.WorldScale().X() * 4)
 	cutoffSliderHi.OnValueChanging(func(sender gfx.WindowObject, value float32) {
 		cutoff := (value * cutoffMax) + 0.0001
 		if cutoff > cutoffMax {
@@ -444,7 +444,7 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	coeffSlider.SetScaleX(.25)
 	coeffSlider.SetScaleY(1)
 	coeffSlider.SetAnchor(gfx.MiddleLeft)
-	coeffSlider.SetMargin(gfx.Margin{Left: rateSlider.WorldScale().X() * 6})
+	coeffSlider.SetMarginLeft(rateSlider.WorldScale().X() * 6)
 	coeffSlider.OnValueChanging(func(sender gfx.WindowObject, value float32) {
 		coeff := (value * coeffCountMax) + 1
 		if coeff > coeffCountMax {
