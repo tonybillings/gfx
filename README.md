@@ -31,9 +31,9 @@ time-sensitive process, etc).  The underlying graphics framework is OpenGL.
 
 Developed/tested on:
 
-| Operating System  | Kernel               |
-|:------------------|:---------------------|
-| Ubuntu Base 22.04 | 5.15.0-86-lowlatency |
+| Operating System                       | Kernel               |
+|:---------------------------------------|:---------------------|
+| Ubuntu Base 22.04.3 + GNOME 42.9 / X11 | 5.15.0-86-lowlatency |
 
 <br/>
 
@@ -54,7 +54,9 @@ sudo apt install libgl1-mesa-dev libglfw3-dev libfreetype6-dev
 
 See the code in the `examples` directory to get started or execute the `run.sh` script to see it in action!
 
-## Screenshots
+Most, if not all, of the features are flexed in the example code.
+
+## Screenshots (from the examples)
 
 ![signals](img/signal.png)  
 
