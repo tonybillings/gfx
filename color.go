@@ -52,6 +52,16 @@ func FloatArrayToRgba(array [4]float32) color.RGBA {
 }
 
 func Lighten(rgba color.RGBA, pct float64) color.RGBA {
+	if rgba.R == 0 {
+		rgba.R = 1
+	}
+	if rgba.G == 0 {
+		rgba.G = 1
+	}
+	if rgba.B == 0 {
+		rgba.B = 1
+	}
+
 	r := (float64(rgba.R) * pct) + float64(rgba.R)
 	if r > 255 {
 		r = 255

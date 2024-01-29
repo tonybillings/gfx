@@ -137,12 +137,17 @@ func (s *Signal) AddSamples(data []float64) {
 		s.data[s.dataIdx] = d
 
 		s.dataFiltered[s.dataIdx] = d
-		for i, f := range s.filters {
-			if i == 0 {
+		filterIdx := 0
+		for _, f := range s.filters {
+			if !f.Enabled() {
+				continue
+			}
+			if filterIdx == 0 {
 				s.dataFiltered[s.dataIdx] = f.Apply(s.dataIdx, s.data)
 			} else {
 				s.dataFiltered[s.dataIdx] = f.Apply(s.dataIdx, s.dataFiltered)
 			}
+			filterIdx++
 		}
 
 		s.dataIdx = (s.dataIdx + 1) % s.dataSize
