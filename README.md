@@ -70,6 +70,8 @@ Most, if not all, of the features are flexed in the example code.
 
 ![dot](img/dot.png)  
 
+![arc](img/arc.png)  
+
 ![pacman](img/pacman.png)  
 
 ![cube](img/cube.png)  
