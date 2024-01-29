@@ -137,11 +137,12 @@ func (s *Signal) AddSamples(data []float64) {
 		s.data[s.dataIdx] = d
 
 		s.dataFiltered[s.dataIdx] = d
-		for _, f := range s.filters {
-			if !f.Enabled() {
-				continue
+		for i, f := range s.filters {
+			if i == 0 {
+				s.dataFiltered[s.dataIdx] = f.Apply(s.dataIdx, s.data)
+			} else {
+				s.dataFiltered[s.dataIdx] = f.Apply(s.dataIdx, s.dataFiltered)
 			}
-			s.dataFiltered[s.dataIdx] = f.Apply(s.dataIdx, s.dataFiltered)
 		}
 
 		s.dataIdx = (s.dataIdx + 1) % s.dataSize
@@ -590,8 +591,8 @@ func (l *SignalLine) EnableInspector(inspectKey ...glfw.Key) {
 	l.window.AddKeyEventHandler(l.inspectorKey, glfw.Release, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 		if l.enabled.Load() && l.inspectorActive.Load() {
 			l.inspectorActive.Store(false)
-			//	l.inspector.SetEnabled(false)
-			//	l.inspector.SetVisibility(false)
+			l.inspector.SetEnabled(false)
+			l.inspector.SetVisibility(false)
 		}
 	})
 }
