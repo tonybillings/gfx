@@ -11,17 +11,18 @@ time-sensitive process, etc).  The underlying graphics framework is OpenGL.
 
 ## Features
 
- |                                                                |   |
- |----------------------------------------------------------------|:-:|
- | Dead-simple API for rendering basic/common shapes              | ✅ |
- | Performant line-graph intended for realtime signal analysis    | ✅ |
- | Hi/Low/Band-pass and custom (user-defined) filtering           | ✅ |
- | Common UI controls including Label, Button, and Slider         | ✅ |
- | Texture and blur support (for blur, 2D only)                   | ✅ |
- | Ambient, diffuse, specular lighting support (3D only)          | ✅ |
- | Camera, light, and custom viewport support (3D only)           | ✅ |
- | Text rendering and custom (TTF) font support (2D only)         | ✅ |
- | Interface-based and object-oriented for flexible customization | ✅ |
+ |                                                                  |   |
+ |------------------------------------------------------------------|:-:|
+ | Dead-simple API for rendering basic/common shapes                | ✅ |
+ | Performant line-graph intended for realtime signal analysis      | ✅ |
+ | Hi/Low/Band-pass and custom (user-defined) filtering             | ✅ |
+ | FFT and custom (user-defined) transformers                       | ✅ |
+ | Common UI controls: Label, Button, Slider, Checkbox, RadioButton | ✅ |
+ | Texture and blur support (for blur, 2D only)                     | ✅ |
+ | Ambient, diffuse, specular lighting support (3D only)            | ✅ |
+ | Camera, light, and custom viewport support (3D only)             | ✅ |
+ | Text rendering and custom (TTF) font support (2D only)           | ✅ |
+ | Interface-based and object-oriented for flexible customization   | ✅ |
 
 
 ---
