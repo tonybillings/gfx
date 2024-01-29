@@ -51,10 +51,7 @@ func (b *Button) Init(window *Window) (ok bool) {
 		return false
 	}
 
-	b.originalFillColor = b.fill.Color()
-	b.originalBorderColor = b.border.Color()
-	b.originalTextColor = b.label.Color()
-
+	b.initLayout()
 	b.RefreshLayout()
 
 	return true
@@ -112,6 +109,27 @@ func (b *Button) SetWindow(window *Window) WindowObject {
 /******************************************************************************
  Button Functions
 ******************************************************************************/
+
+func (b *Button) defaultLayout() {
+	b.fill.SetParent(b)
+	b.border.SetParent(b)
+	b.label.SetParent(b)
+	b.bounds.SetParent(b)
+
+	b.fill.SetColor(Black)
+	b.border.SetColor(Black)
+}
+
+func (b *Button) initLayout() {
+	b.bounds.OnMouseEnter(b.onMouseEnter)
+	b.bounds.OnMouseLeave(b.onMouseLeave)
+	b.bounds.OnPMouseDown(b.onMouseDown)
+	b.bounds.OnPMouseUp(b.onMouseUp)
+
+	b.originalFillColor = b.fill.Color()
+	b.originalBorderColor = b.border.Color()
+	b.originalTextColor = b.label.Color()
+}
 
 func (b *Button) onMouseEnter(_ WindowObject, _ *MouseState) {
 	if b.mouseEnterFillColorSet.Load() {
@@ -262,18 +280,8 @@ func NewButton(circular ...bool) *Button {
 	}
 
 	b.SetName(defaultButtonName)
-	b.fill.SetParent(b)
-	b.border.SetParent(b)
-	b.label.SetParent(b)
-	b.bounds.SetParent(b)
 
-	b.fill.SetColor(Black)
-	b.border.SetColor(Black)
-
-	b.bounds.OnMouseEnter(b.onMouseEnter)
-	b.bounds.OnMouseLeave(b.onMouseLeave)
-	b.bounds.OnPMouseDown(b.onMouseDown)
-	b.bounds.OnPMouseUp(b.onMouseUp)
+	b.defaultLayout()
 
 	return b
 }

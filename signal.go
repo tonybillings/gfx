@@ -34,8 +34,17 @@ type Signal struct {
 	deltasSize int
 	dataMutex  sync.Mutex
 
-	filters  []Filter
-	filtered []float64
+	filters      []Filter
+	dataFiltered []float64
+
+	transformers       []Transformer
+	dataTransformed    []float64
+	minTransformedData float64
+	maxTransformedData float64
+
+	fftEnabled     bool
+	fftTransformer *FastFourierTransformer
+	freqSpectrum   []float64
 }
 
 type SignalLine struct {
@@ -118,7 +127,7 @@ func (s *Signal) Data() []float64 {
 }
 
 func (s *Signal) FilteredData() []float64 {
-	return s.filtered
+	return s.dataFiltered
 }
 
 func (s *Signal) AddSamples(data []float64) {
@@ -126,14 +135,15 @@ func (s *Signal) AddSamples(data []float64) {
 
 	for _, d := range data {
 		s.data[s.dataIdx] = d
-		s.filtered[s.dataIdx] = d
-		for i, f := range s.filters {
-			if i == 0 {
-				s.filtered[s.dataIdx] = f.Apply(s.dataIdx, s.data)
-			} else {
-				s.filtered[s.dataIdx] = f.Apply(s.dataIdx, s.filtered)
+
+		s.dataFiltered[s.dataIdx] = d
+		for _, f := range s.filters {
+			if !f.Enabled() {
+				continue
 			}
+			s.dataFiltered[s.dataIdx] = f.Apply(s.dataIdx, s.dataFiltered)
 		}
+
 		s.dataIdx = (s.dataIdx + 1) % s.dataSize
 		if d < s.minData {
 			s.minData = d
@@ -141,6 +151,36 @@ func (s *Signal) AddSamples(data []float64) {
 		if d > s.maxData {
 			s.maxData = d
 		}
+	}
+
+	transformed := false
+	if s.fftEnabled {
+		s.freqSpectrum = s.fftTransformer.Transform(s.dataTransformed, s.dataFiltered)
+		transformed = true
+	} else {
+		for i, t := range s.transformers {
+			if i == 0 {
+				t.Transform(s.dataTransformed, s.dataFiltered)
+			} else {
+				t.Transform(s.dataTransformed, s.dataTransformed)
+			}
+			transformed = true
+		}
+	}
+
+	if transformed {
+		for _, d := range s.dataTransformed {
+			if d < s.minTransformedData {
+				s.minTransformedData = d
+			}
+			if d > s.maxTransformedData {
+				s.maxTransformedData = d
+			}
+		}
+	} else {
+		s.dataTransformed = s.dataFiltered
+		s.minTransformedData = s.minData
+		s.maxTransformedData = s.maxData
 	}
 
 	s.dataMutex.Unlock()
@@ -237,11 +277,17 @@ func (s *Signal) DeltaStdDev(calculateDeltas bool) float64 {
 }
 
 func (s *Signal) MinValue() float64 {
-	return s.minData
+	s.dataMutex.Lock()
+	value := s.minData
+	s.dataMutex.Unlock()
+	return value
 }
 
 func (s *Signal) MaxValue() float64 {
-	return s.maxData
+	s.dataMutex.Lock()
+	value := s.maxData
+	s.dataMutex.Unlock()
+	return value
 }
 
 func (s *Signal) BufferSize() int {
@@ -269,6 +315,49 @@ func (s *Signal) GetFilter(name string) Filter {
 	return nil
 }
 
+func (s *Signal) AddTransformer(transformer Transformer) {
+	if s.transformers == nil {
+		s.transformers = make([]Transformer, 0)
+	}
+	s.transformers = append(s.transformers, transformer)
+}
+
+func (s *Signal) GetTransformer(name string) Transformer {
+	if s.transformers == nil {
+		return nil
+	}
+
+	for _, t := range s.transformers {
+		if t.Name() == name {
+			return t
+		}
+	}
+
+	return nil
+}
+
+func (s *Signal) FFTEnabled() bool {
+	return s.fftEnabled
+}
+
+func (s *Signal) EnableFFT(sampleRate float64) {
+	if s.fftTransformer == nil {
+		s.fftTransformer = NewFastFourierTransformer(s.dataSize, sampleRate)
+	}
+	s.dataTransformed = make([]float64, s.dataSize)
+	s.minTransformedData = 0
+	s.maxTransformedData = 0
+	s.fftEnabled = true
+}
+
+func (s *Signal) DisableFFT() {
+	s.fftEnabled = false
+}
+
+func (s *Signal) SetFFTSampleRate(rate float64) {
+	s.fftTransformer.SetSampleRate(rate)
+}
+
 /******************************************************************************
  SignalLine Functions
 ******************************************************************************/
@@ -288,10 +377,10 @@ func (l *SignalLine) initVertices() {
 func (l *SignalLine) updateVertices() {
 	worldY := l.WorldPosition().Y()
 	l.Signal.Lock()
-	minV := l.Signal.MinValue()
-	maxV := l.Signal.MaxValue()
+	minV := l.Signal.minTransformedData
+	maxV := l.Signal.maxTransformedData
 	scaleY := l.scale[1]
-	data := l.Signal.FilteredData()
+	data := l.Signal.dataTransformed
 
 	for i, sample := range data {
 		minMaxRange := float32(maxV) - float32(minV)
@@ -501,8 +590,8 @@ func (l *SignalLine) EnableInspector(inspectKey ...glfw.Key) {
 	l.window.AddKeyEventHandler(l.inspectorKey, glfw.Release, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 		if l.enabled.Load() && l.inspectorActive.Load() {
 			l.inspectorActive.Store(false)
-			l.inspector.SetEnabled(false)
-			l.inspector.SetVisibility(false)
+			//	l.inspector.SetEnabled(false)
+			//	l.inspector.SetVisibility(false)
 		}
 	})
 }
@@ -872,14 +961,25 @@ func (i *SignalInspector) Update(deltaTime int64) (ok bool) {
 	xScale := (mouse.X + 1.0) / 2.0
 
 	updatePanel := func(signal *SignalLine) {
-		sampleIdx := int(xScale * float32(signal.BufferSize()-1))
-		i.minValue.SetText(fmt.Sprintf("Min:  %.6f", signal.MinValue()))
-		i.maxValue.SetText(fmt.Sprintf("Max:  %.6f", signal.MaxValue()))
-		i.avg.SetText(fmt.Sprintf("Avg:  %.6f", signal.Average()))
-		i.std.SetText(fmt.Sprintf("Std:  %.6f", signal.StdDev()))
-		i.deltaAvg.SetText(fmt.Sprintf("ΔAvg: %.6f", signal.DeltaAverage()))
-		i.deltaStd.SetText(fmt.Sprintf("ΔStd: %.6f", signal.DeltaStdDev(false)))
-		i.sample.SetText(fmt.Sprintf("%f", signal.Data()[sampleIdx]))
+		if signal.fftEnabled {
+			idx := int(xScale * float32(signal.dataSize-1))
+			i.minValue.SetText("")
+			i.maxValue.SetText("")
+			i.avg.SetText(fmt.Sprintf("Freq: %.6f", signal.freqSpectrum[idx])) // hijacking this label
+			i.std.SetText("")
+			i.deltaAvg.SetText(fmt.Sprintf("Mag: %.6f", signal.dataTransformed[idx])) // hijacking this label
+			i.deltaStd.SetText("")
+			i.sample.SetText("")
+		} else {
+			sampleIdx := int(xScale * float32(signal.BufferSize()-1))
+			i.minValue.SetText(fmt.Sprintf("Min:  %.6f", signal.MinValue()))
+			i.maxValue.SetText(fmt.Sprintf("Max:  %.6f", signal.MaxValue()))
+			i.avg.SetText(fmt.Sprintf("Avg:  %.6f", signal.Average()))
+			i.std.SetText(fmt.Sprintf("Std:  %.6f", signal.StdDev()))
+			i.deltaAvg.SetText(fmt.Sprintf("ΔAvg: %.6f", signal.DeltaAverage()))
+			i.deltaStd.SetText(fmt.Sprintf("ΔStd: %.6f", signal.DeltaStdDev(false)))
+			i.sample.SetText(fmt.Sprintf("%f", signal.data[sampleIdx]))
+		}
 	}
 
 	if i.bounds.MouseOver() {
@@ -975,12 +1075,14 @@ func (i *SignalInspector) SetWindow(window *Window) WindowObject {
 
 func NewSignal(label string, bufferSize int) *Signal {
 	return &Signal{
-		label:      label,
-		data:       make([]float64, bufferSize),
-		dataSize:   bufferSize,
-		deltas:     make([]float64, bufferSize-1),
-		deltasSize: bufferSize - 1,
-		filtered:   make([]float64, bufferSize),
+		label:           label,
+		data:            make([]float64, bufferSize),
+		dataSize:        bufferSize,
+		deltas:          make([]float64, bufferSize-1),
+		deltasSize:      bufferSize - 1,
+		dataFiltered:    make([]float64, bufferSize),
+		dataTransformed: make([]float64, bufferSize),
+		freqSpectrum:    make([]float64, bufferSize),
 	}
 }
 

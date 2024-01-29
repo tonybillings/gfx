@@ -9,4 +9,5 @@ require (
 	github.com/go-gl/mathgl v1.1.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	golang.org/x/image v0.14.0
+	gonum.org/v1/gonum v0.14.0
 )

@@ -53,6 +53,7 @@ func main() {
 		view.NewSignalsView(ctx, win, signalSampleCount),
 		view.NewSignalInspectorView(ctx, win, signalSampleCount),
 		view.NewSliderView(ctx, win, signalSampleCount),
+		view.NewRadioButtonView(ctx, win, signalSampleCount),
 		view.NewButtonView(win)))
 
 	win.EnableQuitKey(cancelFunc)

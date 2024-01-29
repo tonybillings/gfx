@@ -125,7 +125,7 @@ func (f *LowPassFilter) GenerateCoefficients(coefficientCount int, sampleRate fl
 	return result
 }
 
-func NewLowPassFilter() Filter {
+func NewLowPassFilter() *LowPassFilter {
 	return &LowPassFilter{
 		FilterBase: *NewFilterBase(defaultLowPassFilterName),
 	}
@@ -171,7 +171,7 @@ func (f *HighPassFilter) GenerateCoefficients(coefficientCount int, sampleRate f
 	return result
 }
 
-func NewHighPassFilter() Filter {
+func NewHighPassFilter() *HighPassFilter {
 	return &HighPassFilter{
 		FilterBase: *NewFilterBase(defaultHighPassFilterName),
 	}
@@ -209,7 +209,7 @@ func (f *BandPassFilter) GenerateCoefficients(coefficientCount int, sampleRate f
 	return result
 }
 
-func NewBandPassFilter() Filter {
+func NewBandPassFilter() *BandPassFilter {
 	return &BandPassFilter{
 		FilterBase: *NewFilterBase(defaultBandPassFilterName),
 	}

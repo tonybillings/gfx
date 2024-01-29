@@ -61,6 +61,8 @@ See the code in the `examples` directory to get started or execute the `run.sh` 
 
 ![filters](img/filters.png)  
 
+![radio](img/radio.png)  
+
 ![square](img/square.png)  
 
 ![dot](img/dot.png)  

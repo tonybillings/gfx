@@ -34,6 +34,74 @@ type Slider struct {
  WindowObject Implementation
 ******************************************************************************/
 
+func (s *Slider) Init(window *Window) (ok bool) {
+	if !s.rail.Init(window) || !s.button.Init(window) {
+		return false
+	}
+
+	if !s.View.Init(window) {
+		return false
+	}
+
+	s.initLayout()
+	s.initialized.Store(true)
+	s.SetValue(s.value)
+
+	return true
+}
+
+func (s *Slider) Update(deltaTime int64) (ok bool) {
+	if !s.enabled.Load() {
+		return false
+	}
+
+	if !s.rail.Update(deltaTime) || !s.button.Update(deltaTime) {
+		return false
+	}
+
+	return s.View.Update(deltaTime)
+}
+
+func (s *Slider) Draw(deltaTime int64) (ok bool) {
+	if !s.visible.Load() {
+		return false
+	}
+
+	if !s.View.Draw(deltaTime) {
+		return false
+	}
+
+	if !s.rail.Draw(deltaTime) || !s.button.Draw(deltaTime) {
+		return false
+	}
+
+	return true
+}
+
+func (s *Slider) Close() {
+	s.rail.Close()
+	s.button.Close()
+	s.View.Close()
+}
+
+func (s *Slider) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	s.rail.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	s.button.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	s.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	s.SetValue(s.Value())
+}
+
+func (s *Slider) SetWindow(window *Window) WindowObject {
+	s.View.SetWindow(window)
+	s.rail.SetWindow(window)
+	s.button.SetWindow(window)
+	return s
+}
+
+/******************************************************************************
+ Slider Functions
+******************************************************************************/
+
 func (s *Slider) defaultLayout() {
 	s.fill.SetColor(Gray)
 
@@ -129,74 +197,6 @@ func (s *Slider) initLayout() {
 		}
 	})
 }
-
-func (s *Slider) Init(window *Window) (ok bool) {
-	if !s.rail.Init(window) || !s.button.Init(window) {
-		return false
-	}
-
-	if !s.View.Init(window) {
-		return false
-	}
-
-	s.initLayout()
-	s.initialized.Store(true)
-	s.SetValue(s.value)
-
-	return true
-}
-
-func (s *Slider) Update(deltaTime int64) (ok bool) {
-	if !s.enabled.Load() {
-		return false
-	}
-
-	if !s.rail.Update(deltaTime) || !s.button.Update(deltaTime) {
-		return false
-	}
-
-	return s.View.Update(deltaTime)
-}
-
-func (s *Slider) Draw(deltaTime int64) (ok bool) {
-	if !s.visible.Load() {
-		return false
-	}
-
-	if !s.View.Draw(deltaTime) {
-		return false
-	}
-
-	if !s.rail.Draw(deltaTime) || !s.button.Draw(deltaTime) {
-		return false
-	}
-
-	return true
-}
-
-func (s *Slider) Close() {
-	s.rail.Close()
-	s.button.Close()
-	s.View.Close()
-}
-
-func (s *Slider) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	s.rail.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	s.button.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	s.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	s.SetValue(s.Value())
-}
-
-func (s *Slider) SetWindow(window *Window) WindowObject {
-	s.View.SetWindow(window)
-	s.rail.SetWindow(window)
-	s.button.SetWindow(window)
-	return s
-}
-
-/******************************************************************************
- Slider Functions
-******************************************************************************/
 
 func (s *Slider) Value() float32 {
 	s.stateMutex.Lock()
