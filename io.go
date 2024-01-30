@@ -23,7 +23,7 @@ func getSignalDataCsvFilename(filenameTemplate ...string) string {
 func ExportSignalDataToCsv(line *SignalLine, filenameTemplate ...string) error {
 	line.Signal.Lock()
 	data := make([]float64, line.Signal.dataSize)
-	copy(data, line.Signal.data)
+	copy(data, line.Signal.dataTransformed)
 	line.Signal.Unlock()
 
 	filename := getSignalDataCsvFilename(filenameTemplate...)
@@ -91,8 +91,8 @@ func ExportSignalGroupDataToCsv(group *SignalGroup, filenameTemplate ...string) 
 		row := make([]string, len(signals))
 		for j, line := range signals {
 			line.Signal.Lock()
-			if i < len(line.Signal.data) {
-				row[j] = strconv.FormatFloat(line.Signal.data[i], 'f', -1, 64)
+			if i < line.dataSize {
+				row[j] = strconv.FormatFloat(line.Signal.dataTransformed[i], 'f', -1, 64)
 			} else {
 				row[j] = ""
 			}
