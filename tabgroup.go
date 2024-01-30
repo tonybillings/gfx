@@ -150,6 +150,7 @@ func (g *TabGroup) Activate(index int) {
 	}
 
 	g.activate(g.children[index])
+	g.Window().glwin.SetCursor(glfw.CreateStandardCursor(glfw.ArrowCursor))
 }
 
 func (g *TabGroup) Next() {
