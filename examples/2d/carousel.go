@@ -19,6 +19,9 @@ type Carousel struct {
 func (c *Carousel) defaultLayout() {
 	c.triangle.SetColor(gfx.Red)
 	c.triangle.SetScale(mgl32.Vec3{.2, .2})
+	c.triangle.SetBlurEnabled(true)
+	c.triangle.SetBlurIntensity(3)
+
 	triangleLabel := gfx.NewLabel()
 	triangleLabel.SetText("A")
 	triangleLabel.SetScale(mgl32.Vec3{.5, .5})
@@ -26,6 +29,8 @@ func (c *Carousel) defaultLayout() {
 
 	c.quad.SetColor(gfx.Green)
 	c.quad.SetScale(mgl32.Vec3{.15, .15})
+	c.quad.SetBlurEnabled(true)
+	c.quad.SetBlurIntensity(3)
 	quadLabel := gfx.NewLabel()
 	quadLabel.SetText("B")
 	quadLabel.SetScale(mgl32.Vec3{.7, .7})
@@ -33,6 +38,8 @@ func (c *Carousel) defaultLayout() {
 
 	c.dot.SetColor(gfx.Blue)
 	c.dot.SetScale(mgl32.Vec3{.1, .1})
+	c.dot.SetBlurEnabled(true)
+	c.dot.SetBlurIntensity(3)
 	dotLabel := gfx.NewLabel()
 	dotLabel.SetText("C")
 	dotLabel.SetScale(mgl32.Vec3{.9, .9})
@@ -72,7 +79,7 @@ func (c *Carousel) Update(deltaTime int64) bool {
 	triangleX := math.Cos(float64(rotation+seatAngle)) * scaledX
 	triangleY := math.Sin(float64(rotation+seatAngle)) * scaledY
 	c.triangle.SetPosition(mgl32.Vec3{-float32(triangleX), float32(triangleY)})
-	c.triangle.SetRotationZ(rotation)
+	c.triangle.SetRotationZ(rotation * 2)
 
 	quadX := math.Cos(float64(rotation+seatAngle*3)) * scaledX
 	quadY := math.Sin(float64(rotation+seatAngle*3)) * scaledY
