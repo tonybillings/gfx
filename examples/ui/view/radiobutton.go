@@ -28,7 +28,7 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 	signalSource.SetFrequencyComponent3(defaultFreq3)
 
 	signalLine := gfx.NewSignalLine("", signalSampleCount)
-	signalLine.Label().SetMarginLeft(.01)
+	signalLine.Label().SetPaddingLeft(.01)
 	signalLine.SetAnchor(gfx.Center)
 	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Orange)
@@ -54,7 +54,7 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 	controlsLabel.SetAlignment(gfx.Left)
 	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.05)
-	controlsLabel.SetMarginBottom(.05)
+	controlsLabel.SetPaddingBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("%.0fHz + %.0fHz + %.0fHz signals @ %.0fHz sample rate",

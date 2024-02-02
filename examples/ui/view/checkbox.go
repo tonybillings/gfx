@@ -29,7 +29,7 @@ func newCheckBoxView(window *gfx.Window, signalSampleCount int, signalSource *si
 	hiPassFilter.SetEnabled(false)
 
 	signalLine := gfx.NewSignalLine("", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
+	signalLine.Label().SetFontSize(.2).SetPaddingLeft(.01)
 	signalLine.SetAnchor(gfx.Center)
 	signalLine.SetColor(gfx.Purple)
 	signalLine.SetThickness(1)

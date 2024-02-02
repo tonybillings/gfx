@@ -113,7 +113,7 @@ func (b *CheckButton) initLayout() {
 	b.text.SetAnchor(MiddleLeft)
 	b.text.SetScaleX(1 / b.WorldScale().X())
 	b.text.SetAlignment(Left)
-	b.text.SetMarginLeft(b.Scale().X() * 2.25)
+	b.text.SetPaddingLeft(b.Scale().X() * 2.25)
 	b.text.RefreshLayout()
 
 	b.originalFillColor = b.fill.Color()

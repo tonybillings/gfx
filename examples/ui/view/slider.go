@@ -23,7 +23,7 @@ func newRawSignalView(window *gfx.Window, signalSampleCount int, signalSource *s
 	signalSource.SetFrequencyComponent2(defaultHiFreq)
 
 	signalLine := gfx.NewSignalLine("Raw", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
+	signalLine.Label().SetFontSize(.2).SetPaddingLeft(.01)
 	signalLine.SetAnchor(gfx.TopCenter)
 	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Purple)
@@ -63,7 +63,7 @@ func newRawSignalView(window *gfx.Window, signalSampleCount int, signalSource *s
 	controlsLabel.SetAlignment(gfx.Left)
 	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetMarginBottom(.05)
+	controlsLabel.SetPaddingBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("%.0fHz + %.0fHz signals @ %.0fHz sample rate",
@@ -146,7 +146,7 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	filter.GenerateCoefficients(defaultCoeffCount, defaultRate, defaultCutoff)
 
 	signalLine := gfx.NewSignalLine("Low-Pass", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
+	signalLine.Label().SetFontSize(.2).SetPaddingLeft(.01)
 	signalLine.SetAnchor(gfx.TopCenter)
 	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Red)
@@ -187,7 +187,7 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	controlsLabel.SetAlignment(gfx.Left)
 	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetMarginBottom(.05)
+	controlsLabel.SetPaddingBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("Rate: %.0fHz, Cutoff: %.1fHz, Coeff: %d",
@@ -270,7 +270,7 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	filter.GenerateCoefficients(defaultCoeffCount, defaultRate, defaultCutoff)
 
 	signalLine := gfx.NewSignalLine("High-Pass", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
+	signalLine.Label().SetFontSize(.2).SetPaddingLeft(.01)
 	signalLine.SetAnchor(gfx.TopCenter)
 	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Blue)
@@ -311,7 +311,7 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	controlsLabel.SetAlignment(gfx.Left)
 	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetMarginBottom(.05)
+	controlsLabel.SetPaddingBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("Rate: %.0fHz, Cutoff: %.1fHz, Coeff: %d",
@@ -395,7 +395,7 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	filter.GenerateCoefficients(defaultCoeffCount, defaultRate, defaultCutoffLo, defaultCutoffHi)
 
 	signalLine := gfx.NewSignalLine("Band-Pass", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
+	signalLine.Label().SetFontSize(.2).SetPaddingLeft(.01)
 	signalLine.SetAnchor(gfx.TopCenter)
 	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Red)
@@ -436,7 +436,7 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	controlsLabel.SetAlignment(gfx.Left)
 	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetMarginBottom(.05)
+	controlsLabel.SetPaddingBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("Rate: %.0fHz, LoCut: %.1fHz, HiCut: %.1fHz, Coeff: %d",

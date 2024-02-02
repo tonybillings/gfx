@@ -104,48 +104,6 @@ func (l *Label) SetColor(rgba color.RGBA) WindowObject {
 	return l
 }
 
-func (l *Label) Margin() *Margin {
-	l.stateMutex.Lock()
-	m := l.textView.margin
-	l.stateMutex.Unlock()
-	return &m
-}
-
-func (l *Label) SetMargin(margin Margin) WindowObject {
-	l.stateMutex.Lock()
-	l.textView.margin = margin
-	l.stateMutex.Unlock()
-	return l
-}
-
-func (l *Label) SetMarginTop(margin float32) WindowObject {
-	l.stateMutex.Lock()
-	l.textView.margin.Top = margin
-	l.stateMutex.Unlock()
-	return l
-}
-
-func (l *Label) SetMarginRight(margin float32) WindowObject {
-	l.stateMutex.Lock()
-	l.textView.margin.Right = margin
-	l.stateMutex.Unlock()
-	return l
-}
-
-func (l *Label) SetMarginBottom(margin float32) WindowObject {
-	l.stateMutex.Lock()
-	l.textView.margin.Bottom = margin
-	l.stateMutex.Unlock()
-	return l
-}
-
-func (l *Label) SetMarginLeft(margin float32) WindowObject {
-	l.stateMutex.Lock()
-	l.textView.margin.Left = margin
-	l.stateMutex.Unlock()
-	return l
-}
-
 /******************************************************************************
  Label Functions
 ******************************************************************************/
