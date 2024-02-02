@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	defaultCheckButtonName = "CheckButton"
 	defaultCheckBoxName    = "CheckBox"
 	defaultRadioButtonName = "RadioButton"
 )
@@ -32,7 +31,7 @@ type CheckButton struct {
 ******************************************************************************/
 
 func (b *CheckButton) Init(window *Window) (ok bool) {
-	if !b.label.Init(window) || !b.bounds.Init(window) || !b.check.Init(window) {
+	if !b.text.Init(window) || !b.bounds.Init(window) || !b.check.Init(window) {
 		return false
 	}
 
@@ -72,16 +71,16 @@ func (b *CheckButton) SetColor(rgba color.RGBA) WindowObject {
 	return b.SetBorderColor(rgba)
 }
 
-func (b *CheckButton) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	b.Button.MaintainAspectRatio(maintainAspectRatio)
-	b.check.MaintainAspectRatio(maintainAspectRatio)
+func (b *CheckButton) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+	b.Button.SetMaintainAspectRatio(maintainAspectRatio)
+	b.check.SetMaintainAspectRatio(maintainAspectRatio)
 	return b
 }
 
 func (b *CheckButton) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 	b.Button.Resize(oldWidth, oldHeight, newWidth, newHeight)
 	b.check.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	b.label.SetMarginLeft(b.window.ScaleX(b.Scale().X() * 1.25))
+	b.text.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
 
 func (b *CheckButton) SetWindow(window *Window) WindowObject {
@@ -99,8 +98,6 @@ func (b *CheckButton) defaultLayout() {
 
 	b.SetBorderThickness(0.15)
 
-	b.label.SetAnchor(MiddleLeft)
-
 	b.check.SetColor(Black)
 	b.check.SetScale(mgl32.Vec3{.5, .5})
 	b.check.SetVisibility(false)
@@ -113,11 +110,15 @@ func (b *CheckButton) initLayout() {
 	b.bounds.OnPMouseUp(b.onMouseUp)
 	b.bounds.OnPMouseClick(b.onClick)
 
-	b.label.SetMarginLeft(b.window.ScaleX(b.Scale().X() * 1.25))
+	b.text.SetAnchor(MiddleLeft)
+	b.text.SetScaleX(1 / b.WorldScale().X())
+	b.text.SetAlignment(Left)
+	b.text.SetMarginLeft(b.Scale().X() * 2.25)
+	b.text.RefreshLayout()
 
 	b.originalFillColor = b.fill.Color()
 	b.originalBorderColor = b.border.Color()
-	b.originalTextColor = b.label.Color()
+	b.originalTextColor = b.text.Color()
 }
 
 func (b *CheckButton) onClick(sender WindowObject, _ *MouseState) {
@@ -148,7 +149,7 @@ func (b *CheckButton) onMouseEnter(_ WindowObject, _ *MouseState) {
 		b.check.SetColor(b.mouseEnterBorderColor)
 	}
 	if b.mouseEnterTextColorSet.Load() {
-		b.label.SetColor(b.mouseEnterTextColor)
+		b.text.SetColor(b.mouseEnterTextColor)
 	}
 }
 
@@ -161,7 +162,7 @@ func (b *CheckButton) onMouseLeave(_ WindowObject, _ *MouseState) {
 		b.check.SetColor(b.originalBorderColor)
 	}
 	if b.mouseEnterTextColorSet.Load() {
-		b.label.SetColor(b.originalTextColor)
+		b.text.SetColor(b.originalTextColor)
 	}
 }
 
@@ -174,7 +175,7 @@ func (b *CheckButton) onMouseDown(_ WindowObject, _ *MouseState) {
 		b.check.SetColor(b.mouseDownBorderColor)
 	}
 	if b.mouseDownTextColorSet.Load() {
-		b.label.SetColor(b.mouseDownTextColor)
+		b.text.SetColor(b.mouseDownTextColor)
 	}
 }
 
@@ -187,7 +188,7 @@ func (b *CheckButton) onMouseUp(_ WindowObject, _ *MouseState) {
 		b.check.SetColor(b.originalBorderColor)
 	}
 	if b.mouseDownTextColorSet.Load() {
-		b.label.SetColor(b.originalTextColor)
+		b.text.SetColor(b.originalTextColor)
 	}
 }
 
@@ -228,10 +229,10 @@ func (b *CheckButton) SetMouseDownColor(rgba color.RGBA) *CheckButton {
  New CheckButton Functions
 ******************************************************************************/
 
-func newCheckButton(circular ...bool) *CheckButton {
+func newCheckButton(name string, circular ...bool) *CheckButton {
 	b := &CheckButton{}
 	b.View.WindowObjectBase = *NewObject(nil)
-	b.label = NewLabel()
+	b.text = NewLabel()
 
 	if len(circular) > 0 && circular[0] {
 		b.circular = true
@@ -246,7 +247,7 @@ func newCheckButton(circular ...bool) *CheckButton {
 		b.check = NewQuad()
 	}
 
-	b.SetName(defaultCheckButtonName)
+	b.SetName(name)
 	b.check.SetParent(b)
 
 	b.defaultLayout()
@@ -255,9 +256,9 @@ func newCheckButton(circular ...bool) *CheckButton {
 }
 
 func NewCheckBox() *CheckButton {
-	return newCheckButton(false)
+	return newCheckButton(defaultCheckBoxName, false)
 }
 
 func NewRadioButton() *CheckButton {
-	return newCheckButton(true)
+	return newCheckButton(defaultRadioButtonName, true)
 }

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	windowTitle       = "GFX Test"
+	windowTitle       = "UI Test"
 	windowWidth       = 1900 // try changing the width/height!
 	windowHeight      = 1000
 	targetFramerate   = 60 // decrease to assign more CPU time to sample acquisition efforts

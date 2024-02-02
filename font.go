@@ -3,7 +3,6 @@ package gfx
 import (
 	_ "embed"
 	"fmt"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
@@ -41,31 +40,32 @@ var (
 )
 
 func initFonts() error {
-	defaultFont, err := truetype.Parse([]byte(defaultFontTtf))
-	if err != nil {
-		return err
-	}
-
-	squareFont, err := truetype.Parse([]byte(squareFontTtf))
-	if err != nil {
-		return err
-	}
-
-	anitaFont, err := truetype.Parse([]byte(anitaFontTtf))
-	if err != nil {
-		return err
-	}
-
 	loadedFonts = make(map[string]*truetype.Font)
-	loadedFonts[DefaultFont] = defaultFont
-	loadedFonts[SquareFont] = squareFont
-	loadedFonts[AnitaFont] = anitaFont
+
+	if f, err := truetype.Parse([]byte(defaultFontTtf)); err == nil {
+		loadedFonts[DefaultFont] = f
+	} else {
+		return err
+	}
+
+	if f, err := truetype.Parse([]byte(squareFontTtf)); err == nil {
+		loadedFonts[SquareFont] = f
+	} else {
+		return err
+	}
+
+	if f, err := truetype.Parse([]byte(anitaFontTtf)); err == nil {
+		loadedFonts[AnitaFont] = f
+	} else {
+		return err
+	}
 
 	return loadFonts()
 }
 
-func loadFonts() error {
-	info, err := os.Stat(fontsDir)
+func loadFonts() (err error) {
+	var info os.FileInfo
+	info, err = os.Stat(fontsDir)
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -76,7 +76,8 @@ func loadFonts() error {
 		return nil
 	}
 
-	files, err := os.ReadDir(fontsDir)
+	var files []os.DirEntry
+	files, err = os.ReadDir(fontsDir)
 	if err != nil {
 		return err
 	}
@@ -85,16 +86,16 @@ func loadFonts() error {
 		if file.Type().IsRegular() && strings.ToLower(filepath.Ext(file.Name())) == ".ttf" {
 			fullPath := filepath.Join(fontsDir, file.Name())
 
-			data, e := os.ReadFile(fullPath)
-			if e != nil {
-				fmt.Printf("Could not read font file: %v\n", e)
-				return e
+			var data []byte
+			data, err = os.ReadFile(fullPath)
+			if err != nil {
+				return fmt.Errorf("error reading font file: %w", err)
 			}
 
-			f, e := truetype.Parse(data)
-			if e != nil {
-				fmt.Printf("Could not parse font file: %v\n", e)
-				return e
+			var f *truetype.Font
+			f, err = truetype.Parse(data)
+			if err != nil {
+				return fmt.Errorf("error parsing font file: %w", err)
 			}
 
 			extension := filepath.Ext(file.Name())
@@ -107,10 +108,10 @@ func loadFonts() error {
 
 	for name, asset := range loadedAssets {
 		if strings.ToLower(filepath.Ext(name)) == ".ttf" {
-			f, e := truetype.Parse(asset)
-			if e != nil {
-				fmt.Printf("Could not parse font file: %v\n", e)
-				return e
+			var f *truetype.Font
+			f, err = truetype.Parse(asset)
+			if err != nil {
+				return fmt.Errorf("error parsing font file: %w", err)
 			}
 
 			loadedFontsMutex.Lock()
@@ -133,89 +134,85 @@ func getFontOrDefault(fontName string) *truetype.Font {
 	}
 }
 
-func rasterizeText(windowWidth, windowHeight int, text string, fontFamily string, fontSize float32,
-	position mgl32.Vec3, rgba color.RGBA, alignment Alignment, useCache bool) *image.RGBA {
+func rasterizeText(text string, fontFamily string, alignment Alignment, rgba color.RGBA,
+	windowWidth, windowHeight int, scaleX, scaleY float32, maintainAspectRatio, useCache bool) *image.RGBA {
 
-	id := fmt.Sprintf("%d%d%s%s%f%v%v%d", windowWidth, windowHeight, text, fontFamily, fontSize, position, rgba, alignment)
+	id := fmt.Sprintf("%s%s%v%v%d%d%f%f%v", text, fontFamily, alignment, rgba, windowWidth, windowHeight, scaleX, scaleY, maintainAspectRatio)
 
-	var img *image.RGBA
-	var ok bool
 	if useCache {
-		if img, ok = renderedLabels[id]; ok {
+		if img, ok := renderedLabels[id]; ok {
 			return img
 		}
-		img = image.NewRGBA(image.Rect(0, 0, windowWidth, windowHeight))
-		renderedLabels[id] = img
-	} else {
-		img = image.NewRGBA(image.Rect(0, 0, windowWidth, windowHeight))
 	}
 
 	textFont := getFontOrDefault(fontFamily)
+
+	scale := [2]float32{}
+	if maintainAspectRatio {
+		switch {
+		case windowWidth > windowHeight:
+			scale[0] = scaleX * (float32(windowHeight) / float32(windowWidth))
+			scale[1] = scaleY
+		case windowHeight > windowWidth:
+			scale[0] = scaleX
+			scale[1] = scaleY * (float32(windowWidth) / float32(windowHeight))
+		default:
+			scale[0] = scaleX
+			scale[1] = scaleY
+		}
+	} else {
+		scale[0] = scaleX
+		scale[1] = scaleY
+	}
+
+	absFontSize := float64(scale[1] * float32(windowHeight))
+
+	img := image.NewRGBA(image.Rect(0, 0, int(scale[0]*float32(windowWidth)), int(scale[1]*float32(windowHeight))))
+
 	ctx := freetype.NewContext()
 	ctx.SetFont(textFont)
-
-	ctx.SetDPI(72.0)
-
-	absFontSize := float64(windowHeight) * float64(fontSize)
-	if windowHeight > windowWidth {
-		absFontSize *= float64(windowWidth) / float64(windowHeight)
-	}
-
-	fpFontSize := fixed.Int26_6(absFontSize)
 	ctx.SetFontSize(absFontSize)
-
-	ctx.SetClip(img.Bounds())
-	ctx.SetDst(img)
-	ctx.SetSrc(image.NewUniform(rgba))
-
-	textHeightInPixels := measureTextHeight(textFont, text, fpFontSize)
-	textHeightNormalized := ((textHeightInPixels) / float32(windowHeight)) * 2.0
-
-	textWidthNormalized := (measureTextWidth(textFont, text, fpFontSize) / float32(windowWidth)) * 2.0
-
-	switch alignment {
-	case TopLeft:
-		position[1] -= textHeightNormalized
-	case MiddleLeft:
-		position[1] -= textHeightNormalized * .5
-	case BottomLeft:
-		break
-	case TopCenter:
-		position[0] -= textWidthNormalized * .5
-	case Center:
-		position[0] -= textWidthNormalized * .5
-		position[1] -= textHeightNormalized * .5
-	case BottomCenter:
-		position[0] -= textWidthNormalized * .5
-		position[1] -= textHeightNormalized
-	case TopRight:
-		position[1] -= textHeightNormalized
-		position[0] -= textWidthNormalized
-	case MiddleRight:
-		position[1] -= textHeightNormalized * .5
-		position[0] -= textWidthNormalized
-	case BottomRight:
-		position[0] -= textWidthNormalized
-	}
-
-	posX := ((position[0] + 1.0) * .5) * float32(windowWidth)
-	posY := (1.0 - ((position[1] + 1.0) * .5)) * float32(windowHeight)
-	pt := freetype.Pt(int(posX), int(posY))
+	ctx.SetDPI(72.0)
 	ctx.SetHinting(font.HintingVertical)
+	ctx.SetClip(img.Bounds())
+	ctx.SetSrc(image.NewUniform(rgba))
+	ctx.SetDst(img)
+
+	fpFontSize := fixed.Int26_6(scale[1] * float32(windowHeight))
+	textWidth := measureTextWidth(textFont, text, fpFontSize)
+	textHeight := measureTextHeight(textFont, text, fpFontSize)
+
+	shapeWidth := float32(img.Bounds().Size().X)
+	shapeHeight := float32(img.Bounds().Size().Y)
+
+	hSpacing := 0
+	vSpacing := int((shapeHeight + textHeight) * 0.5)
+	switch alignment {
+	case Centered:
+		hSpacing = int((shapeWidth - float32(textWidth)) * 0.5)
+	case Right:
+		hSpacing = int(shapeWidth - float32(textWidth))
+	}
+	pt := freetype.Pt(hSpacing, vSpacing)
 
 	_, _ = ctx.DrawString(text, pt)
+
+	if useCache {
+		renderedLabels[id] = img
+	}
 
 	return img
 }
 
-func measureTextWidth(f *truetype.Font, text string, scale fixed.Int26_6) float32 {
+func measureTextWidth(f *truetype.Font, text string, scale fixed.Int26_6) float64 {
 	var totalWidth fixed.Int26_6
 	for _, runeValue := range text {
 		glyphIndex := f.Index(runeValue)
 		hMetric := f.HMetric(scale, glyphIndex)
 		totalWidth += hMetric.AdvanceWidth
 	}
-	return float32(totalWidth)
+
+	return float64(totalWidth)
 }
 
 func measureTextHeight(f *truetype.Font, text string, scale fixed.Int26_6) float32 {

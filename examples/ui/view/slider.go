@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"tonysoft.com/gfx"
 	"tonysoft.com/gfx/examples/ui/signal"
@@ -34,6 +35,20 @@ func newRawSignalView(window *gfx.Window, signalSampleCount int, signalSource *s
 	signalLine.EnableInspector()
 	signalLine.SetInspectorAnchor(gfx.TopRight)
 
+	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !signalLine.Enabled() {
+			return
+		}
+		signalLine.SetThickness(signalLine.Thickness() + 1)
+	})
+
+	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !signalLine.Enabled() {
+			return
+		}
+		signalLine.SetThickness(signalLine.Thickness() - 1)
+	})
+
 	controls := gfx.NewView()
 	controls.SetScaleX(.3)
 	controls.SetScaleY(.2)
@@ -44,12 +59,11 @@ func newRawSignalView(window *gfx.Window, signalSampleCount int, signalSource *s
 	})
 
 	controlsLabel := gfx.NewLabel()
+	controlsLabel.SetAnchor(gfx.TopLeft)
+	controlsLabel.SetAlignment(gfx.Left)
+	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetAnchor(gfx.MiddleLeft)
-	controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .03)})
-	controls.OnResize(func(_, _, _, _ int32) {
-		controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .03)})
-	})
+	controlsLabel.SetMarginBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("%.0fHz + %.0fHz signals @ %.0fHz sample rate",
@@ -145,6 +159,20 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	signalLine.SetInspectorAnchor(gfx.TopRight)
 	signalLine.AddFilter(filter)
 
+	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !signalLine.Enabled() {
+			return
+		}
+		signalLine.SetThickness(signalLine.Thickness() + 1)
+	})
+
+	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !signalLine.Enabled() {
+			return
+		}
+		signalLine.SetThickness(signalLine.Thickness() - 1)
+	})
+
 	controls := gfx.NewView()
 	controls.SetScaleX(.3)
 	controls.SetScaleY(.2)
@@ -155,12 +183,11 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	})
 
 	controlsLabel := gfx.NewLabel()
+	controlsLabel.SetAnchor(gfx.TopLeft)
+	controlsLabel.SetAlignment(gfx.Left)
+	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetAnchor(gfx.MiddleLeft)
-	controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .03)})
-	controls.OnResize(func(_, _, _, _ int32) {
-		controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .03)})
-	})
+	controlsLabel.SetMarginBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("Rate: %.0fHz, Cutoff: %.1fHz, Coeff: %d",
@@ -256,6 +283,20 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	signalLine.SetInspectorAnchor(gfx.TopRight)
 	signalLine.AddFilter(filter)
 
+	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !signalLine.Enabled() {
+			return
+		}
+		signalLine.SetThickness(signalLine.Thickness() + 1)
+	})
+
+	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !signalLine.Enabled() {
+			return
+		}
+		signalLine.SetThickness(signalLine.Thickness() - 1)
+	})
+
 	controls := gfx.NewView()
 	controls.SetScaleX(.3)
 	controls.SetScaleY(.2)
@@ -266,12 +307,11 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	})
 
 	controlsLabel := gfx.NewLabel()
+	controlsLabel.SetAnchor(gfx.TopLeft)
+	controlsLabel.SetAlignment(gfx.Left)
+	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetAnchor(gfx.MiddleLeft)
-	controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .03)})
-	controls.OnResize(func(_, _, _, _ int32) {
-		controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .03)})
-	})
+	controlsLabel.SetMarginBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("Rate: %.0fHz, Cutoff: %.1fHz, Coeff: %d",
@@ -368,6 +408,20 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	signalLine.SetInspectorAnchor(gfx.TopRight)
 	signalLine.AddFilter(filter)
 
+	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !signalLine.Enabled() {
+			return
+		}
+		signalLine.SetThickness(signalLine.Thickness() + 1)
+	})
+
+	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !signalLine.Enabled() {
+			return
+		}
+		signalLine.SetThickness(signalLine.Thickness() - 1)
+	})
+
 	controls := gfx.NewView()
 	controls.SetScaleX(.4)
 	controls.SetScaleY(.2)
@@ -378,12 +432,11 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	})
 
 	controlsLabel := gfx.NewLabel()
+	controlsLabel.SetAnchor(gfx.TopLeft)
+	controlsLabel.SetAlignment(gfx.Left)
+	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
 	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetAnchor(gfx.MiddleLeft)
-	controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .03)})
-	controls.OnResize(func(_, _, _, _ int32) {
-		controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .03)})
-	})
+	controlsLabel.SetMarginBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("Rate: %.0fHz, LoCut: %.1fHz, HiCut: %.1fHz, Coeff: %d",

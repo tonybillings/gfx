@@ -11,17 +11,16 @@ func label(text string, rgba color.RGBA) *gfx.Label {
 	lbl := gfx.NewLabel()
 	lbl.
 		SetText(text).
+		SetFontSize(.1).
 		SetColor(rgba).
-		SetScale(mgl32.Vec3{.1, .1, .1}).
 		SetPositionY(-.7)
 	return lbl
 }
 
 func tab0() gfx.WindowObject {
 	lbl := gfx.NewLabel()
-	lbl.
-		SetText("Use TAB/ARROW keys to navigate").
-		SetFontSize(.03)
+	lbl.SetText("Use TAB/ARROW keys to navigate")
+	lbl.SetFontSize(.04)
 	return lbl
 }
 
@@ -46,7 +45,7 @@ func tab2() gfx.WindowObject {
 
 func tab3() gfx.WindowObject {
 	quad := gfx.NewQuad()
-	quad.SetTexture("test.png")
+	quad.SetTexture(gfx.NewTexture("test.png"))
 
 	container := gfx.NewObject(nil)
 	container.AddChild(quad)
@@ -66,7 +65,7 @@ func tab4() gfx.WindowObject {
 
 func tab5() gfx.WindowObject {
 	dot := gfx.NewDot()
-	dot.SetTexture("test.png")
+	dot.SetTexture(gfx.NewTexture("test.png"))
 
 	container := gfx.NewObject(nil)
 	container.AddChild(dot)
@@ -109,6 +108,33 @@ func tab8() gfx.WindowObject {
 	return container
 }
 
+func tab9() gfx.WindowObject {
+	carousel := NewCarousel()
+
+	topLeft := gfx.NewLabel()
+	topLeft.SetText("TopLeft anchored, Right aligned")
+	topLeft.SetMaintainAspectRatio(false)
+	topLeft.SetFillColor(gfx.Purple)
+	topLeft.SetColor(gfx.Magenta)
+	topLeft.SetScale(mgl32.Vec3{.5, .04})
+	topLeft.SetAnchor(gfx.TopLeft)
+	topLeft.SetAlignment(gfx.Right)
+	topLeft.SetPaddingRight(.01)
+
+	bottomCenter := gfx.NewLabel()
+	bottomCenter.SetText("BottomCenter anchored, Center aligned")
+	bottomCenter.SetMaintainAspectRatio(false)
+	bottomCenter.SetFillColor(gfx.Purple)
+	bottomCenter.SetColor(gfx.Magenta)
+	bottomCenter.SetScale(mgl32.Vec3{1, .04})
+	bottomCenter.SetAnchor(gfx.BottomCenter)
+	bottomCenter.SetAlignment(gfx.Centered)
+
+	container := gfx.NewObject(nil)
+	container.AddChildren(carousel, topLeft, bottomCenter)
+	return container
+}
+
 func New2DView() gfx.WindowObject {
 	if texBytes, err := os.ReadFile("test.png"); err == nil {
 		gfx.AddAsset("test.png", texBytes)
@@ -126,5 +152,6 @@ func New2DView() gfx.WindowObject {
 	tabGroup.AddChild(tab6())
 	tabGroup.AddChild(tab7())
 	tabGroup.AddChild(tab8())
+	tabGroup.AddChild(tab9())
 	return tabGroup
 }

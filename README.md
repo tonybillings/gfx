@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a relatively simple 2D/3D grahpics library originally written with a focus on   
+This is a relatively simple 2D/3D graphics library originally written with a focus on   
 rendering sensor data in realtime, without affecting the routine/process 
 responsible for communicating with the sensor (which could be a high-frequency, 
 time-sensitive process, etc).  The underlying graphics framework is OpenGL. 
@@ -65,6 +65,8 @@ Most, if not all, of the features are flexed in the example code.
 ![filters](img/filters.png)  
 
 ![radio](img/radio.png)  
+
+![label](img/label.png)
 
 ![square](img/square.png)  
 

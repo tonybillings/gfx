@@ -14,11 +14,11 @@ void main()
 {
     mat2 rot = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
 
-    vec2 pos = inPos - origin.xy;
-    pos = rot * pos;
-    pos = pos + origin.xy;
-    pos = pos * scale + position.xy;
+    vec2 adjustedPos = (inPos - origin.xy);
+    vec2 rotatedPos = rot * adjustedPos;
+    vec2 scaledPos = rotatedPos * scale;
+    vec2 finalPos = scaledPos + position.xy;
 
-    gl_Position = vec4(pos, position.z, 1.0);
+    gl_Position = vec4(finalPos, position.z, 1.0);
     UV = inUV;
 }

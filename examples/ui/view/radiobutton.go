@@ -28,7 +28,7 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 	signalSource.SetFrequencyComponent3(defaultFreq3)
 
 	signalLine := gfx.NewSignalLine("", signalSampleCount)
-	signalLine.Label().SetFontSize(.2).SetMarginLeft(.01)
+	signalLine.Label().SetMarginLeft(.01)
 	signalLine.SetAnchor(gfx.Center)
 	signalLine.SetMarginLeft(.3)
 	signalLine.SetColor(gfx.Orange)
@@ -50,12 +50,11 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 	})
 
 	controlsLabel := gfx.NewLabel()
-	controlsLabel.SetFontSize(.1)
-	controlsLabel.SetAnchor(gfx.MiddleLeft)
-	controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .045)})
-	controls.OnResize(func(_, _, _, _ int32) {
-		controlsLabel.SetPosition(mgl32.Vec3{window.ScaleX(-controls.WorldScale().X()), window.ScaleY(controls.WorldScale().Y() + .045)})
-	})
+	controlsLabel.SetAnchor(gfx.TopLeft)
+	controlsLabel.SetAlignment(gfx.Left)
+	controlsLabel.SetScaleX(1 / window.ScaleX(controls.WorldScale().X()))
+	controlsLabel.SetFontSize(.05)
+	controlsLabel.SetMarginBottom(.05)
 
 	updateControlsLabel := func() {
 		controlsLabel.SetText(fmt.Sprintf("%.0fHz + %.0fHz + %.0fHz signals @ %.0fHz sample rate",
@@ -80,8 +79,8 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 		if rate > rateMax {
 			rate = rateMax
 		}
-		signalSource.SetSampleRate(rate)
 
+		signalSource.SetSampleRate(rate)
 		signalLine.SetFFTSampleRate(rate)
 		updateControlsLabel()
 	})

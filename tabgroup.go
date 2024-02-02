@@ -26,7 +26,6 @@ const (
 	TabAndArrowKeys NavKeys = iota
 	TabKeyOnly
 	ArrowKeysOnly
-	NavKeysDisabled
 )
 
 /******************************************************************************

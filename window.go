@@ -60,6 +60,8 @@ type Window struct {
 	initialized atomic.Bool
 	cancelFunc  context.CancelFunc
 	stateMutex  sync.Mutex
+
+	readyChannels []chan bool
 }
 
 /******************************************************************************
@@ -115,7 +117,7 @@ func (w *Window) initTransitionQuad() {
 	w.tranQuad.
 		SetColor(w.ClearColor()).
 		SetOpacity(0).
-		MaintainAspectRatio(false)
+		SetMaintainAspectRatio(false)
 	w.tranQuad.Init(w)
 }
 
@@ -241,6 +243,8 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 	w.cancelFunc = cancelFunc
 
 	go func() {
+		runtime.LockOSThread()
+
 		window, err := newGlfwWindow(w.Title(), w.Width(), w.Height())
 		if err != nil {
 			cancelFunc()
@@ -254,14 +258,16 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 
 		w.initialized.Store(true)
 
-		runtime.LockOSThread()
-
 		w.stateMutex.Lock()
 		w.glwin = window
 		w.glwin.SetKeyCallback(w.keyEventCallback)
 		w.initTransitionQuad()
 		w.initObjects()
 		w.stateMutex.Unlock()
+
+		for _, c := range w.readyChannels {
+			close(c)
+		}
 
 		now := time.Now().UnixMicro()
 		lastTick := now
@@ -624,6 +630,14 @@ func (w *Window) EnableMouseTracking() *Window {
 	})
 
 	return w
+}
+
+func (w *Window) GetReadyChan() <-chan bool {
+	c := make(chan bool)
+	w.stateMutex.Lock()
+	w.readyChannels = append(w.readyChannels, c)
+	w.stateMutex.Unlock()
+	return c
 }
 
 /******************************************************************************

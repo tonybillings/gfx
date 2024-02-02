@@ -1,13 +1,13 @@
 package gfx
 
 /******************************************************************************
- Alignment
+ Anchor
 ******************************************************************************/
 
-type Alignment int
+type Anchor int
 
 const (
-	NoAlignment Alignment = iota
+	NoAnchor Anchor = iota
 	TopLeft
 	MiddleLeft
 	BottomLeft
@@ -17,6 +17,18 @@ const (
 	TopRight
 	MiddleRight
 	BottomRight
+)
+
+/******************************************************************************
+ Alignment
+******************************************************************************/
+
+type Alignment int
+
+const (
+	Centered Alignment = iota
+	Left
+	Right
 )
 
 /******************************************************************************

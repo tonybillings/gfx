@@ -13,6 +13,10 @@ import (
 
 func NewSignalsView(ctx context.Context, window *gfx.Window, signalSampleCount int) gfx.WindowObject {
 	sg := gfx.NewSignalGroup(signalSampleCount, 3, []color.RGBA{gfx.Green, gfx.Blue, gfx.Orange, gfx.Purple}...)
+	sg.EnableInspector()
+	sg.SetInspectorAnchor(gfx.TopCenter)
+	sg.SetInspectorMargin(gfx.Margin{Top: .05})
+
 	const signalCount = 20
 
 	labels := []string{"Sine / Green", "Square / Blue", "Saw / Orange", "Random / Purple"}
@@ -51,6 +55,8 @@ func NewSignalsView(ctx context.Context, window *gfx.Window, signalSampleCount i
 	container.AddChild(thicknessHelp)
 
 	go func(ctx context.Context, sg *gfx.SignalGroup) {
+		<-window.GetReadyChan()
+
 		x := 0
 		for {
 			select {
@@ -143,32 +149,34 @@ func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampl
 
 	signalCount := 3
 
-	go func(ctx context.Context, sg *gfx.SignalGroup) {
-		labels := []string{"Square", "Saw", "Random"}
-		labelsIdx := 0
+	labels := []string{"Square", "Saw", "Random"}
+	labelsIdx := 0
 
-		for i := 0; i < signalCount; i++ {
-			sg.New(labels[labelsIdx])
-			labelsIdx = (labelsIdx + 1) % len(labels)
+	for i := 0; i < signalCount; i++ {
+		sg.New(labels[labelsIdx])
+		labelsIdx = (labelsIdx + 1) % len(labels)
+	}
+
+	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !sg.Enabled() {
+			return
 		}
+		for _, s := range sg.Signals() {
+			s.SetThickness(s.Thickness() + 1)
+		}
+	})
 
-		window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
-			if !sg.Enabled() {
-				return
-			}
-			for _, s := range sg.Signals() {
-				s.SetThickness(s.Thickness() + 1)
-			}
-		})
+	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+		if !sg.Enabled() {
+			return
+		}
+		for _, s := range sg.Signals() {
+			s.SetThickness(s.Thickness() - 1)
+		}
+	})
 
-		window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
-			if !sg.Enabled() {
-				return
-			}
-			for _, s := range sg.Signals() {
-				s.SetThickness(s.Thickness() - 1)
-			}
-		})
+	go func(ctx context.Context, sg *gfx.SignalGroup) {
+		<-window.GetReadyChan()
 
 		x := 0
 		randomSample := rand.Float64()

@@ -45,10 +45,9 @@ type Model struct {
 	lightColorUniformLoc int32
 	viewPosUniformLoc    int32
 
-	texture         uint32
-	textureFilename string
-	indices         []uint32
-	materials       []*obj.Material
+	texture   Texture
+	indices   []uint32
+	materials []*obj.Material
 
 	camera   *Camera
 	lights   []*Light
@@ -64,8 +63,8 @@ func (m *Model) uninitGl() {
 		return
 	}
 	m.SetInitialized(false)
-	m.stateMutex.Lock()
 
+	m.stateMutex.Lock()
 	gl.BindVertexArray(m.vao)
 	gl.DisableVertexAttribArray(0)
 	gl.DisableVertexAttribArray(1)
@@ -73,10 +72,9 @@ func (m *Model) uninitGl() {
 	gl.BindVertexArray(0)
 	gl.DeleteBuffers(1, &m.vbo)
 	gl.DeleteVertexArrays(1, &m.vao)
-
-	gl.DeleteTextures(1, &m.texture)
-
 	m.stateMutex.Unlock()
+
+	m.uninitTexture()
 }
 
 func (m *Model) initGl() {
@@ -130,7 +128,7 @@ func (m *Model) Init(window *Window) (ok bool) {
 	}
 
 	m.loadOBJ()
-	m.loadTexture()
+	m.initTexture()
 	m.initGl()
 	m.initialized.Store(true)
 
@@ -155,7 +153,10 @@ func (m *Model) Draw(deltaTime int64) (ok bool) {
 	viewProjMat := projMat.Mul4(viewMat)
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, m.texture)
+
+	if m.texture != nil {
+		gl.BindTexture(gl.TEXTURE_2D, m.texture.name())
+	}
 
 	m.stateMutex.Lock()
 
@@ -305,12 +306,18 @@ func (m *Model) loadOBJ() {
 	m.stateMutex.Unlock()
 }
 
-func (m *Model) loadTexture() {
+func (m *Model) initTexture() {
 	m.stateMutex.Lock()
-	if m.textureFilename == "" {
-		m.texture = createImage(White)
-	} else {
-		m.texture = loadImage(m.textureFilename)
+	if m.texture != nil {
+		m.texture.init()
+	}
+	m.stateMutex.Unlock()
+}
+
+func (m *Model) uninitTexture() {
+	m.stateMutex.Lock()
+	if m.texture != nil {
+		m.texture.close()
 	}
 	m.stateMutex.Unlock()
 }
@@ -363,16 +370,9 @@ func (m *Model) SetMTL(pathToMtl string) *Model {
 	return m
 }
 
-func (m *Model) Texture() string {
+func (m *Model) SetTexture(texture Texture) *Model {
 	m.stateMutex.Lock()
-	tex := m.textureFilename
-	m.stateMutex.Unlock()
-	return tex
-}
-
-func (m *Model) SetTexture(pathToPng string) *Model {
-	m.stateMutex.Lock()
-	m.textureFilename = pathToPng
+	m.texture = texture
 	m.stateChanged.Store(true)
 	m.stateMutex.Unlock()
 	return m

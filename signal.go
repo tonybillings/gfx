@@ -196,7 +196,7 @@ func (s *Signal) Average() float64 {
 	s.dataMutex.Lock()
 
 	sum := 0.0
-	for _, value := range s.data {
+	for _, value := range s.dataTransformed {
 		sum += value
 	}
 
@@ -212,7 +212,7 @@ func (s *Signal) DeltaAverage() float64 {
 		if i == s.dataIdx {
 			continue
 		}
-		s.deltas[i-1] = s.data[i] - s.data[i-1]
+		s.deltas[i-1] = s.dataTransformed[i] - s.dataTransformed[i-1]
 	}
 	sum := 0.0
 	for _, value := range s.deltas {
@@ -228,13 +228,13 @@ func (s *Signal) StdDev() float64 {
 	s.dataMutex.Lock()
 
 	sum := 0.0
-	for _, value := range s.data {
+	for _, value := range s.dataTransformed {
 		sum += value
 	}
 	mean := sum / float64(s.dataSize)
 
 	var sumOfSqrDiff float64
-	for _, value := range s.data {
+	for _, value := range s.dataTransformed {
 		diff := value - mean
 		sumOfSqrDiff += diff * diff
 	}
@@ -252,7 +252,7 @@ func (s *Signal) DeltaStdDev(calculateDeltas bool) float64 {
 			if i == s.dataIdx {
 				continue
 			}
-			s.deltas[i-1] = s.data[i] - s.data[i-1]
+			s.deltas[i-1] = s.dataTransformed[i] - s.dataTransformed[i-1]
 		}
 		sum := 0.0
 		for _, value := range s.deltas {
@@ -284,14 +284,14 @@ func (s *Signal) DeltaStdDev(calculateDeltas bool) float64 {
 
 func (s *Signal) MinValue() float64 {
 	s.dataMutex.Lock()
-	value := s.minData
+	value := s.minTransformedData
 	s.dataMutex.Unlock()
 	return value
 }
 
 func (s *Signal) MaxValue() float64 {
 	s.dataMutex.Lock()
-	value := s.maxData
+	value := s.maxTransformedData
 	s.dataMutex.Unlock()
 	return value
 }
@@ -361,6 +361,9 @@ func (s *Signal) DisableFFT() {
 }
 
 func (s *Signal) SetFFTSampleRate(rate float64) {
+	if s.fftTransformer == nil {
+		s.fftTransformer = NewFastFourierTransformer(s.dataSize, rate)
+	}
 	s.fftTransformer.SetSampleRate(rate)
 }
 
@@ -445,18 +448,17 @@ func (l *SignalLine) uninitGl() {
 }
 
 func (l *SignalLine) defaultLayout() {
+	l.label.SetAnchor(Center)
+	l.label.SetAlignment(Left)
 	l.label.SetFontSize(0.33)
-	l.label.SetAnchor(MiddleLeft)
-	l.label.SetPositionX(-l.WorldScale().X())
-	l.thickness = 1
-	l.MaintainAspectRatio(false)
-	l.fill.MaintainAspectRatio(false)
-	l.border.MaintainAspectRatio(false)
-	l.inspector.MaintainAspectRatio(false)
-}
 
-func (l *SignalLine) initLayout() {
-	l.label.SetPositionX(-l.WorldScale().X())
+	l.thickness = 1
+
+	l.SetMaintainAspectRatio(false)
+	l.fill.SetMaintainAspectRatio(false)
+	l.border.SetMaintainAspectRatio(false)
+	l.inspector.SetMaintainAspectRatio(false)
+	l.label.SetMaintainAspectRatio(false)
 }
 
 func (l *SignalLine) Init(window *Window) (ok bool) {
@@ -466,7 +468,6 @@ func (l *SignalLine) Init(window *Window) (ok bool) {
 
 	l.initVertices()
 	l.initGl()
-	l.initLayout()
 	l.initialized.Store(true)
 
 	if l.dataExportKey != glfw.KeyUnknown {
@@ -602,7 +603,7 @@ func (l *SignalLine) EnableInspector(inspectKey ...glfw.Key) {
 	})
 }
 
-func (l *SignalLine) SetInspectorAnchor(anchor Alignment) {
+func (l *SignalLine) SetInspectorAnchor(anchor Anchor) {
 	l.inspector.panel.SetAnchor(anchor)
 }
 
@@ -657,11 +658,10 @@ func (l *SignalLine) EnableDataExportKey(key glfw.Key) *SignalLine {
  SignalGroup Functions
 ******************************************************************************/
 
-func (g *SignalGroup) initLayout(window *Window) {
-	g.View.Init(window)
-	g.fill.MaintainAspectRatio(false)
-	g.border.MaintainAspectRatio(false)
-	g.inspector.MaintainAspectRatio(false)
+func (g *SignalGroup) initLayout() {
+	g.fill.SetMaintainAspectRatio(false)
+	g.border.SetMaintainAspectRatio(false)
+	g.inspector.SetMaintainAspectRatio(false)
 }
 
 func (g *SignalGroup) updateSignalLayout() {
@@ -685,7 +685,7 @@ func (g *SignalGroup) Init(window *Window) (ok bool) {
 		return false
 	}
 
-	g.initLayout(window)
+	g.initLayout()
 	g.initialized.Store(true)
 
 	if g.dataExportKey != glfw.KeyUnknown {
@@ -822,7 +822,7 @@ func (g *SignalGroup) EnableInspector(inspectKey ...glfw.Key) {
 	})
 }
 
-func (g *SignalGroup) SetInspectorAnchor(anchor Alignment) {
+func (g *SignalGroup) SetInspectorAnchor(anchor Anchor) {
 	g.inspector.panel.SetAnchor(anchor)
 }
 
@@ -904,20 +904,9 @@ func (i *SignalInspector) defaultLayout() {
 }
 
 func (i *SignalInspector) initLayout(window *Window) {
-	i.minValue.SetFontSize(i.fontSize)
-	i.maxValue.SetFontSize(i.fontSize)
-	i.avg.SetFontSize(i.fontSize)
-	i.std.SetFontSize(i.fontSize)
-	i.deltaAvg.SetFontSize(i.fontSize)
-	i.deltaStd.SetFontSize(i.fontSize)
-	i.sample.SetFontSize(i.fontSize)
-
 	i.panel.AddChildren(i.minValue, i.maxValue, i.avg, i.std, i.deltaAvg, i.deltaStd, i.sample)
-
 	i.panel.Init(window)
-
 	i.bounds.Init(window)
-
 	i.updateLayout()
 }
 
@@ -927,14 +916,22 @@ func (i *SignalInspector) updateLayout() {
 	i.RefreshLayout()
 	i.stateMutex.Lock()
 
+	i.minValue.SetFontSize(i.fontSize)
+	i.maxValue.SetFontSize(i.fontSize)
+	i.avg.SetFontSize(i.fontSize)
+	i.std.SetFontSize(i.fontSize)
+	i.deltaAvg.SetFontSize(i.fontSize)
+	i.deltaStd.SetFontSize(i.fontSize)
+	i.sample.SetFontSize(i.fontSize)
+
 	labelSpacing := float32(50.0)
-	i.minValue.SetFontSize(i.fontSize).SetPosition(mgl32.Vec3{0, i.window.ScaleY(0.15 * i.fontSize * labelSpacing * worldScaleY), 0})
-	i.maxValue.SetFontSize(i.fontSize).SetPosition(mgl32.Vec3{0, i.window.ScaleY(0.1 * i.fontSize * labelSpacing * worldScaleY), 0})
-	i.avg.SetFontSize(i.fontSize).SetPosition(mgl32.Vec3{0, i.window.ScaleY(0.05 * i.fontSize * labelSpacing * worldScaleY), 0})
-	i.std.SetFontSize(i.fontSize).SetPosition(mgl32.Vec3{0, i.window.ScaleY(0), 0})
-	i.deltaAvg.SetFontSize(i.fontSize).SetPosition(mgl32.Vec3{0, i.window.ScaleY(-0.05 * i.fontSize * labelSpacing * worldScaleY), 0})
-	i.deltaStd.SetFontSize(i.fontSize).SetPosition(mgl32.Vec3{0, i.window.ScaleY(-0.1 * i.fontSize * labelSpacing * worldScaleY), 0})
-	i.sample.SetFontSize(i.fontSize).SetPosition(mgl32.Vec3{0, i.window.ScaleY(-0.15 * i.fontSize * labelSpacing * worldScaleY), 0})
+	i.minValue.SetPosition(mgl32.Vec3{0, i.window.ScaleY(0.15 * i.fontSize * labelSpacing * worldScaleY), 0})
+	i.maxValue.SetPosition(mgl32.Vec3{0, i.window.ScaleY(0.1 * i.fontSize * labelSpacing * worldScaleY), 0})
+	i.avg.SetPosition(mgl32.Vec3{0, i.window.ScaleY(0.05 * i.fontSize * labelSpacing * worldScaleY), 0})
+	i.std.SetPosition(mgl32.Vec3{0, i.window.ScaleY(0), 0})
+	i.deltaAvg.SetPosition(mgl32.Vec3{0, i.window.ScaleY(-0.05 * i.fontSize * labelSpacing * worldScaleY), 0})
+	i.deltaStd.SetPosition(mgl32.Vec3{0, i.window.ScaleY(-0.1 * i.fontSize * labelSpacing * worldScaleY), 0})
+	i.sample.SetPosition(mgl32.Vec3{0, i.window.ScaleY(-0.15 * i.fontSize * labelSpacing * worldScaleY), 0})
 
 	i.stateMutex.Unlock()
 }
@@ -984,7 +981,7 @@ func (i *SignalInspector) Update(deltaTime int64) (ok bool) {
 			i.std.SetText(fmt.Sprintf("Std:  %.6f", signal.StdDev()))
 			i.deltaAvg.SetText(fmt.Sprintf("ΔAvg: %.6f", signal.DeltaAverage()))
 			i.deltaStd.SetText(fmt.Sprintf("ΔStd: %.6f", signal.DeltaStdDev(false)))
-			i.sample.SetText(fmt.Sprintf("%f", signal.data[sampleIdx]))
+			i.sample.SetText(fmt.Sprintf("%f", signal.dataTransformed[sampleIdx]))
 		}
 	}
 
@@ -1047,8 +1044,8 @@ func (i *SignalInspector) SetPanelSize(size float32) *SignalInspector {
 	return i
 }
 
-func (i *SignalInspector) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	i.bounds.MaintainAspectRatio(maintainAspectRatio)
+func (i *SignalInspector) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+	i.bounds.SetMaintainAspectRatio(maintainAspectRatio)
 	return i
 }
 
@@ -1111,7 +1108,7 @@ func NewSignalLine(label string, sampleCount int) *SignalLine {
 
 	sl.inspectorKey = glfw.KeyUnknown
 	sl.inspector = NewSignalInspector(sl)
-	sl.inspector.MaintainAspectRatio(false)
+	sl.inspector.SetMaintainAspectRatio(false)
 
 	sl.defaultLayout()
 
@@ -1136,7 +1133,7 @@ func NewSignalGroup(defaultSampleCount int, defaultLineThickness int, colors ...
 
 	sg.inspectorKey = glfw.KeyUnknown
 	sg.inspector = NewSignalInspector(sg)
-	sg.inspector.MaintainAspectRatio(false)
+	sg.inspector.SetMaintainAspectRatio(false)
 	sg.fill.SetParent(sg)
 	sg.border.SetParent(sg)
 	sg.enabled.Store(true)

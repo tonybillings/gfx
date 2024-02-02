@@ -62,7 +62,7 @@ func newCheckBoxView(window *gfx.Window, signalSampleCount int, signalSource *si
 	loPassCheckBox.SetText("Low-Pass Filter")
 	loPassCheckBox.SetColor(gfx.Red)
 	loPassCheckBox.SetTextColor(gfx.Red)
-	loPassCheckBox.SetMouseEnterColor(gfx.Lighten(gfx.Red, 70))
+	loPassCheckBox.SetMouseEnterColor(gfx.Lighten(gfx.Red, 100))
 	loPassCheckBox.SetPositionY(signalLine.Position().Y() - (signalLine.Scale().Y() + loPassCheckBox.Scale().Y() + 0.05))
 	loPassCheckBox.SetPositionX(window.ScaleX(-.7))
 	loPassCheckBox.OnCheckedChanged(func(_ gfx.WindowObject, checked bool) {
@@ -74,9 +74,9 @@ func newCheckBoxView(window *gfx.Window, signalSampleCount int, signalSource *si
 	hiPassCheckBox.SetText("High-Pass Filter")
 	hiPassCheckBox.SetTextColor(gfx.Blue)
 	hiPassCheckBox.SetColor(gfx.Blue)
-	hiPassCheckBox.SetMouseEnterColor(gfx.Lighten(gfx.Blue, 30))
+	hiPassCheckBox.SetMouseEnterColor(gfx.Lighten(gfx.Blue, 80))
 	hiPassCheckBox.SetPositionY(signalLine.Position().Y() - (signalLine.Scale().Y() + loPassCheckBox.Scale().Y() + 0.05))
-	hiPassCheckBox.SetPositionX(window.ScaleX(.1))
+	hiPassCheckBox.SetPositionX(window.ScaleX(.2))
 	hiPassCheckBox.OnCheckedChanged(func(_ gfx.WindowObject, checked bool) {
 		hiPassFilter.SetEnabled(checked)
 		updateSignalLineColor()

@@ -52,6 +52,7 @@ type WindowObject interface {
 	SetBlurEnabled(bool) WindowObject
 
 	Origin() mgl32.Vec3
+	WorldOrigin() mgl32.Vec3
 	SetOrigin(mgl32.Vec3) WindowObject
 
 	Position() mgl32.Vec3
@@ -79,9 +80,10 @@ type WindowObject interface {
 	HalfWidth() float32
 	HalfHeight() float32
 
-	MaintainAspectRatio(bool) WindowObject
-	Anchor() Alignment
-	SetAnchor(Alignment) WindowObject
+	MaintainAspectRatio() bool
+	SetMaintainAspectRatio(bool) WindowObject
+	Anchor() Anchor
+	SetAnchor(Anchor) WindowObject
 	Margin() *Margin
 	SetMargin(Margin) WindowObject
 	SetMarginTop(float32) WindowObject
@@ -129,7 +131,7 @@ type WindowObjectBase struct {
 	onResizeHandlers []func(int32, int32, int32, int32)
 
 	maintainAspectRatio bool
-	anchor              Alignment
+	anchor              Anchor
 	margin              Margin
 
 	stateMutex   sync.Mutex
@@ -273,18 +275,32 @@ func (o *WindowObjectBase) RefreshLayout() {
 	right := float32(1)
 	top := float32(1)
 	bottom := float32(-1)
-	if p := o.Parent(); p != nil {
-		if view, ok := p.(*View); ok {
-			if view.maintainAspectRatio {
-				left *= window.ScaleX(view.Scale().X())
-				top *= window.ScaleY(view.Scale().Y())
-			} else {
-				left *= view.Scale().X()
-				top *= view.Scale().Y()
-			}
 
-			right = left * -1
-			bottom = top * -1
+	adjustBounds := func(parent WindowObject) {
+		if parent.MaintainAspectRatio() {
+			left *= window.ScaleX(parent.Scale().X())
+			top *= window.ScaleY(parent.Scale().Y())
+		} else {
+			left *= parent.Scale().X()
+			top *= parent.Scale().Y()
+		}
+
+		right = left * -1
+		bottom = top * -1
+	}
+
+	if p := o.Parent(); p != nil {
+		switch p.(type) {
+		case *View:
+			adjustBounds(p)
+		case *Button:
+			adjustBounds(p)
+		case *Label:
+			adjustBounds(p)
+		case *SignalLine:
+			adjustBounds(p)
+		case *SignalGroup:
+			adjustBounds(p)
 		}
 	}
 
@@ -425,6 +441,19 @@ func (o *WindowObjectBase) Origin() mgl32.Vec3 {
 	o.stateMutex.Lock()
 	origin := mgl32.Vec3{o.origin[0], o.origin[1], o.origin[2]}
 	o.stateMutex.Unlock()
+	return origin
+}
+
+func (o *WindowObjectBase) WorldOrigin() mgl32.Vec3 {
+	o.stateMutex.Lock()
+	origin := mgl32.Vec3{o.origin[0], o.origin[1], o.origin[2]}
+	o.stateMutex.Unlock()
+
+	if p := o.Parent(); p != nil {
+		parentOrigin := p.WorldOrigin()
+		origin = origin.Add(parentOrigin)
+	}
+
 	return origin
 }
 
@@ -619,21 +648,28 @@ func (o *WindowObjectBase) HalfHeight() float32 {
 	return o.Height() * 0.5
 }
 
-func (o *WindowObjectBase) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+func (o *WindowObjectBase) MaintainAspectRatio() bool {
+	o.stateMutex.Lock()
+	maintainAspectRatio := o.maintainAspectRatio
+	o.stateMutex.Unlock()
+	return maintainAspectRatio
+}
+
+func (o *WindowObjectBase) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	o.stateMutex.Lock()
 	o.maintainAspectRatio = maintainAspectRatio
 	o.stateMutex.Unlock()
 	return o
 }
 
-func (o *WindowObjectBase) Anchor() Alignment {
+func (o *WindowObjectBase) Anchor() Anchor {
 	o.stateMutex.Lock()
 	a := o.anchor
 	o.stateMutex.Unlock()
 	return a
 }
 
-func (o *WindowObjectBase) SetAnchor(anchor Alignment) WindowObject {
+func (o *WindowObjectBase) SetAnchor(anchor Anchor) WindowObject {
 	o.stateMutex.Lock()
 	o.anchor = anchor
 	o.stateMutex.Unlock()
@@ -801,7 +837,7 @@ func NewObject(parent WindowObject) *WindowObjectBase {
 		rotation:            [3]float32{0, 0, 0},
 		scale:               [3]float32{1, 1, 1},
 		maintainAspectRatio: true,
-		anchor:              NoAlignment,
+		anchor:              NoAnchor,
 		children:            make([]WindowObject, 0),
 	}
 

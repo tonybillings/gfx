@@ -26,7 +26,7 @@ func onDepressed(button gfx.WindowObject, _ *gfx.MouseState) {
 	button.(*gfx.Button).SetBlurIntensity(blur)
 }
 
-// NewButtonView In this example, the buttons are aligned/anchored to the
+// NewButtonView In this example, the buttons are anchored to the
 // corners, regardless of their size (scale) or the size/ratio of the window.
 func NewButtonView(window *gfx.Window) gfx.WindowObject {
 	gfx.AddEmbeddedAsset("button.png", textures.Assets)
@@ -46,11 +46,11 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetMouseEnterTextColor(gfx.Green).
 		SetMouseDownTextColor(gfx.Yellow).
 		SetText("Click me!").
-		SetTextSize(textSize).
+		SetFontSize(textSize).
 		SetTextColor(gfx.Red).
 		OnClick(onClick).
-		MaintainAspectRatio(false).(*gfx.Button). // *see note...
-		SetTexture("button.png").
+		SetMaintainAspectRatio(false).(*gfx.Button). // *see note...
+		SetTexture(gfx.NewTexture("button.png")).
 		SetBorderColor(gfx.Magenta).
 		SetBorderThickness(.1).
 		SetFillColor(gfx.Blue).
@@ -65,7 +65,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 	button2 := gfx.NewButton()
 	button2.
 		SetText("Click me!").
-		SetTextSize(textSize).
+		SetFontSize(textSize).
 		SetTextColor(gfx.White).
 		OnClick(onClick).
 		SetBorderThickness(.05).
@@ -85,10 +85,10 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetMouseDownFillColor(gfx.Darken(gfx.Orange, .2)).
 		SetMouseEnterFillColor(gfx.Lighten(gfx.Orange, .2)).
 		SetText("Click me!").
-		SetTextSize(textSize).
+		SetFontSize(textSize).
 		SetTextColor(gfx.White).
 		OnClick(onClick).
-		MaintainAspectRatio(false).(*gfx.Button).
+		SetMaintainAspectRatio(false).(*gfx.Button).
 		SetBorderThickness(0).
 		SetBorderColor(gfx.Blue).
 		SetFillColor(gfx.Orange).
@@ -100,10 +100,10 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetMouseDownFillColor(gfx.Darken(button4.FillColor(), .4)).
 		SetMouseEnterFillColor(color.RGBA{R: 40, G: 40, B: 255, A: 255}).
 		SetText("Click me!").
-		SetTextSize(textSize).
+		SetFontSize(textSize).
 		SetTextColor(gfx.Red).
 		OnClick(onClick).
-		SetTexture("button.png").
+		SetTexture(gfx.NewTexture("button.png")).
 		SetBorderThickness(.1).
 		SetBorderColor(gfx.Magenta).
 		SetFillColor(gfx.Blue).
@@ -115,10 +115,10 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 
 	button5 := gfx.NewButton(true) // true = will be a circular button
 	button5.
-		SetText("Depress").SetTextSize(.24).SetTextColor(gfx.Green).
-		SetMouseEnterFillColor(color.RGBA{R: 255, G: 50, B: 50, A: 255}).
+		SetText("Depress").SetFontSize(.24).SetTextColor(gfx.Green).
+		SetMouseEnterFillColor(gfx.Lighten(gfx.Red, 80)).
 		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
-		MaintainAspectRatio(false).(*gfx.Button).
+		SetMaintainAspectRatio(false).(*gfx.Button).
 		SetBorderThickness(.05).
 		SetBorderColor(gfx.Opacity(gfx.White, .1)).
 		SetFillColor(gfx.Red).
@@ -128,8 +128,8 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 
 	button6 := gfx.NewButton(true) // true = will be a circular button
 	button6.
-		SetText("Depress").SetTextSize(.24).SetTextColor(gfx.Red).
-		SetMouseEnterFillColor(color.RGBA{R: 150, G: 255, B: 150, A: 255}).
+		SetText("Depress").SetFontSize(.24).SetTextColor(gfx.Red).
+		SetMouseEnterFillColor(gfx.Lighten(gfx.Green, 150)).
 		OnDepressed(onDepressed). // will trigger once per game tick when left mouse button is depressed
 		SetBorderThickness(.05).
 		SetBorderColor(gfx.Opacity(gfx.White, .1)).

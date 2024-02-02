@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	windowTitle     = "GFX Test"
+	windowTitle     = "3D Test"
 	windowWidth     = 1900
 	windowHeight    = 1000
 	targetFramerate = 60

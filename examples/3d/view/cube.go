@@ -26,7 +26,9 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	model.
 		SetOBJ("cube.obj").
 		SetMTL("cube.mtl").
-		SetTexture("cube.png").
+		SetTexture(gfx.NewTexture("cube.png")). // set using path to local PNG or loaded asset
+		//SetTexture(gfx.NewTexture(gfx.Red)). // set using a solid color
+		//SetTexture(gfx.NewTexture(myImage)). // set using *image.RGBA or *image.NRGBA
 		SetCamera(camera1).
 		AddLight(light1). // omit this for non-directional/specular lighting
 		SetName("Box")

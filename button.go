@@ -16,7 +16,7 @@ const (
 type Button struct {
 	View
 
-	label  *Label
+	text   *Label
 	bounds BoundingObject
 
 	mouseEnterFillColorSet   atomic.Bool
@@ -43,7 +43,7 @@ type Button struct {
 ******************************************************************************/
 
 func (b *Button) Init(window *Window) (ok bool) {
-	if !b.label.Init(window) || !b.bounds.Init(window) {
+	if !b.text.Init(window) || !b.bounds.Init(window) {
 		return false
 	}
 
@@ -62,7 +62,7 @@ func (b *Button) Update(deltaTime int64) (ok bool) {
 		return false
 	}
 
-	b.label.Update(deltaTime)
+	b.text.Update(deltaTime)
 	b.bounds.Update(deltaTime)
 
 	return b.View.Update(deltaTime)
@@ -77,31 +77,31 @@ func (b *Button) Draw(deltaTime int64) (ok bool) {
 		return false
 	}
 
-	return b.label.Draw(deltaTime)
+	return b.text.Draw(deltaTime)
 }
 
 func (b *Button) Close() {
-	b.label.Close()
+	b.text.Close()
 	b.bounds.Close()
 	b.View.Close()
 }
 
-func (b *Button) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	b.View.MaintainAspectRatio(maintainAspectRatio)
-	b.label.MaintainAspectRatio(maintainAspectRatio)
-	b.bounds.MaintainAspectRatio(maintainAspectRatio)
+func (b *Button) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+	b.View.SetMaintainAspectRatio(maintainAspectRatio)
+	b.text.SetMaintainAspectRatio(maintainAspectRatio)
+	b.bounds.SetMaintainAspectRatio(maintainAspectRatio)
 	return b
 }
 
 func (b *Button) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 	b.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	b.label.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	b.text.Resize(oldWidth, oldHeight, newWidth, newHeight)
 	b.bounds.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
 
 func (b *Button) SetWindow(window *Window) WindowObject {
 	b.View.SetWindow(window)
-	b.label.SetWindow(window)
+	b.text.SetWindow(window)
 	b.bounds.SetWindow(window)
 	return b
 }
@@ -113,7 +113,7 @@ func (b *Button) SetWindow(window *Window) WindowObject {
 func (b *Button) defaultLayout() {
 	b.fill.SetParent(b)
 	b.border.SetParent(b)
-	b.label.SetParent(b)
+	b.text.SetParent(b)
 	b.bounds.SetParent(b)
 
 	b.fill.SetColor(Black)
@@ -128,7 +128,7 @@ func (b *Button) initLayout() {
 
 	b.originalFillColor = b.fill.Color()
 	b.originalBorderColor = b.border.Color()
-	b.originalTextColor = b.label.Color()
+	b.originalTextColor = b.text.Color()
 }
 
 func (b *Button) onMouseEnter(_ WindowObject, _ *MouseState) {
@@ -139,7 +139,7 @@ func (b *Button) onMouseEnter(_ WindowObject, _ *MouseState) {
 		b.border.SetColor(b.mouseEnterBorderColor)
 	}
 	if b.mouseEnterTextColorSet.Load() {
-		b.label.SetColor(b.mouseEnterTextColor)
+		b.text.SetColor(b.mouseEnterTextColor)
 	}
 }
 
@@ -151,7 +151,7 @@ func (b *Button) onMouseLeave(_ WindowObject, _ *MouseState) {
 		b.border.SetColor(b.originalBorderColor)
 	}
 	if b.mouseEnterTextColorSet.Load() {
-		b.label.SetColor(b.originalTextColor)
+		b.text.SetColor(b.originalTextColor)
 	}
 }
 
@@ -163,7 +163,7 @@ func (b *Button) onMouseDown(_ WindowObject, _ *MouseState) {
 		b.border.SetColor(b.mouseDownBorderColor)
 	}
 	if b.mouseDownTextColorSet.Load() {
-		b.label.SetColor(b.mouseDownTextColor)
+		b.text.SetColor(b.mouseDownTextColor)
 	}
 }
 
@@ -175,7 +175,7 @@ func (b *Button) onMouseUp(_ WindowObject, _ *MouseState) {
 		b.border.SetColor(b.originalBorderColor)
 	}
 	if b.mouseDownTextColorSet.Load() {
-		b.label.SetColor(b.originalTextColor)
+		b.text.SetColor(b.originalTextColor)
 	}
 }
 
@@ -222,16 +222,16 @@ func (b *Button) SetMouseDownBorderColor(rgba color.RGBA) *Button {
 }
 
 func (b *Button) Text() string {
-	return b.label.Text()
+	return b.text.Text()
 }
 
 func (b *Button) SetText(text string) *Button {
-	b.label.SetText(text)
+	b.text.SetText(text)
 	return b
 }
 
 func (b *Button) SetTextColor(rgba color.RGBA) *Button {
-	b.label.SetColor(rgba)
+	b.text.SetColor(rgba)
 	return b
 }
 
@@ -243,6 +243,11 @@ func (b *Button) SetMouseEnterTextColor(rgba color.RGBA) *Button {
 	return b
 }
 
+func (b *Button) SetFontSize(size float32) *Button {
+	b.text.SetFontSize(size)
+	return b
+}
+
 func (b *Button) SetMouseDownTextColor(rgba color.RGBA) *Button {
 	b.mouseDownTextColorSet.Store(true)
 	b.stateMutex.Lock()
@@ -251,13 +256,8 @@ func (b *Button) SetMouseDownTextColor(rgba color.RGBA) *Button {
 	return b
 }
 
-func (b *Button) SetTextSize(size float32) *Button {
-	b.label.SetFontSize(size)
-	return b
-}
-
 func (b *Button) Label() *Label {
-	return b.label
+	return b.text
 }
 
 /******************************************************************************
@@ -267,7 +267,7 @@ func (b *Button) Label() *Label {
 func NewButton(circular ...bool) *Button {
 	b := &Button{}
 	b.View.WindowObjectBase = *NewObject(nil)
-	b.label = NewLabel()
+	b.text = NewLabel()
 
 	if len(circular) > 0 && circular[0] {
 		b.fill = NewDot()

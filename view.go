@@ -70,10 +70,10 @@ func (v *View) SetColor(rgba color.RGBA) WindowObject {
 	return v.SetBorderColor(rgba)
 }
 
-func (v *View) MaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+func (v *View) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	v.maintainAspectRatio = maintainAspectRatio
-	v.fill.MaintainAspectRatio(maintainAspectRatio)
-	v.border.MaintainAspectRatio(maintainAspectRatio)
+	v.fill.SetMaintainAspectRatio(maintainAspectRatio)
+	v.border.SetMaintainAspectRatio(maintainAspectRatio)
 	return v
 }
 
@@ -135,12 +135,8 @@ func (v *View) SetWindow(window *Window) WindowObject {
  View Functions
 ******************************************************************************/
 
-func (v *View) Texture() string {
-	return v.fill.Texture()
-}
-
-func (v *View) SetTexture(pathToPng string) *View {
-	v.fill.SetTexture(pathToPng)
+func (v *View) SetTexture(texture Texture) *View {
+	v.fill.SetTexture(texture)
 	return v
 }
 

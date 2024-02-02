@@ -38,14 +38,12 @@ type Shape struct {
 	positionUniformLoc     int32
 	rotationUniformLoc     int32
 	scaleUniformLoc        int32
-	aspectRatioUniformLoc  int32
 	shapeTex2DUniformLoc   int32
 	blurTex2DUniformLoc    int32
 	blurAmountUniformLoc   int32
 	textureTex2DUniformLoc int32
 
-	texture         uint32
-	textureFilename string
+	texture Texture
 
 	blurShapeFrameBuffer uint32
 	blurShapeTexture     uint32
@@ -59,16 +57,6 @@ type Shape struct {
 	thickness float32
 	length    float32
 	drawMode  uint32
-
-	label *Label
-}
-
-/******************************************************************************
- Label Initialization
-******************************************************************************/
-
-func (s *Shape) initLabel(window *Window) bool {
-	return s.label.Init(window)
 }
 
 /******************************************************************************
@@ -308,7 +296,7 @@ func (s *Shape) initVerticesQuadrangleWithUV() {
 func (s *Shape) initVerticesPolygon() {
 	radius := float32(1)
 	maxAngle := 2 * math.Pi * float64(s.length)
-	angleIncrement := maxAngle / float64(s.sides-1)
+	angleIncrement := maxAngle / float64(s.sides)
 
 	s.stateMutex.Lock()
 
@@ -373,7 +361,7 @@ func (s *Shape) initVerticesPolygon() {
 func (s *Shape) initVerticesPolygonWithUV() {
 	radius := float32(1)
 	maxAngle := 2 * math.Pi * float64(s.length)
-	angleIncrement := maxAngle / float64(s.sides-1)
+	angleIncrement := maxAngle / float64(s.sides)
 
 	s.stateMutex.Lock()
 
@@ -442,19 +430,19 @@ func (s *Shape) initVerticesPolygonWithUV() {
 func (s *Shape) initVertices() {
 	switch s.sides {
 	case 3:
-		if s.textureFilename == "" {
+		if s.texture == nil {
 			s.initVerticesTriangle()
 		} else {
 			s.initVerticesTriangleWithUV()
 		}
 	case 4:
-		if s.textureFilename == "" {
+		if s.texture == nil {
 			s.initVerticesQuadrangle()
 		} else {
 			s.initVerticesQuadrangleWithUV()
 		}
 	default:
-		if s.textureFilename == "" {
+		if s.texture == nil {
 			s.initVerticesPolygon()
 		} else {
 			s.initVerticesPolygonWithUV()
@@ -483,18 +471,24 @@ func (s *Shape) initBlurTextureVertices() {
 
 func (s *Shape) initTexture() {
 	s.stateMutex.Lock()
+
 	if s.vao == 0 {
 		s.stateMutex.Unlock()
 		return
 	}
 
-	gl.DeleteTextures(1, &s.texture)
-	s.texture = 0
-
-	if s.textureFilename != "" {
-		s.texture = loadImage(s.textureFilename)
+	if s.texture != nil {
+		s.texture.init()
 	}
 
+	s.stateMutex.Unlock()
+}
+
+func (s *Shape) uninitTexture() {
+	s.stateMutex.Lock()
+	if s.texture != nil {
+		s.texture.close()
+	}
 	s.stateMutex.Unlock()
 }
 
@@ -516,8 +510,8 @@ func (s *Shape) initShaders() {
 	s.positionUniformLoc = gl.GetUniformLocation(s.shapeShader, gl.Str("position\x00"))
 	s.rotationUniformLoc = gl.GetUniformLocation(s.shapeShader, gl.Str("rotation\x00"))
 	s.scaleUniformLoc = gl.GetUniformLocation(s.shapeShader, gl.Str("scale\x00"))
+
 	s.shapeTex2DUniformLoc = gl.GetUniformLocation(s.texturedShapeShader, gl.Str("tex2D\x00"))
-	s.aspectRatioUniformLoc = gl.GetUniformLocation(s.shapeShader, gl.Str("aspectRatio\x00"))
 	s.textureTex2DUniformLoc = gl.GetUniformLocation(s.textureShader, gl.Str("tex2D\x00"))
 	s.blurAmountUniformLoc = gl.GetUniformLocation(s.blurXShader, gl.Str("blurAmount\x00"))
 
@@ -544,7 +538,7 @@ func (s *Shape) initVao(updateOnly bool) {
 	gl.BindVertexArray(s.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, s.vbo)
 
-	if s.textureFilename == "" {
+	if s.texture == nil {
 		stride := int32(2 * sizeOfFloat32)
 		gl.EnableVertexAttribArray(0)
 		gl.VertexAttribPointerWithOffset(0, 2, gl.FLOAT, false, stride, 0)
@@ -651,8 +645,8 @@ func (s *Shape) uninitGl() {
 		return
 	}
 	s.SetInitialized(false)
-	s.stateMutex.Lock()
 
+	s.stateMutex.Lock()
 	gl.BindVertexArray(s.vao)
 	gl.DisableVertexAttribArray(0)
 	gl.DisableVertexAttribArray(1)
@@ -660,11 +654,10 @@ func (s *Shape) uninitGl() {
 	gl.BindVertexArray(0)
 	gl.DeleteBuffers(1, &s.vbo)
 	gl.DeleteVertexArrays(1, &s.vao)
-	gl.DeleteTextures(1, &s.texture)
-
-	s.uninitBlurVao()
-
 	s.stateMutex.Unlock()
+
+	s.uninitTexture()
+	s.uninitBlurVao()
 }
 
 /******************************************************************************
@@ -672,10 +665,12 @@ func (s *Shape) uninitGl() {
 ******************************************************************************/
 
 func (s *Shape) setShaderScaleUniform(worldScale mgl32.Vec3) {
+	scale := [2]float32{}
+
 	if s.maintainAspectRatio {
 		width := float32(s.window.width.Load())
 		height := float32(s.window.height.Load())
-		scale := [2]float32{}
+
 		switch {
 		case width > height:
 			scale[0] = worldScale[0] * (height / width)
@@ -689,6 +684,8 @@ func (s *Shape) setShaderScaleUniform(worldScale mgl32.Vec3) {
 		}
 		gl.Uniform2fv(s.scaleUniformLoc, 1, &scale[0])
 	} else {
+		scale[0] = worldScale[0]
+		scale[1] = worldScale[1]
 		gl.Uniform2fv(s.scaleUniformLoc, 1, &worldScale[0])
 	}
 }
@@ -712,7 +709,7 @@ func (s *Shape) Init(window *Window) (ok bool) {
 	s.RefreshLayout()
 	s.initialized.Store(true)
 
-	return s.initLabel(window)
+	return true
 }
 
 func (s *Shape) Update(deltaTime int64) (ok bool) {
@@ -726,7 +723,7 @@ func (s *Shape) Update(deltaTime int64) (ok bool) {
 		s.initVao(true)
 	}
 
-	return s.label.Update(deltaTime)
+	return true
 }
 
 func (s *Shape) Draw(deltaTime int64) (ok bool) {
@@ -744,6 +741,7 @@ func (s *Shape) Draw(deltaTime int64) (ok bool) {
 	window := s.Window()
 	windowWidth := window.Width()
 	windowHeight := window.Height()
+	worldOrigin := s.WorldOrigin()
 	worldPos := s.WorldPosition()
 	worldScale := s.WorldScale()
 	worldRot := s.WorldRotation()
@@ -758,17 +756,17 @@ func (s *Shape) Draw(deltaTime int64) (ok bool) {
 
 	gl.Viewport(0, 0, windowWidth, windowHeight)
 
-	if s.textureFilename == "" {
+	if s.texture == nil {
 		gl.UseProgram(s.shapeShader)
 		gl.BindTexture(gl.TEXTURE_2D, 0)
 	} else {
 		gl.UseProgram(s.texturedShapeShader)
-		gl.BindTexture(gl.TEXTURE_2D, s.texture)
+		gl.BindTexture(gl.TEXTURE_2D, s.texture.name())
 		gl.Uniform1i(s.shapeTex2DUniformLoc, 0)
 	}
 
 	gl.Uniform4fv(s.colorUniformLoc, 1, &s.color[0])
-	gl.Uniform3fv(s.originUniformLoc, 1, &s.origin[0])
+	gl.Uniform3fv(s.originUniformLoc, 1, &worldOrigin[0])
 	gl.Uniform3fv(s.positionUniformLoc, 1, &worldPos[0])
 	gl.Uniform1f(s.rotationUniformLoc, worldRot[2])
 	s.setShaderScaleUniform(worldScale)
@@ -812,12 +810,7 @@ func (s *Shape) Draw(deltaTime int64) (ok bool) {
 	gl.UseProgram(0)
 	gl.Disable(gl.BLEND)
 
-	return s.WindowObjectBase.drawChildren(deltaTime) && s.label.Draw(deltaTime)
-}
-
-func (s *Shape) Close() {
-	s.label.Close()
-	s.WindowObjectBase.Close()
+	return s.WindowObjectBase.drawChildren(deltaTime)
 }
 
 func (s *Shape) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
@@ -830,16 +823,9 @@ func (s *Shape) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
  Shape Functions
 ******************************************************************************/
 
-func (s *Shape) Texture() string {
+func (s *Shape) SetTexture(texture Texture) *Shape {
 	s.stateMutex.Lock()
-	tex := s.textureFilename
-	s.stateMutex.Unlock()
-	return tex
-}
-
-func (s *Shape) SetTexture(pathToPng string) *Shape {
-	s.stateMutex.Lock()
-	s.textureFilename = pathToPng
+	s.texture = texture
 	s.stateChanged.Store(true)
 	s.stateMutex.Unlock()
 	s.initTexture()
@@ -904,10 +890,6 @@ func (s *Shape) SetLength(length float32) *Shape {
 	return s
 }
 
-func (s *Shape) Label() *Label {
-	return s.label
-}
-
 /******************************************************************************
  New Shape Functions
 ******************************************************************************/
@@ -919,17 +901,13 @@ func newShape(name string) *Shape {
 }
 
 func NewShape() *Shape {
-	lbl := NewLabel()
-
 	p := &Shape{
 		WindowObjectBase: *NewObject(nil),
 		sides:            3,
 		length:           1.0,
-		label:            lbl,
 	}
 
 	p.SetName(defaultShapeName)
-	lbl.SetParent(p)
 	return p
 }
 
