@@ -721,6 +721,11 @@ func (s *Shape) Update(deltaTime int64) (ok bool) {
 		s.stateChanged.Store(false)
 		s.initVertices()
 		s.initVao(true)
+
+		if s.BlurEnabled() {
+			s.uninitBlurVao()
+			s.initBlurVao()
+		}
 	}
 
 	return true
@@ -814,8 +819,10 @@ func (s *Shape) Draw(deltaTime int64) (ok bool) {
 }
 
 func (s *Shape) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	s.uninitBlurVao()
-	s.initBlurVao()
+	if s.BlurEnabled() {
+		s.uninitBlurVao()
+		s.initBlurVao()
+	}
 	s.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
 

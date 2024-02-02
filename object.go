@@ -277,14 +277,14 @@ func (o *WindowObjectBase) RefreshLayout() {
 	bottom := float32(-1)
 
 	adjustBounds := func(parent WindowObject) {
+		pScale := parent.Scale()
 		if parent.MaintainAspectRatio() {
-			left *= window.ScaleX(parent.Scale().X())
-			top *= window.ScaleY(parent.Scale().Y())
+			left *= window.ScaleX(pScale.X())
+			top *= window.ScaleY(pScale.Y())
 		} else {
-			left *= parent.Scale().X()
-			top *= parent.Scale().Y()
+			left *= pScale.X()
+			top *= pScale.Y()
 		}
-
 		right = left * -1
 		bottom = top * -1
 	}
@@ -345,9 +345,7 @@ func (o *WindowObjectBase) Resize(oldWidth, oldHeight, newWidth, newHeight int32
 	o.RefreshLayout()
 
 	for _, c := range o.children {
-		if !c.Closed() {
-			c.Resize(oldWidth, oldHeight, newWidth, newHeight)
-		}
+		c.Resize(oldWidth, oldHeight, newWidth, newHeight)
 	}
 
 	for _, f := range o.onResizeHandlers {
@@ -649,16 +647,11 @@ func (o *WindowObjectBase) HalfHeight() float32 {
 }
 
 func (o *WindowObjectBase) MaintainAspectRatio() bool {
-	o.stateMutex.Lock()
-	maintainAspectRatio := o.maintainAspectRatio
-	o.stateMutex.Unlock()
-	return maintainAspectRatio
+	return o.maintainAspectRatio
 }
 
 func (o *WindowObjectBase) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	o.stateMutex.Lock()
 	o.maintainAspectRatio = maintainAspectRatio
-	o.stateMutex.Unlock()
 	return o
 }
 
