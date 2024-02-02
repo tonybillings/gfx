@@ -18,10 +18,20 @@ func label(text string, rgba color.RGBA) *gfx.Label {
 }
 
 func tab0() gfx.WindowObject {
-	lbl := gfx.NewLabel()
-	lbl.SetText("Use TAB/ARROW keys to navigate")
-	lbl.SetFontSize(.04)
-	return lbl
+	container := gfx.NewView()
+
+	help1 := gfx.NewLabel()
+	help1.SetText("TAB/ARROW: switch views")
+	help1.SetFontSize(.04)
+	help1.SetPositionY(.1)
+
+	help2 := gfx.NewLabel()
+	help2.SetText("F11: toggle fullscreen mode")
+	help2.SetFontSize(.04)
+	help2.SetPositionY(-.1)
+
+	container.AddChildren(help1, help2)
+	return container
 }
 
 func tab1() gfx.WindowObject {
