@@ -167,7 +167,7 @@ func rasterizeText(text string, fontFamily string, alignment Alignment, rgba col
 
 	absFontSize := float64(scale[1] * float32(windowHeight))
 
-	img := image.NewRGBA(image.Rect(0, 0, int(scale[0]*float32(windowWidth)), int(scale[1]*float32(windowHeight))))
+	img := image.NewRGBA(image.Rect(0, 0, int(scale[0]*float32(windowWidth)*1.005), int(scale[1]*float32(windowHeight)*1.005)))
 
 	ctx := freetype.NewContext()
 	ctx.SetFont(textFont)
@@ -182,8 +182,8 @@ func rasterizeText(text string, fontFamily string, alignment Alignment, rgba col
 	textWidth := measureTextWidth(textFont, text, fpFontSize)
 	textHeight := measureTextHeight(textFont, text, fpFontSize)
 
-	shapeWidth := float32(img.Bounds().Size().X)
-	shapeHeight := float32(img.Bounds().Size().Y)
+	shapeWidth := float32(img.Bounds().Size().X) * 0.995
+	shapeHeight := float32(img.Bounds().Size().Y) * 0.995
 
 	hSpacing := 0
 	vSpacing := int((shapeHeight + textHeight) * 0.5)

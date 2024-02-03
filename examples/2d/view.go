@@ -129,7 +129,6 @@ func tab9() gfx.WindowObject {
 	topLeft.SetScale(mgl32.Vec3{.5, .04})
 	topLeft.SetAnchor(gfx.TopLeft)
 	topLeft.SetAlignment(gfx.Right)
-	topLeft.SetPaddingRight(.01)
 
 	bottomCenter := gfx.NewLabel()
 	bottomCenter.SetText("BottomCenter anchored, Center aligned")
