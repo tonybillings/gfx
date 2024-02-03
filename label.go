@@ -186,6 +186,7 @@ func (l *Label) SetCacheEnabled(enabled bool) *Label {
 func (l *Label) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	l.View.SetMaintainAspectRatio(maintainAspectRatio)
 	l.textView.SetMaintainAspectRatio(maintainAspectRatio)
+	l.stateChanged.Store(true)
 	return l
 }
 

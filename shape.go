@@ -636,7 +636,11 @@ func (s *Shape) uninitBlurVao() {
 func (s *Shape) initGl() {
 	s.initShaders()
 	s.initVao(false)
-	s.initBlurVao()
+
+	if s.blurEnabled {
+		s.initBlurVao()
+	}
+
 	s.initTexture()
 }
 
@@ -722,7 +726,7 @@ func (s *Shape) Update(deltaTime int64) (ok bool) {
 		s.initVertices()
 		s.initVao(true)
 
-		if s.BlurEnabled() {
+		if s.blurEnabled {
 			s.uninitBlurVao()
 			s.initBlurVao()
 		}
@@ -819,7 +823,7 @@ func (s *Shape) Draw(deltaTime int64) (ok bool) {
 }
 
 func (s *Shape) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	if s.BlurEnabled() {
+	if s.blurEnabled {
 		s.uninitBlurVao()
 		s.initBlurVao()
 	}
