@@ -46,6 +46,27 @@ func (c *Camera) SetPosition(position mgl32.Vec3) *Camera {
 	return c
 }
 
+func (c *Camera) SetPositionX(x float32) *Camera {
+	c.stateMutex.Lock()
+	c.position[0] = x
+	c.stateMutex.Unlock()
+	return c
+}
+
+func (c *Camera) SetPositionY(y float32) *Camera {
+	c.stateMutex.Lock()
+	c.position[1] = y
+	c.stateMutex.Unlock()
+	return c
+}
+
+func (c *Camera) SetPositionZ(z float32) *Camera {
+	c.stateMutex.Lock()
+	c.position[2] = z
+	c.stateMutex.Unlock()
+	return c
+}
+
 func (c *Camera) Target() mgl32.Vec3 {
 	c.stateMutex.Lock()
 	target := mgl32.Vec3{c.target[0], c.target[1], c.target[2]}

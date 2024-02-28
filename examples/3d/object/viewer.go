@@ -109,9 +109,9 @@ func newLightControl(window *gfx.Window, obj *gfx.Model) *gfx.View {
 	panel.SetBorderColor(gfx.Orange)
 	panel.SetBorderThickness(0.02)
 
-	dirSliderX := gfx.NewSlider(gfx.Vertical)
-	dirSliderY := gfx.NewSlider(gfx.Vertical)
-	dirSliderZ := gfx.NewSlider(gfx.Vertical)
+	dirSliderX := gfx.NewSlider(gfx.Vertical, true)
+	dirSliderY := gfx.NewSlider(gfx.Vertical, true)
+	dirSliderZ := gfx.NewSlider(gfx.Vertical, true)
 
 	panel.AddChild(dirSliderX)
 	panel.AddChild(dirSliderY)
@@ -191,6 +191,49 @@ func newLightControl(window *gfx.Window, obj *gfx.Model) *gfx.View {
 	return panel
 }
 
+func newCameraControl(obj *gfx.Model) *gfx.View {
+	panel := gfx.NewView()
+
+	camera := obj.Camera()
+	if camera == nil {
+		panel.SetScale(mgl32.Vec3{})
+		return panel
+	}
+
+	panel.SetAnchor(gfx.BottomCenter)
+	panel.SetMarginBottom(.02)
+	panel.SetScale(mgl32.Vec3{0.3, .1})
+	panel.SetFillColor(gfx.Opacity(gfx.LightGray, 0.3))
+	panel.SetBorderColor(gfx.LightGray)
+	panel.SetBorderThickness(0.02)
+
+	zoomSlider := gfx.NewSlider(gfx.Horizontal, true)
+	zoomSlider.Button().SetScaleX(.081111)
+	zoomSlider.Button().SetScaleY(.55)
+	zoomSlider.SetScaleX(1)
+	zoomSlider.SetScaleY(.9)
+	zoomSlider.SetFillColor(gfx.Transparent)
+	zoomSlider.Rail().SetColor(gfx.Darken(gfx.LightGray, .6))
+	zoomSlider.Button().SetFillColor(gfx.LightGray)
+	zoomSlider.Button().SetMouseEnterFillColor(gfx.Darken(gfx.LightGray, .3))
+	zoomSlider.SetValue(.02)
+	zoomSlider.OnValueChanging(func(sender gfx.WindowObject, value float32) {
+		camera.SetPositionZ(value * 50)
+	})
+
+	zoomControlLabel := gfx.NewLabel()
+	zoomControlLabel.SetText("Zoom")
+	zoomControlLabel.SetColor(gfx.LightGray)
+	zoomControlLabel.SetFontSize(.3)
+	zoomControlLabel.SetAnchor(gfx.BottomCenter)
+	zoomControlLabel.SetMarginTop(.02)
+
+	panel.AddChild(zoomSlider)
+	panel.AddChild(zoomControlLabel)
+
+	return panel
+}
+
 func NewViewer(window *gfx.Window, obj *gfx.Model) *gfx.View {
 	view := gfx.NewView()
 	view.SetMaintainAspectRatio(false)
@@ -198,6 +241,7 @@ func NewViewer(window *gfx.Window, obj *gfx.Model) *gfx.View {
 	view.AddChild(obj)
 	view.AddChild(newRotationControl(window, obj))
 	view.AddChild(newLightControl(window, obj))
+	view.AddChild(newCameraControl(obj))
 
 	return view
 }
