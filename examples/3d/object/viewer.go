@@ -72,22 +72,31 @@ func newRotationControl(window *gfx.Window, obj *gfx.Model) *gfx.View {
 	rotSliderXLabel := gfx.NewLabel()
 	rotSliderXLabel.SetColor(gfx.Purple)
 	rotSliderXLabel.SetFontSize(.15)
-	rotSliderXLabel.SetPositionY(-rotSliderX.WorldScale().Y() + (rotSliderX.WorldScale().Y() * .06))
+	rotSliderXLabel.SetPositionY(window.ScaleY(-rotSliderX.WorldScale().Y() + (rotSliderX.WorldScale().Y() * .06)))
 	rotSliderXLabel.SetText("X")
+	rotSliderXLabel.OnResize(func(_, _, _, _ int32) {
+		rotSliderXLabel.SetPositionY(window.ScaleY(-rotSliderX.WorldScale().Y() + (rotSliderX.WorldScale().Y() * .06)))
+	})
 	rotSliderX.AddChild(rotSliderXLabel)
 
 	rotSliderYLabel := gfx.NewLabel()
 	rotSliderYLabel.SetColor(gfx.Purple)
 	rotSliderYLabel.SetFontSize(.15)
-	rotSliderYLabel.SetPositionY(-rotSliderY.WorldScale().Y() + (rotSliderY.WorldScale().Y() * .06))
+	rotSliderYLabel.SetPositionY(window.ScaleY(-rotSliderY.WorldScale().Y() + (rotSliderY.WorldScale().Y() * .06)))
 	rotSliderYLabel.SetText("Y")
+	rotSliderYLabel.OnResize(func(_, _, _, _ int32) {
+		rotSliderYLabel.SetPositionY(window.ScaleY(-rotSliderY.WorldScale().Y() + (rotSliderY.WorldScale().Y() * .06)))
+	})
 	rotSliderY.AddChild(rotSliderYLabel)
 
 	rotSliderZLabel := gfx.NewLabel()
 	rotSliderZLabel.SetColor(gfx.Purple)
 	rotSliderZLabel.SetFontSize(.15)
-	rotSliderZLabel.SetPositionY(-rotSliderZ.WorldScale().Y() + (rotSliderZ.WorldScale().Y() * .06))
+	rotSliderZLabel.SetPositionY(window.ScaleY(-rotSliderZ.WorldScale().Y() + (rotSliderZ.WorldScale().Y() * .06)))
 	rotSliderZLabel.SetText("Z")
+	rotSliderZLabel.OnResize(func(_, _, _, _ int32) {
+		rotSliderZLabel.SetPositionY(window.ScaleY(-rotSliderZ.WorldScale().Y() + (rotSliderZ.WorldScale().Y() * .06)))
+	})
 	rotSliderZ.AddChild(rotSliderZLabel)
 
 	return panel
@@ -147,16 +156,16 @@ func newLightControl(window *gfx.Window, obj *gfx.Model) *gfx.View {
 	dirSliderZ.Rail().SetColor(gfx.Darken(gfx.Orange, .6))
 	dirSliderZ.Button().SetFillColor(gfx.Orange)
 	dirSliderZ.Button().SetMouseEnterFillColor(gfx.Darken(gfx.Orange, .3))
-	dirSliderZ.SetValue(.5)
+	dirSliderZ.SetValue(.6)
 
 	dirSliderX.OnValueChanging(func(sender gfx.WindowObject, value float32) {
-		light.SetDirectionX((value * 20) - 11)
+		light.SetDirectionX((value * 20) - 10)
 	})
 	dirSliderY.OnValueChanging(func(sender gfx.WindowObject, value float32) {
-		light.SetDirectionY((value * 20) - 11)
+		light.SetDirectionY((value * 20) - 10)
 	})
 	dirSliderZ.OnValueChanging(func(sender gfx.WindowObject, value float32) {
-		light.SetDirectionZ((value * 20) - 11)
+		light.SetDirectionZ((value * 20) - 10)
 	})
 
 	dirControlLabel := gfx.NewLabel()
@@ -170,22 +179,31 @@ func newLightControl(window *gfx.Window, obj *gfx.Model) *gfx.View {
 	dirSliderXLabel := gfx.NewLabel()
 	dirSliderXLabel.SetColor(gfx.Orange)
 	dirSliderXLabel.SetFontSize(.15)
-	dirSliderXLabel.SetPositionY(-dirSliderX.WorldScale().Y() + (dirSliderX.WorldScale().Y() * .06))
+	dirSliderXLabel.SetPositionY(window.ScaleY(-dirSliderX.WorldScale().Y() + (dirSliderX.WorldScale().Y() * .06)))
 	dirSliderXLabel.SetText("X")
+	dirSliderXLabel.OnResize(func(_, _, _, _ int32) {
+		dirSliderXLabel.SetPositionY(window.ScaleY(-dirSliderX.WorldScale().Y() + (dirSliderX.WorldScale().Y() * .06)))
+	})
 	dirSliderX.AddChild(dirSliderXLabel)
 
 	dirSliderYLabel := gfx.NewLabel()
 	dirSliderYLabel.SetColor(gfx.Orange)
 	dirSliderYLabel.SetFontSize(.15)
-	dirSliderYLabel.SetPositionY(-dirSliderY.WorldScale().Y() + (dirSliderY.WorldScale().Y() * .06))
+	dirSliderYLabel.SetPositionY(window.ScaleY(-dirSliderY.WorldScale().Y() + (dirSliderY.WorldScale().Y() * .06)))
 	dirSliderYLabel.SetText("Y")
+	dirSliderYLabel.OnResize(func(_, _, _, _ int32) {
+		dirSliderYLabel.SetPositionY(window.ScaleY(-dirSliderY.WorldScale().Y() + (dirSliderY.WorldScale().Y() * .06)))
+	})
 	dirSliderY.AddChild(dirSliderYLabel)
 
 	dirSliderZLabel := gfx.NewLabel()
 	dirSliderZLabel.SetColor(gfx.Orange)
 	dirSliderZLabel.SetFontSize(.15)
-	dirSliderZLabel.SetPositionY(-dirSliderZ.WorldScale().Y() + (dirSliderZ.WorldScale().Y() * .06))
+	dirSliderZLabel.SetPositionY(window.ScaleY(-dirSliderZ.WorldScale().Y() + (dirSliderZ.WorldScale().Y() * .06)))
 	dirSliderZLabel.SetText("Z")
+	dirSliderZLabel.OnResize(func(_, _, _, _ int32) {
+		dirSliderZLabel.SetPositionY(window.ScaleY(-dirSliderZ.WorldScale().Y() + (dirSliderZ.WorldScale().Y() * .06)))
+	})
 	dirSliderZ.AddChild(dirSliderZLabel)
 
 	return panel
