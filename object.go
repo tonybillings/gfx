@@ -323,11 +323,11 @@ func (o *WindowObjectBase) RefreshLayout() {
 	case BottomLeft:
 		o.SetPosition(mgl32.Vec3{left + leftOffset, bottom + bottomOffset})
 	case TopCenter:
-		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, 1 - topOffset})
+		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, top - topOffset})
 	case Center:
 		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, -margin.Top + margin.Bottom})
 	case BottomCenter:
-		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, -1 + bottomOffset})
+		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, bottom + bottomOffset})
 	case TopRight:
 		o.SetPosition(mgl32.Vec3{right - rightOffset, top - topOffset})
 	case MiddleRight:

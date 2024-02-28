@@ -164,7 +164,7 @@ func (m *Model) Draw(deltaTime int64) (ok bool) {
 		gl.UseProgram(m.shader)
 
 		light := m.lights[0]
-		lightDir := light.Direction()
+		lightDir := light.Direction().Normalize()
 		lightColor := light.Color()
 		viewPos := m.camera.Position()
 
@@ -415,6 +415,17 @@ func (m *Model) AddLight(light *Light) *Model {
 	m.lights = append(m.lights, light)
 	m.stateMutex.Unlock()
 	return m
+}
+
+func (m *Model) GetLight(index int) *Light {
+	m.stateMutex.Lock()
+	if index < 0 || index >= len(m.lights) {
+		m.stateMutex.Unlock()
+		return nil
+	}
+	light := m.lights[index]
+	m.stateMutex.Unlock()
+	return light
 }
 
 func (m *Model) RemoveLights() *Model {

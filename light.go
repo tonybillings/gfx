@@ -23,17 +23,35 @@ type Light struct {
 
 func (l *Light) Direction() mgl32.Vec3 {
 	l.stateMutex.Lock()
-	direction := mgl32.Vec3{l.direction[0], l.direction[1], l.direction[2]}
+	direction := l.direction
 	l.stateMutex.Unlock()
 	return direction
 }
 
 func (l *Light) SetDirection(direction mgl32.Vec3) *Light {
-	direction = direction.Normalize()
 	l.stateMutex.Lock()
-	l.direction[0] = direction[0]
-	l.direction[1] = direction[1]
-	l.direction[2] = direction[2]
+	l.direction = direction
+	l.stateMutex.Unlock()
+	return l
+}
+
+func (l *Light) SetDirectionX(x float32) *Light {
+	l.stateMutex.Lock()
+	l.direction[0] = x
+	l.stateMutex.Unlock()
+	return l
+}
+
+func (l *Light) SetDirectionY(y float32) *Light {
+	l.stateMutex.Lock()
+	l.direction[1] = y
+	l.stateMutex.Unlock()
+	return l
+}
+
+func (l *Light) SetDirectionZ(z float32) *Light {
+	l.stateMutex.Lock()
+	l.direction[2] = z
 	l.stateMutex.Unlock()
 	return l
 }

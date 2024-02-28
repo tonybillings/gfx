@@ -3,21 +3,22 @@ package gfx
 import "image/color"
 
 var (
-	White     = color.RGBA{R: 255, G: 255, B: 255, A: 255}
-	Black     = color.RGBA{A: 255}
-	LightGray = color.RGBA{R: 192, G: 192, B: 192, A: 255}
-	Gray      = color.RGBA{R: 128, G: 128, B: 128, A: 255}
-	DarkGray  = color.RGBA{R: 64, G: 64, B: 64, A: 255}
-	Red       = color.RGBA{R: 255, A: 255}
-	Green     = color.RGBA{G: 255, A: 255}
-	Blue      = color.RGBA{B: 255, A: 255}
-	Magenta   = color.RGBA{R: 255, B: 255, A: 255}
-	Yellow    = color.RGBA{R: 255, G: 255, A: 255}
-	Purple    = color.RGBA{R: 100, G: 50, B: 130, A: 255}
-	Orange    = color.RGBA{R: 230, G: 126, B: 34, A: 255}
-	Teal      = color.RGBA{R: 118, G: 215, B: 196, A: 255}
-	Maroon    = color.RGBA{R: 146, G: 43, B: 33, A: 255}
-	SkyBlue   = color.RGBA{R: 174, G: 170, B: 241, A: 255}
+	Transparent = color.RGBA{}
+	White       = color.RGBA{R: 255, G: 255, B: 255, A: 255}
+	Black       = color.RGBA{A: 255}
+	LightGray   = color.RGBA{R: 192, G: 192, B: 192, A: 255}
+	Gray        = color.RGBA{R: 128, G: 128, B: 128, A: 255}
+	DarkGray    = color.RGBA{R: 64, G: 64, B: 64, A: 255}
+	Red         = color.RGBA{R: 255, A: 255}
+	Green       = color.RGBA{G: 255, A: 255}
+	Blue        = color.RGBA{B: 255, A: 255}
+	Magenta     = color.RGBA{R: 255, B: 255, A: 255}
+	Yellow      = color.RGBA{R: 255, G: 255, A: 255}
+	Purple      = color.RGBA{R: 100, G: 50, B: 130, A: 255}
+	Orange      = color.RGBA{R: 230, G: 126, B: 34, A: 255}
+	Teal        = color.RGBA{R: 118, G: 215, B: 196, A: 255}
+	Maroon      = color.RGBA{R: 146, G: 43, B: 33, A: 255}
+	SkyBlue     = color.RGBA{R: 174, G: 170, B: 241, A: 255}
 )
 
 var (
