@@ -62,7 +62,7 @@ func newRotationControl(window *gfx.Window, obj *gfx.Model) *gfx.View {
 	})
 
 	rotControlLabel := gfx.NewLabel()
-	rotControlLabel.SetText("Cube Rotation")
+	rotControlLabel.SetText("Object Rotation")
 	rotControlLabel.SetColor(gfx.Purple)
 	rotControlLabel.SetFontSize(.1)
 	rotControlLabel.SetAnchor(gfx.TopCenter)
