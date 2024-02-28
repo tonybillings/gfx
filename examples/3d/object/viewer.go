@@ -224,7 +224,7 @@ func newCameraControl(obj *gfx.Model) *gfx.View {
 	zoomControlLabel := gfx.NewLabel()
 	zoomControlLabel.SetText("Zoom")
 	zoomControlLabel.SetColor(gfx.LightGray)
-	zoomControlLabel.SetFontSize(.3)
+	zoomControlLabel.SetFontSize(.25)
 	zoomControlLabel.SetAnchor(gfx.BottomCenter)
 	zoomControlLabel.SetMarginTop(.02)
 
