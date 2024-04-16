@@ -5,7 +5,7 @@
 This is a relatively simple 2D/3D graphics library originally written with a focus on   
 rendering sensor data in realtime, without affecting the routine/process 
 responsible for communicating with the sensor (which could be a high-frequency, 
-time-sensitive process, etc).  The underlying graphics framework is OpenGL. 
+time-sensitive process, etc.)  The underlying graphics framework is OpenGL. 
 
 ---
 

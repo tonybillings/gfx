@@ -39,45 +39,36 @@ type Button struct {
 }
 
 /******************************************************************************
- WindowObject Implementation
+ Object Implementation
 ******************************************************************************/
 
-func (b *Button) Init(window *Window) (ok bool) {
-	if !b.text.Init(window) || !b.bounds.Init(window) {
-		return false
+func (b *Button) Init() (ok bool) {
+	if b.Initialized() {
+		return true
 	}
 
-	if !b.View.Init(window) {
+	b.text.SetWindow(b.window)
+	b.bounds.SetWindow(b.window)
+
+	if !b.text.Init() || !b.bounds.Init() {
 		return false
 	}
 
 	b.initLayout()
 	b.RefreshLayout()
 
-	return true
+	return b.View.Init()
 }
 
 func (b *Button) Update(deltaTime int64) (ok bool) {
-	if !b.enabled.Load() {
+	if !b.View.Update(deltaTime) {
 		return false
 	}
 
 	b.text.Update(deltaTime)
 	b.bounds.Update(deltaTime)
 
-	return b.View.Update(deltaTime)
-}
-
-func (b *Button) Draw(deltaTime int64) (ok bool) {
-	if !b.visible.Load() {
-		return false
-	}
-
-	if !b.View.Draw(deltaTime) {
-		return false
-	}
-
-	return b.text.Draw(deltaTime)
+	return true
 }
 
 func (b *Button) Close() {
@@ -86,12 +77,21 @@ func (b *Button) Close() {
 	b.View.Close()
 }
 
-func (b *Button) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	b.View.SetMaintainAspectRatio(maintainAspectRatio)
-	b.text.SetMaintainAspectRatio(maintainAspectRatio)
-	b.bounds.SetMaintainAspectRatio(maintainAspectRatio)
-	return b
+/******************************************************************************
+ DrawableObject Implementation
+******************************************************************************/
+
+func (b *Button) Draw(deltaTime int64) (ok bool) {
+	if !b.View.Draw(deltaTime) {
+		return false
+	}
+
+	return b.text.Draw(deltaTime)
 }
+
+/******************************************************************************
+ Resizer Implementation
+******************************************************************************/
 
 func (b *Button) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 	b.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
@@ -99,10 +99,21 @@ func (b *Button) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 	b.bounds.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
 
+/******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
+
 func (b *Button) SetWindow(window *Window) WindowObject {
 	b.View.SetWindow(window)
 	b.text.SetWindow(window)
 	b.bounds.SetWindow(window)
+	return b
+}
+
+func (b *Button) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+	b.View.SetMaintainAspectRatio(maintainAspectRatio)
+	b.text.SetMaintainAspectRatio(maintainAspectRatio)
+	b.bounds.SetMaintainAspectRatio(maintainAspectRatio)
 	return b
 }
 
@@ -266,7 +277,7 @@ func (b *Button) Label() *Label {
 
 func NewButton(circular ...bool) *Button {
 	b := &Button{}
-	b.View.WindowObjectBase = *NewObject(nil)
+	b.View.WindowObjectBase = *NewWindowObject(nil)
 	b.text = NewLabel()
 
 	if len(circular) > 0 && circular[0] {

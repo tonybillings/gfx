@@ -7,6 +7,10 @@ import (
 	"tonysoft.com/gfx"
 )
 
+const (
+	testImage = "test.png"
+)
+
 func label(text string, rgba color.RGBA) *gfx.Label {
 	lbl := gfx.NewLabel()
 	lbl.
@@ -35,9 +39,9 @@ func tab0() gfx.WindowObject {
 }
 
 func tab1() gfx.WindowObject {
-	triangle := gfx.NewShape()
+	triangle := gfx.NewShape2D()
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(triangle)
 	container.AddChild(label("Triangle / White", gfx.Blue))
 	return container
@@ -47,7 +51,7 @@ func tab2() gfx.WindowObject {
 	triangleLine := gfx.NewTriangle(.2)
 	triangleLine.SetColor(gfx.Green)
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(triangleLine)
 	container.AddChild(label("Triangle Line / Green", gfx.Blue))
 	return container
@@ -55,9 +59,9 @@ func tab2() gfx.WindowObject {
 
 func tab3() gfx.WindowObject {
 	quad := gfx.NewQuad()
-	quad.SetTexture(gfx.NewTexture("test.png"))
+	quad.SetTexture(gfx.NewTexture2D(testImage, testImage))
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(quad)
 	container.AddChild(label("Quad / Textured", gfx.Blue))
 	return container
@@ -67,7 +71,7 @@ func tab4() gfx.WindowObject {
 	square := gfx.NewSquare(.2)
 	square.SetColor(gfx.Red)
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(square)
 	container.AddChild(label("Square Line / Red", gfx.Blue))
 	return container
@@ -75,9 +79,9 @@ func tab4() gfx.WindowObject {
 
 func tab5() gfx.WindowObject {
 	dot := gfx.NewDot()
-	dot.SetTexture(gfx.NewTexture("test.png"))
+	dot.SetTexture(gfx.NewTexture2D(testImage, testImage))
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(dot)
 	container.AddChild(label("Dot / Textured", gfx.Blue))
 	return container
@@ -87,7 +91,7 @@ func tab6() gfx.WindowObject {
 	circle := gfx.NewCircle(.2)
 	circle.SetColor(gfx.Orange)
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(circle)
 	container.AddChild(label("Circle Line / Orange", gfx.Blue))
 	return container
@@ -97,10 +101,10 @@ func tab7() gfx.WindowObject {
 	pacman := gfx.NewDot()
 	pacman.
 		SetLength(.8).
-		SetRotationZ(mgl32.DegToRad(-30)).
-		SetColor(gfx.Yellow)
+		SetColor(gfx.Yellow).
+		SetRotationZ(mgl32.DegToRad(-30))
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(pacman)
 	container.AddChild(label("Pac-Man", gfx.Blue))
 	return container
@@ -112,7 +116,7 @@ func tab8() gfx.WindowObject {
 		SetLength(.5).
 		SetColor(gfx.Orange)
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(arc)
 	container.AddChild(label("Arc / Orange", gfx.Blue))
 	return container
@@ -139,14 +143,14 @@ func tab9() gfx.WindowObject {
 	bottomCenter.SetAnchor(gfx.BottomCenter)
 	bottomCenter.SetAlignment(gfx.Centered)
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChildren(carousel, topLeft, bottomCenter)
 	return container
 }
 
 func New2DView() gfx.WindowObject {
-	if texBytes, err := os.ReadFile("test.png"); err == nil {
-		gfx.AddAsset("test.png", texBytes)
+	if imgBytes, err := os.ReadFile("test.png"); err == nil {
+		gfx.Assets.Add(gfx.NewTexture2D(testImage, imgBytes))
 	} else {
 		panic(err)
 	}

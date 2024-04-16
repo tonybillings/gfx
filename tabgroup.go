@@ -9,31 +9,12 @@ const (
 )
 
 /******************************************************************************
- Enums
-******************************************************************************/
-
-type TabAction int
-
-const (
-	HideOnly TabAction = iota
-	DisableOnly
-	HideAndDisable
-)
-
-type NavKeys int
-
-const (
-	TabAndArrowKeys NavKeys = iota
-	TabKeyOnly
-	ArrowKeysOnly
-)
-
-/******************************************************************************
  TabGroup
 ******************************************************************************/
 
 type TabGroup struct {
 	WindowObjectBase
+
 	tabIdx      int
 	tabAction   TabAction
 	navKeys     NavKeys
@@ -41,29 +22,38 @@ type TabGroup struct {
 }
 
 /******************************************************************************
- WindowObject Implementation
+ Object Implementation
 ******************************************************************************/
 
-func (g *TabGroup) Init(window *Window) (ok bool) {
-	if !g.WindowObjectBase.Init(window) {
+func (g *TabGroup) Init() (ok bool) {
+	if g.Initialized() {
+		return true
+	}
+
+	for _, c := range g.children {
+		c.SetWindow(g.window)
+	}
+
+	if !g.WindowObjectBase.Init() {
 		return false
 	}
 
 	g.updateNav()
 	g.Activate(0)
 
-	g.initialized.Store(true)
 	return true
 }
 
 func (g *TabGroup) Close() {
-	if g.initialized.Load() {
-		g.WindowObjectBase.Close()
-
-		for _, h := range g.keyHandlers {
-			g.window.RemoveKeyEventHandler(h)
-		}
+	if !g.Initialized() {
+		return
 	}
+
+	for _, h := range g.keyHandlers {
+		g.window.RemoveKeyEventHandler(h)
+	}
+
+	g.WindowObjectBase.Close()
 }
 
 /******************************************************************************
@@ -215,18 +205,36 @@ func (g *TabGroup) SetNavKeys(keys NavKeys) *TabGroup {
 
 func NewTabGroup(objects ...WindowObject) *TabGroup {
 	tg := &TabGroup{
-		WindowObjectBase: *NewObject(nil),
+		WindowObjectBase: *NewWindowObject(nil),
 		tabAction:        HideAndDisable,
 		navKeys:          TabAndArrowKeys,
 	}
 
 	tg.SetName(defaultTabGroupName)
 
-	if len(objects) > 0 {
-		for _, o := range objects {
-			tg.AddChild(o)
-		}
+	for _, o := range objects {
+		tg.AddChild(o)
 	}
 
 	return tg
 }
+
+/******************************************************************************
+ TabGroup Enums
+******************************************************************************/
+
+type TabAction int
+
+const (
+	HideOnly TabAction = iota
+	DisableOnly
+	HideAndDisable
+)
+
+type NavKeys int
+
+const (
+	TabAndArrowKeys NavKeys = iota
+	TabKeyOnly
+	ArrowKeysOnly
+)

@@ -17,7 +17,7 @@ const (
 type Slider struct {
 	View
 
-	rail   *Shape
+	rail   *Shape2D
 	button *Button
 
 	orientation Orientation
@@ -31,47 +31,37 @@ type Slider struct {
 }
 
 /******************************************************************************
- WindowObject Implementation
+ Object Implementation
 ******************************************************************************/
 
-func (s *Slider) Init(window *Window) (ok bool) {
-	if !s.rail.Init(window) || !s.button.Init(window) {
-		return false
+func (s *Slider) Init() (ok bool) {
+	if s.Initialized() {
+		return true
 	}
 
-	if !s.View.Init(window) {
+	s.rail.SetWindow(s.window)
+	s.button.SetWindow(s.window)
+
+	if !s.rail.Init() || !s.button.Init() {
 		return false
 	}
 
 	s.initLayout()
-	s.initialized.Store(true)
-	s.SetValue(s.value)
 
+	if ok = s.View.Init(); !ok {
+		return
+	}
+
+	s.SetValue(s.value)
 	return true
 }
 
 func (s *Slider) Update(deltaTime int64) (ok bool) {
-	if !s.enabled.Load() {
+	if !s.View.Update(deltaTime) {
 		return false
 	}
 
 	if !s.rail.Update(deltaTime) || !s.button.Update(deltaTime) {
-		return false
-	}
-
-	return s.View.Update(deltaTime)
-}
-
-func (s *Slider) Draw(deltaTime int64) (ok bool) {
-	if !s.visible.Load() {
-		return false
-	}
-
-	if !s.View.Draw(deltaTime) {
-		return false
-	}
-
-	if !s.rail.Draw(deltaTime) || !s.button.Draw(deltaTime) {
 		return false
 	}
 
@@ -84,12 +74,25 @@ func (s *Slider) Close() {
 	s.View.Close()
 }
 
-func (s *Slider) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	s.rail.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	s.button.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	s.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	s.SetValue(s.Value())
+/******************************************************************************
+ DrawableObject Implementation
+******************************************************************************/
+
+func (s *Slider) Draw(deltaTime int64) (ok bool) {
+	if !s.View.Draw(deltaTime) {
+		return false
+	}
+
+	if !s.rail.Draw(deltaTime) || !s.button.Draw(deltaTime) {
+		return false
+	}
+
+	return true
 }
+
+/******************************************************************************
+ DrawableObject Implementation
+******************************************************************************/
 
 func (s *Slider) SetWindow(window *Window) WindowObject {
 	s.View.SetWindow(window)
@@ -99,10 +102,26 @@ func (s *Slider) SetWindow(window *Window) WindowObject {
 }
 
 /******************************************************************************
+ Resizer Implementation
+******************************************************************************/
+
+func (s *Slider) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	s.rail.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	s.button.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	s.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	s.SetValue(s.Value())
+}
+
+/******************************************************************************
  Slider Functions
 ******************************************************************************/
 
 func (s *Slider) defaultLayout() {
+	s.fill.SetParent(s)
+	s.border.SetParent(s)
+	s.rail.SetParent(s)
+	s.button.SetParent(s)
+
 	s.fill.SetColor(Gray)
 
 	if s.orientation == Vertical {
@@ -235,7 +254,7 @@ func (s *Slider) Button() *Button {
 	return s.button
 }
 
-func (s *Slider) Rail() *Shape {
+func (s *Slider) Rail() *Shape2D {
 	return s.rail
 }
 
@@ -265,11 +284,6 @@ func NewSlider(orientation Orientation, isButtonCircular ...bool) *Slider {
 	}
 
 	s.SetName(defaultSliderName)
-	s.fill.SetParent(s)
-	s.border.SetParent(s)
-	s.rail.SetParent(s)
-	s.button.SetParent(s)
-
 	s.defaultLayout()
 
 	return s

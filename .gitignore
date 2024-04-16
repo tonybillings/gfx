@@ -1,7 +1,9 @@
 .idea
 examples/2d/2d
 examples/2d/test
-examples/3d/3d
-examples/3d/test
+examples/3d/in_mem/in_mem
+examples/3d/in_mem/test
+examples/3d/obj/obj
+examples/3d/obj/test
 examples/ui/ui
 examples/ui/test

@@ -2,151 +2,273 @@ package gfx
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/mathgl/mgl32"
+	"golang.org/x/image/math/f32"
+	"os"
+	"reflect"
 	"strings"
 	"sync"
-	"sync/atomic"
+	"tonysoft.com/gfx/shaders"
+	"unsafe"
 )
 
 const (
-	SignalShaderProgram        = "signal"
-	TextShaderProgram          = "text"
-	ShapeShaderProgram         = "shape"
-	ShapeTexturedShaderProgram = "shape_tex"
-	BlurXShaderProgram         = "blur_x"
-	BlurYShaderProgram         = "blur_y"
-	TextureShaderProgram       = "texture"
-	ModelShaderProgram         = "model"
-	ModelNoLightShaderProgram  = "model_nolit"
+	SignalShader            = "_shader_signal"
+	Shape2DShader           = "_shader_shape2d"
+	TexturedShape2DShader   = "_shader_shape2d_textured"
+	BlurXShader             = "_shader_blur_x"
+	BlurYShader             = "_shader_blur_y"
+	TextureShader           = "_shader_texture"
+	Shape3DShader           = "_shader_shape3d"
+	Shape3DNoLightingShader = "_shader_shape3d_no_lighting"
 )
 
-var (
-	//go:embed shaders/signal.vs
-	signalShaderVs string
+/******************************************************************************
+ ShaderShaders
+******************************************************************************/
 
-	//go:embed shaders/signal.gs
-	signalShaderGs string
-
-	//go:embed shaders/signal.fs
-	signalShaderFs string
-
-	//go:embed shaders/text.vs
-	textShaderVs string
-
-	//go:embed shaders/text.fs
-	textShaderFs string
-
-	//go:embed shaders/shape.vs
-	shapeShaderVs string
-
-	//go:embed shaders/shape.fs
-	shapeShaderFs string
-
-	//go:embed shaders/shape_tex.vs
-	shapeTexShaderVs string
-
-	//go:embed shaders/shape_tex.fs
-	shapeTexShaderFs string
-
-	//go:embed shaders/blur_x.fs
-	blurXShaderFs string
-
-	//go:embed shaders/blur_y.fs
-	blurYShaderFs string
-
-	//go:embed shaders/texture.vs
-	textureShaderVs string
-
-	//go:embed shaders/texture.fs
-	textureShaderFs string
-
-	//go:embed shaders/model.vs
-	modelShaderVs string
-
-	//go:embed shaders/model.fs
-	modelShaderFs string
-
-	//go:embed shaders/model_nolit.vs
-	modelNoLightShaderVs string
-
-	//go:embed shaders/model_nolit.fs
-	modelNoLightShaderFs string
-)
-
-var (
-	_shaders           map[string]uint32
-	shadersMutex       sync.Mutex
-	shadersInitialized atomic.Bool
-)
-
-func initShaders() error {
-	shadersMutex.Lock()
-	defer shadersMutex.Unlock()
-
-	if shadersInitialized.Load() {
-		return nil
-	}
-
-	signalProg, err := CreateShaderProgram(signalShaderVs, signalShaderGs, signalShaderFs)
-	if err != nil {
-		return err
-	}
-
-	textProg, err := CreateShaderProgram(textShaderVs, "", textShaderFs)
-	if err != nil {
-		return err
-	}
-
-	shapeProg, err := CreateShaderProgram(shapeShaderVs, "", shapeShaderFs)
-	if err != nil {
-		return err
-	}
-
-	shapeTexProg, err := CreateShaderProgram(shapeTexShaderVs, "", shapeTexShaderFs)
-	if err != nil {
-		return err
-	}
-
-	blurXProg, err := CreateShaderProgram(textureShaderVs, "", blurXShaderFs)
-	if err != nil {
-		return err
-	}
-
-	blurYProg, err := CreateShaderProgram(textureShaderVs, "", blurYShaderFs)
-	if err != nil {
-		return err
-	}
-
-	textureProg, err := CreateShaderProgram(textureShaderVs, "", textureShaderFs)
-	if err != nil {
-		return err
-	}
-
-	modelProg, err := CreateShaderProgram(modelShaderVs, "", modelShaderFs)
-	if err != nil {
-		return err
-	}
-
-	modelNoLightProg, err := CreateShaderProgram(modelNoLightShaderVs, "", modelNoLightShaderFs)
-	if err != nil {
-		return err
-	}
-
-	_shaders = make(map[string]uint32)
-	_shaders[SignalShaderProgram] = signalProg
-	_shaders[TextShaderProgram] = textProg
-	_shaders[ShapeShaderProgram] = shapeProg
-	_shaders[ShapeTexturedShaderProgram] = shapeTexProg
-	_shaders[BlurXShaderProgram] = blurXProg
-	_shaders[BlurYShaderProgram] = blurYProg
-	_shaders[TextureShaderProgram] = textureProg
-	_shaders[ModelShaderProgram] = modelProg
-	_shaders[ModelNoLightShaderProgram] = modelNoLightProg
-
-	shadersInitialized.Store(true)
-	return nil
+type Shader interface {
+	GlAsset
+	Activate()
+	GetAttribLocation(name string) int32
+	GetUniformLocation(name string) int32
+	GetUniformBlockIndex(name string) uint32
 }
+
+/******************************************************************************
+ BasicShader
+******************************************************************************/
+
+type BasicShader struct {
+	AssetBase
+
+	vsSource any
+	gsSource any
+	fsSource any
+
+	glName uint32
+}
+
+/******************************************************************************
+ Asset Implementation
+******************************************************************************/
+
+func (s *BasicShader) Init() bool {
+	if s.Initialized() {
+		return true
+	}
+
+	var vsShader, fsShader, gsShader uint32
+	switch s.vsSource.(type) {
+	case []byte:
+		vsShader = s.loadShaderFromSlice(gl.VERTEX_SHADER, s.vsSource.([]byte))
+		fsShader = s.loadShaderFromSlice(gl.FRAGMENT_SHADER, s.fsSource.([]byte))
+		if s.gsSource != nil {
+			gsShader = s.loadShaderFromSlice(gl.GEOMETRY_SHADER, s.gsSource.([]byte))
+		}
+	case string:
+		vsShader = s.loadShaderFromFile(gl.VERTEX_SHADER, s.vsSource.(string))
+		if vsShader == 0 {
+			vsShader = s.loadShaderFromString(gl.VERTEX_SHADER, s.vsSource.(string))
+		}
+
+		fsShader = s.loadShaderFromFile(gl.FRAGMENT_SHADER, s.fsSource.(string))
+		if fsShader == 0 {
+			fsShader = s.loadShaderFromString(gl.FRAGMENT_SHADER, s.fsSource.(string))
+		}
+
+		if s.gsSource != nil {
+			gsShader = s.loadShaderFromFile(gl.GEOMETRY_SHADER, s.gsSource.(string))
+			if gsShader == 0 {
+				gsShader = s.loadShaderFromString(gl.GEOMETRY_SHADER, s.gsSource.(string))
+			}
+		}
+	default:
+		panic("unexpected error: source type is not supported")
+	}
+
+	s.load(vsShader, fsShader, gsShader)
+
+	gl.DeleteShader(vsShader)
+	gl.DeleteShader(fsShader)
+	gl.DeleteShader(gsShader)
+
+	return s.AssetBase.Init()
+}
+
+func (s *BasicShader) Close() {
+	if !s.Initialized() {
+		return
+	}
+
+	gl.DeleteProgram(s.glName)
+	s.glName = 0
+
+	s.AssetBase.Close()
+}
+
+/******************************************************************************
+ Shader Implementation
+******************************************************************************/
+
+func (s *BasicShader) GlName() uint32 {
+	return s.glName
+}
+
+func (s *BasicShader) Activate() {
+	gl.UseProgram(s.glName)
+}
+
+func (s *BasicShader) GetAttribLocation(name string) int32 {
+	return gl.GetAttribLocation(s.glName, gl.Str(name+"\x00"))
+}
+
+func (s *BasicShader) GetUniformLocation(name string) int32 {
+	return gl.GetUniformLocation(s.glName, gl.Str(name+"\x00"))
+}
+
+func (s *BasicShader) GetUniformBlockIndex(name string) uint32 {
+	return gl.GetUniformBlockIndex(s.glName, gl.Str(name+"\x00"))
+}
+
+/******************************************************************************
+ BasicShader Functions
+******************************************************************************/
+
+func (s *BasicShader) loadShaderFromSlice(shaderType uint32, slice []byte) uint32 {
+	if len(slice) == 0 {
+		return 0
+	}
+	return s.loadShaderFromString(shaderType, string(slice))
+}
+
+func (s *BasicShader) loadShaderFromFile(shaderType uint32, name string) uint32 {
+	reader, closeFunc := Assets.GetReader(name)
+	defer closeFunc()
+	if reader == nil {
+		return 0
+	}
+
+	shaderBytes := make([]byte, reader.Size())
+	n, _ := reader.Read(shaderBytes)
+	if n != reader.Size() {
+		panic("unable to read shader file into memory")
+	}
+
+	return s.loadShaderFromString(shaderType, string(shaderBytes))
+}
+
+func (s *BasicShader) loadShaderFromString(shaderType uint32, code string) uint32 {
+	shader := gl.CreateShader(shaderType)
+	cString, free := gl.Strs(code + "\x00")
+	gl.ShaderSource(shader, 1, cString, nil)
+	free()
+	gl.CompileShader(shader)
+	if err := checkShaderError(shader); err != nil {
+		panic(fmt.Errorf("%w\nsource: \n\n%s", err, code))
+	}
+	return shader
+}
+
+func (s *BasicShader) load(vsShader, fsShader, gsShader uint32) {
+	shaderProgram := gl.CreateProgram()
+
+	gl.AttachShader(shaderProgram, vsShader)
+	gl.AttachShader(shaderProgram, fsShader)
+	if gsShader > 0 {
+		gl.AttachShader(shaderProgram, gsShader)
+	}
+
+	gl.LinkProgram(shaderProgram)
+	if err := checkProgramError(shaderProgram); err != nil {
+		panic(fmt.Errorf("link shader program error: %w", err))
+	}
+
+	s.glName = shaderProgram
+}
+
+/******************************************************************************
+ New BasicShader Function
+******************************************************************************/
+
+func NewBasicShader[T ShaderSource](name string, vertexShaderSource, fragmentShaderSource T, geometryShaderSource ...T) *BasicShader {
+	var gsSource any
+	if len(geometryShaderSource) > 0 {
+		gsSource = geometryShaderSource[0]
+	}
+
+	return &BasicShader{
+		AssetBase: AssetBase{
+			name: name,
+		},
+		vsSource: vertexShaderSource,
+		gsSource: gsSource,
+		fsSource: fragmentShaderSource,
+	}
+}
+
+/******************************************************************************
+ Initialize Default Shaders
+******************************************************************************/
+
+func newDefaultShader(assetName string, filenames ...string) *BasicShader {
+	fs := shaders.Assets
+	var vsFile, fsFile, gsFile []byte
+	var err error
+
+	if len(filenames) == 0 {
+		panic("must supply one to three filenames")
+	}
+
+	if len(filenames) == 1 {
+		filename := filenames[0]
+
+		if vsFile, err = fs.ReadFile(filename + "_vert.glsl"); err != nil {
+			panic(fmt.Errorf("vertex shader read error: %w", err))
+		}
+		if fsFile, err = fs.ReadFile(filename + "_frag.glsl"); err != nil {
+			panic(fmt.Errorf("fragment shader read error: %w", err))
+		}
+		if gsFile, err = fs.ReadFile(filename + "_geom.glsl"); err != nil && !errors.Is(err, os.ErrNotExist) {
+			panic(fmt.Errorf("geometry shader read error: %w", err))
+		}
+	} else {
+		if vsFile, err = fs.ReadFile(filenames[0] + "_vert.glsl"); err != nil {
+			panic(fmt.Errorf("vertex shader read error: %w", err))
+		}
+		if fsFile, err = fs.ReadFile(filenames[1] + "_frag.glsl"); err != nil {
+			panic(fmt.Errorf("fragment shader read error: %w", err))
+		}
+
+		if len(filenames) == 3 {
+			if gsFile, err = fs.ReadFile(filenames[2] + "_geom.glsl"); err != nil {
+				panic(fmt.Errorf("geometry shader read error: %w", err))
+			}
+		}
+	}
+
+	shader := NewBasicShader(assetName, vsFile, fsFile, gsFile)
+	shader.SetProtected(true)
+	return shader
+}
+
+func initDefaultShaders(lib *AssetLibrary) {
+	lib.Add(newDefaultShader(SignalShader, "signal"))
+	lib.Add(newDefaultShader(Shape2DShader, "shape2d"))
+	lib.Add(newDefaultShader(TexturedShape2DShader, "shape2d_textured"))
+	lib.Add(newDefaultShader(TextureShader, "texture"))
+	lib.Add(newDefaultShader(BlurXShader, "texture", "blur_x"))
+	lib.Add(newDefaultShader(BlurYShader, "texture", "blur_y"))
+	lib.Add(newDefaultShader(Shape3DShader, "shape3d"))
+	lib.Add(newDefaultShader(Shape3DNoLightingShader, "shape3d_no_lighting"))
+}
+
+/******************************************************************************
+ Error Checking
+******************************************************************************/
 
 func checkShaderError(shader uint32) error {
 	var status int32
@@ -158,7 +280,7 @@ func checkShaderError(shader uint32) error {
 		log := strings.Repeat("\x00", int(logLength+1))
 		gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(log))
 
-		return fmt.Errorf("failed to compile shader: %s", log)
+		return fmt.Errorf("compile shader error: %s", log)
 	}
 	return nil
 }
@@ -173,72 +295,323 @@ func checkProgramError(program uint32) error {
 		log := strings.Repeat("\x00", int(logLength+1))
 		gl.GetProgramInfoLog(program, logLength, nil, gl.Str(log))
 
-		return fmt.Errorf("failed to link program: %s", log)
+		return fmt.Errorf("link program error: %s", log)
 	}
 	return nil
 }
 
-func CreateShaderProgram(vertexSource, geometrySource, fragmentSource string) (uint32, error) {
-	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	cstr, free := gl.Strs(vertexSource + "\x00")
-	gl.ShaderSource(vertexShader, 1, cstr, nil)
-	free()
-	gl.CompileShader(vertexShader)
-	if err := checkShaderError(vertexShader); err != nil {
-		return 0, err
+/******************************************************************************
+ ShaderBinding
+******************************************************************************/
+
+type ShaderBinding struct {
+	shaderName          uint32
+	boundStruct         any
+	getBindingPointFunc func() uint32
+
+	bindingPoint uint32
+	textureCount uint32
+
+	updateFunc  func()
+	updateFuncs []func()
+
+	closeFunc  func()
+	closeFuncs []func()
+}
+
+/******************************************************************************
+ ShaderBinding Functions
+******************************************************************************/
+
+func (b *ShaderBinding) activate() {
+	gl.UseProgram(b.shaderName)
+}
+
+func (b *ShaderBinding) bindStruct(uniformName string, nestedStruct reflect.Value) {
+	blockIndex := gl.GetUniformBlockIndex(b.shaderName, gl.Str(uniformName+"\x00"))
+	if blockIndex == gl.INVALID_INDEX {
+		return
 	}
 
-	var geometryShader uint32
-	if geometrySource != "" {
-		geometryShader = gl.CreateShader(gl.GEOMETRY_SHADER)
-		cstr, free = gl.Strs(geometrySource + "\x00")
-		gl.ShaderSource(geometryShader, 1, cstr, nil)
-		free()
-		gl.CompileShader(geometryShader)
-		if err := checkShaderError(geometryShader); err != nil {
-			return 0, err
+	bindingPoint := uint32(0)
+	if b.getBindingPointFunc == nil {
+		bindingPoint = b.bindingPoint
+		b.bindingPoint++
+	} else {
+		bindingPoint = b.getBindingPointFunc()
+	}
+
+	ptr := unsafe.Pointer(nestedStruct.Elem().UnsafeAddr())
+	bufferSize := int(nestedStruct.Elem().Type().Size())
+
+	var ubo uint32
+	gl.GenBuffers(1, &ubo)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
+	gl.BufferData(gl.UNIFORM_BUFFER, bufferSize, nil, gl.DYNAMIC_DRAW)
+
+	b.updateFuncs = append(b.updateFuncs, func() {
+		gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
+		gl.BufferSubData(gl.UNIFORM_BUFFER, 0, bufferSize, ptr)
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, ubo)
+		gl.UniformBlockBinding(b.shaderName, blockIndex, bindingPoint)
+	})
+
+	b.closeFuncs = append(b.closeFuncs, func() {
+		gl.DeleteBuffers(1, &ubo)
+	})
+}
+
+func (b *ShaderBinding) bindStructFields(struct_ reflect.Value, uniformNamePrefix string) {
+	for i := 0; i < struct_.NumField(); i++ {
+		field := struct_.Type().Field(i)
+		if !field.IsExported() {
+			continue
+		}
+		b.bindField(struct_.Field(i), field.Name, uniformNamePrefix)
+	}
+}
+
+func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix string) {
+	const invalidLoc = -1
+
+	if uniformNamePrefix == "" {
+		uniformNamePrefix = "u_"
+	}
+
+	uniformName := uniformNamePrefix + name
+	uniformLoc := gl.GetUniformLocation(b.shaderName, gl.Str(uniformName+"\x00"))
+	fieldKind := field.Kind()
+	if uniformLoc == invalidLoc {
+		if fieldKind != reflect.Struct && fieldKind != reflect.Pointer && fieldKind != reflect.Interface &&
+			(fieldKind != reflect.Array || field.Type().Elem().Kind() != reflect.Struct || field.Len() == 0) {
+			return
 		}
 	}
 
-	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	cstr, free = gl.Strs(fragmentSource + "\x00")
-	gl.ShaderSource(fragmentShader, 1, cstr, nil)
-	free()
-	gl.CompileShader(fragmentShader)
-	if err := checkShaderError(fragmentShader); err != nil {
-		return 0, err
+	switch fieldKind {
+	case reflect.Array:
+		if field.Type().Elem().Kind() == reflect.Struct {
+			for i := 0; i < field.Len(); i++ {
+				b.bindStructFields(field.Index(i), fmt.Sprintf("u_%s[%d].", name, i))
+			}
+		} else {
+			switch field.Interface().(type) {
+			case mgl32.Mat4:
+				ptr := &getPointer[mgl32.Mat4](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
+				})
+			case f32.Mat4:
+				ptr := &getPointer[f32.Mat4](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
+				})
+			case [16]float32:
+				ptr := &getPointer[[16]float32](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
+				})
+			case mgl32.Mat3:
+				ptr := &getPointer[mgl32.Mat3](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
+				})
+			case f32.Mat3:
+				ptr := &getPointer[f32.Mat3](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
+				})
+			case [9]float32:
+				ptr := &getPointer[[9]float32](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
+				})
+			case mgl32.Vec4:
+				ptr := &getPointer[mgl32.Vec4](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform4fv(uniformLoc, 1, ptr)
+				})
+			case f32.Vec4:
+				ptr := &getPointer[f32.Vec4](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform4fv(uniformLoc, 1, ptr)
+				})
+			case [4]float32:
+				ptr := &getPointer[[4]float32](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform4fv(uniformLoc, 1, ptr)
+				})
+			case mgl32.Vec3:
+				ptr := &getPointer[mgl32.Vec3](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform3fv(uniformLoc, 1, ptr)
+				})
+			case f32.Vec3:
+				ptr := &getPointer[f32.Vec3](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform3fv(uniformLoc, 1, ptr)
+				})
+			case [3]float32:
+				ptr := &getPointer[[3]float32](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform3fv(uniformLoc, 1, ptr)
+				})
+			case mgl32.Vec2:
+				ptr := &getPointer[mgl32.Vec2](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform2fv(uniformLoc, 1, ptr)
+				})
+			case f32.Vec2:
+				ptr := &getPointer[f32.Vec2](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform2fv(uniformLoc, 1, ptr)
+				})
+			case [2]float32:
+				ptr := &getPointer[[2]float32](field)[0]
+				b.updateFuncs = append(b.updateFuncs, func() {
+					gl.Uniform2fv(uniformLoc, 1, ptr)
+				})
+			}
+		}
+	case reflect.Float32:
+		ptr := getPointer[float32](field)
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform1f(uniformLoc, *ptr)
+		})
+	case reflect.Int32:
+		ptr := getPointer[int32](field)
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform1i(uniformLoc, *ptr)
+		})
+	case reflect.Uint32:
+		ptr := getPointer[uint32](field)
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform1ui(uniformLoc, *ptr)
+		})
+	case reflect.Struct:
+		b.bindStructFields(field, fmt.Sprintf("u_%s.", name))
+	case reflect.Pointer:
+		if field.IsNil() {
+			return
+		}
+		if name == "Properties" {
+			boundStructName := fmt.Sprintf("%T", b.boundStruct)
+			boundStructNameParts := strings.Split(boundStructName, ".")
+			name = boundStructNameParts[len(boundStructNameParts)-1]
+		}
+		b.bindStruct(name, field)
+	case reflect.Interface:
+		if field.IsNil() {
+			return
+		}
+		switch fieldAsType := field.Interface().(type) {
+		case Texture:
+			glName := fieldAsType.GlName()
+			unit := b.textureCount
+			b.updateFuncs = append(b.updateFuncs, func() {
+				gl.ActiveTexture(gl.TEXTURE0 + unit)
+				gl.BindTexture(gl.TEXTURE_2D, glName)
+				gl.Uniform1i(uniformLoc, int32(unit))
+			})
+			b.textureCount++
+		default:
+			b.bindStructFields(field, fmt.Sprintf("u_%s.", name))
+		}
 	}
-
-	shaderProgram := gl.CreateProgram()
-	gl.AttachShader(shaderProgram, vertexShader)
-	if geometrySource != "" {
-		gl.AttachShader(shaderProgram, geometryShader)
-	}
-	gl.AttachShader(shaderProgram, fragmentShader)
-	gl.LinkProgram(shaderProgram)
-	if err := checkProgramError(shaderProgram); err != nil {
-		return 0, err
-	}
-
-	gl.DeleteShader(vertexShader)
-	if geometrySource != "" {
-		gl.DeleteShader(geometryShader)
-	}
-	gl.DeleteShader(fragmentShader)
-
-	return shaderProgram, nil
 }
 
-func GetShaderProgram(name string) uint32 {
-	if !shadersInitialized.Load() {
-		return 0
+func (b *ShaderBinding) initFuncs() {
+	if locker, ok := b.boundStruct.(sync.Locker); ok {
+		b.updateFunc = func() {
+			locker.Lock()
+			for _, updateFunc := range b.updateFuncs {
+				updateFunc()
+			}
+			locker.Unlock()
+		}
+		b.closeFunc = func() {
+			locker.Lock()
+			for _, closeFunc := range b.closeFuncs {
+				closeFunc()
+			}
+			locker.Unlock()
+		}
+	} else {
+		b.updateFunc = func() {
+			for _, updateFunc := range b.updateFuncs {
+				updateFunc()
+			}
+		}
+		b.closeFunc = func() {
+			for _, closeFunc := range b.closeFuncs {
+				closeFunc()
+			}
+		}
 	}
+}
 
-	shadersMutex.Lock()
-	if s, ok := _shaders[name]; ok {
-		shadersMutex.Unlock()
-		return s
+func (b *ShaderBinding) Init() {
+	b.bindStructFields(reflect.Indirect(reflect.ValueOf(b.boundStruct)), "")
+	b.initFuncs()
+}
+
+func (b *ShaderBinding) Update() {
+	b.activate()
+	b.updateFunc()
+}
+
+func (b *ShaderBinding) Close() {
+	b.closeFunc()
+}
+
+func newShaderBinding(shaderName uint32, boundStruct any, getBindingPointFunc func() uint32) *ShaderBinding {
+	return &ShaderBinding{
+		shaderName:          shaderName,
+		boundStruct:         boundStruct,
+		getBindingPointFunc: getBindingPointFunc,
 	}
-	shadersMutex.Unlock()
-	return 0
+}
+
+/******************************************************************************
+ ShaderBinder
+******************************************************************************/
+
+type ShaderBinder struct {
+	bindings    []*ShaderBinding
+	boundStruct any
+}
+
+func (b *ShaderBinder) Init() {
+	for _, binding := range b.bindings {
+		binding.Init()
+	}
+}
+
+func (b *ShaderBinder) Update() {
+	for _, binding := range b.bindings {
+		binding.Update()
+	}
+}
+
+func (b *ShaderBinder) Close() {
+	for _, binding := range b.bindings {
+		binding.Close()
+	}
+}
+
+func newShaderBinder(shaders map[uint32]Shader, boundStruct any, getBindingPointFunc func() uint32) *ShaderBinder {
+	binder := &ShaderBinder{}
+	for shader := range shaders {
+		binding := newShaderBinding(shader, boundStruct, getBindingPointFunc)
+		binder.bindings = append(binder.bindings, binding)
+	}
+	return binder
+}
+
+/******************************************************************************
+ Utility Functions
+******************************************************************************/
+
+func getPointer[T any](val reflect.Value) *T {
+	return (*T)(unsafe.Pointer(val.Addr().Pointer()))
 }

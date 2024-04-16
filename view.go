@@ -15,26 +15,26 @@ const (
 type View struct {
 	WindowObjectBase
 
-	fill   *Shape
-	border *Shape
+	fill   *Shape2D
+	border *Shape2D
 }
 
 /******************************************************************************
- WindowObject Implementation
+Object Implementation
 ******************************************************************************/
 
-func (v *View) Init(window *Window) (ok bool) {
-	if !v.fill.Init(window) || !v.border.Init(window) {
-		return false
+func (v *View) Init() (ok bool) {
+	if v.Initialized() {
+		return true
 	}
 
-	if !v.WindowObjectBase.Init(window) {
+	if !v.fill.Init() || !v.border.Init() {
 		return false
 	}
 
 	v.RefreshLayout()
 
-	return true
+	return v.WindowObjectBase.Init()
 }
 
 func (v *View) Update(deltaTime int64) (ok bool) {
@@ -45,8 +45,18 @@ func (v *View) Update(deltaTime int64) (ok bool) {
 	v.fill.Update(deltaTime)
 	v.border.Update(deltaTime)
 
-	return v.WindowObjectBase.Update(deltaTime)
+	return v.updateChildren(deltaTime)
 }
+
+func (v *View) Close() {
+	v.fill.Close()
+	v.border.Close()
+	v.WindowObjectBase.Close()
+}
+
+/******************************************************************************
+ DrawableObject Implementation
+******************************************************************************/
 
 func (v *View) Draw(deltaTime int64) (ok bool) {
 	if !v.visible.Load() {
@@ -56,13 +66,28 @@ func (v *View) Draw(deltaTime int64) (ok bool) {
 	v.fill.Draw(deltaTime)
 	v.border.Draw(deltaTime)
 
-	return v.WindowObjectBase.Draw(deltaTime)
+	return v.drawChildren(deltaTime)
 }
 
-func (v *View) Close() {
-	v.fill.Close()
-	v.border.Close()
-	v.WindowObjectBase.Close()
+/******************************************************************************
+ Resizer Implementation
+******************************************************************************/
+
+func (v *View) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	v.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	v.fill.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	v.border.Resize(oldWidth, oldHeight, newWidth, newHeight)
+}
+
+/******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
+
+func (v *View) SetWindow(window *Window) WindowObject {
+	v.WindowObjectBase.SetWindow(window)
+	v.fill.SetWindow(window)
+	v.border.SetWindow(window)
+	return v
 }
 
 func (v *View) SetColor(rgba color.RGBA) WindowObject {
@@ -95,12 +120,6 @@ func (v *View) SetBlurIntensity(intensity float32) WindowObject {
 	return v
 }
 
-func (v *View) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	v.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	v.fill.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	v.border.Resize(oldWidth, oldHeight, newWidth, newHeight)
-}
-
 func (v *View) AddChild(child WindowObject) WindowObject {
 	if child == nil {
 		return v
@@ -124,18 +143,18 @@ func (v *View) AddChildren(children ...WindowObject) WindowObject {
 	return v
 }
 
-func (v *View) SetWindow(window *Window) WindowObject {
-	v.WindowObjectBase.SetWindow(window)
-	v.fill.SetWindow(window)
-	v.border.SetWindow(window)
-	return v
-}
-
 /******************************************************************************
  View Functions
 ******************************************************************************/
 
-func (v *View) SetTexture(texture Texture) *View {
+func (v *View) defaultLayout() {
+	v.fill.SetParent(v)
+	v.border.SetParent(v)
+	v.fill.SetColor(Black)
+	v.border.SetColor(Black)
+}
+
+func (v *View) SetTexture(texture *Texture2D) *View {
 	v.fill.SetTexture(texture)
 	return v
 }
@@ -176,15 +195,13 @@ func (v *View) SetBorderColor(rgba color.RGBA) *View {
 
 func NewView() *View {
 	v := &View{
-		WindowObjectBase: *NewObject(nil),
+		WindowObjectBase: *NewWindowObject(nil),
 		fill:             NewQuad(),
 		border:           NewSquare(thicknessEpsilon * 2),
 	}
 
 	v.SetName(defaultViewName)
-	v.fill.SetParent(v)
-	v.border.SetParent(v)
-	v.fill.SetColor(Black)
-	v.border.SetColor(Black)
+	v.defaultLayout()
+
 	return v
 }

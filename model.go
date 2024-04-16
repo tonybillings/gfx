@@ -1,467 +1,519 @@
 package gfx
 
 import (
-	"fmt"
-	"github.com/g3n/engine/loader/obj"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
 const (
-	defaultModelName = "Model"
+	cameraUboBindPoint   = 5
+	materialUboBindPoint = 6
+	lightingUboBindPoint = 7
 )
 
 /******************************************************************************
  Model
 ******************************************************************************/
 
-type Model struct {
-	WindowObjectBase
+type Model interface {
+	Asset
 
-	vao uint32
-	vbo uint32
+	Vertices() []float32
+	Colors() []float32
+	UVs() []float32
+	Normals() []float32
+	Tangents() []float32
+	Bitangents() []float32
 
-	shader        uint32
-	shaderNoLight uint32
-
-	objFilename string
-	mtlFilename string
-
-	worldUniformLoc    int32
-	viewProjUniformLoc int32
-	textureUniformLoc  int32
-	ambientUniformLoc  int32
-	diffuseUniformLoc  int32
-
-	worldUniformLoc2    int32
-	viewProjUniformLoc2 int32
-	textureUniformLoc2  int32
-	ambientUniformLoc2  int32
-	diffuseUniformLoc2  int32
-
-	specularUniformLoc   int32
-	shininessUniformLoc  int32
-	lightDirUniformLoc   int32
-	lightColorUniformLoc int32
-	viewPosUniformLoc    int32
-
-	texture   Texture
-	indices   []uint32
-	materials []*obj.Material
-
-	camera   *Camera
-	lights   []*Light
-	viewport [4]float32
+	Meshes() []Mesh
 }
 
 /******************************************************************************
- WindowObject Implementation
+ Mesh
 ******************************************************************************/
 
-func (m *Model) uninitGl() {
-	if !m.Initialized() {
-		return
-	}
-	m.SetInitialized(false)
+type Mesh interface {
+	Transform
 
-	m.stateMutex.Lock()
-	gl.BindVertexArray(m.vao)
-	gl.DisableVertexAttribArray(0)
-	gl.DisableVertexAttribArray(1)
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-	gl.BindVertexArray(0)
-	gl.DeleteBuffers(1, &m.vbo)
-	gl.DeleteVertexArrays(1, &m.vao)
-	m.stateMutex.Unlock()
-
-	m.uninitTexture()
-}
-
-func (m *Model) initGl() {
-	m.shader = GetShaderProgram(ModelShaderProgram)
-	m.shaderNoLight = GetShaderProgram(ModelNoLightShaderProgram)
-
-	m.worldUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("world\x00"))
-	m.viewProjUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("viewProj\x00"))
-	m.textureUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("tex2D\x00"))
-	m.ambientUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("material.ambient\x00"))
-	m.diffuseUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("material.diffuse\x00"))
-
-	m.worldUniformLoc2 = gl.GetUniformLocation(m.shaderNoLight, gl.Str("world\x00"))
-	m.viewProjUniformLoc2 = gl.GetUniformLocation(m.shaderNoLight, gl.Str("viewProj\x00"))
-	m.textureUniformLoc2 = gl.GetUniformLocation(m.shaderNoLight, gl.Str("tex2D\x00"))
-	m.ambientUniformLoc2 = gl.GetUniformLocation(m.shaderNoLight, gl.Str("material.ambient\x00"))
-	m.diffuseUniformLoc2 = gl.GetUniformLocation(m.shaderNoLight, gl.Str("material.diffuse\x00"))
-
-	m.lightDirUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("lightDir\x00"))
-	m.lightColorUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("lightColor\x00"))
-	m.specularUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("material.specular\x00"))
-	m.shininessUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("material.shininess\x00"))
-	m.viewPosUniformLoc = gl.GetUniformLocation(m.shader, gl.Str("viewPos\x00"))
-
-	gl.GenVertexArrays(1, &m.vao)
-	gl.GenBuffers(1, &m.vbo)
-
-	gl.BindVertexArray(m.vao)
-	gl.BindBuffer(gl.ARRAY_BUFFER, m.vbo)
-
-	stride := int32(8 * sizeOfFloat32)
-
-	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointerWithOffset(0, 3, gl.FLOAT, false, stride, 0)
-
-	gl.EnableVertexAttribArray(1)
-	gl.VertexAttribPointerWithOffset(1, 3, gl.FLOAT, false, stride, uintptr(3*sizeOfFloat32))
-
-	gl.EnableVertexAttribArray(2)
-	gl.VertexAttribPointerWithOffset(2, 2, gl.FLOAT, false, stride, uintptr(6*sizeOfFloat32))
-
-	gl.BufferData(gl.ARRAY_BUFFER, len(m.vertices)*sizeOfFloat32, gl.Ptr(m.vertices), gl.STATIC_DRAW)
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-	gl.BindVertexArray(0)
-}
-
-func (m *Model) Init(window *Window) (ok bool) {
-	if !m.WindowObjectBase.Init(window) {
-		return false
-	}
-
-	m.loadOBJ()
-	m.initTexture()
-	m.initGl()
-	m.initialized.Store(true)
-
-	return true
-}
-
-func (m *Model) Draw(deltaTime int64) (ok bool) {
-	if !m.visible.Load() || m.closed.Load() {
-		return false
-	}
-
-	if m.closing.Load() {
-		m.uninitGl()
-		m.closed.Store(true)
-		m.closing.Store(false)
-		return false
-	}
-
-	worldMat := m.WorldMatrix()
-	viewMat := m.camera.View()
-	projMat := m.camera.Projection()
-	viewProjMat := projMat.Mul4(viewMat)
-
-	gl.ActiveTexture(gl.TEXTURE0)
-
-	if m.texture != nil {
-		gl.BindTexture(gl.TEXTURE_2D, m.texture.name())
-	}
-
-	m.stateMutex.Lock()
-
-	if len(m.lights) > 0 {
-		gl.UseProgram(m.shader)
-
-		light := m.lights[0]
-		lightDir := light.Direction().Normalize()
-		lightColor := light.Color()
-		viewPos := m.camera.Position()
-
-		gl.Uniform3fv(m.lightDirUniformLoc, 1, &lightDir[0])
-		gl.Uniform3fv(m.lightColorUniformLoc, 1, &lightColor[0])
-		gl.Uniform3fv(m.viewPosUniformLoc, 1, &viewPos[0])
-
-		if len(m.materials) > 0 {
-			mat := m.materials[0]
-			gl.Uniform3fv(m.ambientUniformLoc, 1, &mat.Ambient.R)
-			gl.Uniform3fv(m.diffuseUniformLoc, 1, &mat.Diffuse.R)
-			gl.Uniform3fv(m.specularUniformLoc, 1, &mat.Specular.R)
-			gl.Uniform1f(m.shininessUniformLoc, mat.Shininess)
-		}
-
-		gl.UniformMatrix4fv(m.worldUniformLoc, 1, false, &worldMat[0])
-		gl.UniformMatrix4fv(m.viewProjUniformLoc, 1, false, &viewProjMat[0])
-		gl.Uniform1i(m.textureUniformLoc, 0)
-	} else {
-		gl.UseProgram(m.shaderNoLight)
-
-		if len(m.materials) > 0 {
-			mat := m.materials[0]
-			gl.Uniform3fv(m.ambientUniformLoc2, 1, &mat.Ambient.R)
-			gl.Uniform3fv(m.diffuseUniformLoc2, 1, &mat.Diffuse.R)
-		}
-
-		gl.UniformMatrix4fv(m.worldUniformLoc2, 1, false, &worldMat[0])
-		gl.UniformMatrix4fv(m.viewProjUniformLoc2, 1, false, &viewProjMat[0])
-		gl.Uniform1i(m.textureUniformLoc2, 0)
-	}
-
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-
-	winWidth := m.window.Width()
-	winHeight := m.window.Height()
-	gl.Viewport(
-		int32(m.viewport[0]*float32(winWidth)),
-		int32(m.viewport[1]*float32(winHeight)),
-		int32(m.viewport[2]*float32(winWidth)),
-		int32(m.viewport[3]*float32(winHeight)))
-
-	m.stateMutex.Unlock()
-
-	gl.BindVertexArray(m.vao)
-	gl.BindBuffer(gl.ARRAY_BUFFER, m.vbo)
-	gl.Enable(gl.DEPTH_TEST)
-
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-	gl.DrawArrays(gl.TRIANGLES, 0, m.vertexCount)
-
-	gl.Viewport(0, 0, m.window.Width(), m.window.Height())
-
-	gl.Disable(gl.BLEND)
-	gl.Disable(gl.DEPTH_TEST)
-
-	gl.BindVertexArray(0)
-	gl.UseProgram(0)
-
-	return m.WindowObjectBase.drawChildren(deltaTime)
+	Name() string
+	Faces() []Face
 }
 
 /******************************************************************************
- Model Functions
+ Face
 ******************************************************************************/
 
-func (m *Model) loadOBJ() {
-	if m.objFilename == "" {
-		return
-	}
+type Face interface {
+	VertexIndices() []int
+	ColorIndices() []int
+	UvIndices() []int
+	NormalIndices() []int
+	TangentIndices() []int
+	BitangentIndices() []int
 
-	m.stateMutex.Lock()
-
-	var dec *obj.Decoder
-	var err error
-
-	if fileExists(m.objFilename) && fileExists(m.mtlFilename) {
-		dec, err = obj.Decode(m.objFilename, m.mtlFilename)
-		if err != nil {
-			panic(fmt.Errorf("error decoding OBJ/MTL files: %w", err))
-		}
-	} else if fileExists(m.objFilename) {
-		dec, err = obj.Decode(m.objFilename, "")
-		if err != nil {
-			panic(fmt.Errorf("error decoding OBJ file: %w", err))
-		}
-	} else {
-		objAsset := GetAssetReader(m.objFilename)
-		mtlAsset := GetAssetReader(m.mtlFilename)
-
-		if objAsset != nil && mtlAsset != nil {
-			dec, err = obj.DecodeReader(objAsset, mtlAsset)
-			if err != nil {
-				panic(fmt.Errorf("error decoding OBJ/MTL files: %w", err))
-			}
-		} else if objAsset != nil {
-			dec, err = obj.DecodeReader(objAsset, nil)
-			if err != nil {
-				panic(fmt.Errorf("error decoding OBJ file: %w", err))
-			}
-		} else {
-			panic("a valid OBJ file must be provided")
-		}
-	}
-
-	for _, object := range dec.Objects {
-		for _, face := range object.Faces {
-			for i := 0; i < len(face.Vertices); i++ {
-				vertexStartIdx := face.Vertices[i] * 3
-				x := dec.Vertices[vertexStartIdx]
-				y := dec.Vertices[vertexStartIdx+1]
-				z := dec.Vertices[vertexStartIdx+2]
-				m.vertices = append(m.vertices, x, y, z)
-
-				normalStartIdx := face.Normals[i] * 3
-				nx := dec.Normals[normalStartIdx]
-				ny := dec.Normals[normalStartIdx+1]
-				nz := dec.Normals[normalStartIdx+2]
-				m.vertices = append(m.vertices, nx, ny, nz)
-
-				uvStartIdx := face.Uvs[i] * 2
-				u := dec.Uvs[uvStartIdx]
-				v := dec.Uvs[uvStartIdx+1]
-				m.vertices = append(m.vertices, u, v)
-			}
-		}
-	}
-
-	m.vertexCount = int32(len(m.vertices) / 8)
-	for _, mat := range dec.Materials {
-		m.materials = append(m.materials, mat)
-	}
-
-	m.stateMutex.Unlock()
-}
-
-func (m *Model) initTexture() {
-	m.stateMutex.Lock()
-	if m.texture != nil {
-		m.texture.init()
-	}
-	m.stateMutex.Unlock()
-}
-
-func (m *Model) uninitTexture() {
-	m.stateMutex.Lock()
-	if m.texture != nil {
-		m.texture.close()
-	}
-	m.stateMutex.Unlock()
-}
-
-func (m *Model) Viewport() mgl32.Vec4 {
-	m.stateMutex.Lock()
-	vp := mgl32.Vec4{m.viewport[0], m.viewport[1], m.viewport[2], m.viewport[3]}
-	m.stateMutex.Unlock()
-	return vp
-}
-
-func (m *Model) SetViewport(viewport mgl32.Vec4) *Model {
-	m.stateMutex.Lock()
-	m.viewport[0] = viewport[0]
-	m.viewport[1] = viewport[1]
-	m.viewport[2] = viewport[2]
-	m.viewport[3] = viewport[3]
-	m.stateChanged.Store(true)
-	m.stateMutex.Unlock()
-	return m
-}
-
-func (m *Model) OBJ() string {
-	m.stateMutex.Lock()
-	filename := m.objFilename
-	m.stateMutex.Unlock()
-	return filename
-}
-
-func (m *Model) SetOBJ(pathToObj string) *Model {
-	m.stateMutex.Lock()
-	m.objFilename = pathToObj
-	m.stateChanged.Store(true)
-	m.stateMutex.Unlock()
-	return m
-}
-
-func (m *Model) MTL() string {
-	m.stateMutex.Lock()
-	filename := m.mtlFilename
-	m.stateMutex.Unlock()
-	return filename
-}
-
-func (m *Model) SetMTL(pathToMtl string) *Model {
-	m.stateMutex.Lock()
-	m.mtlFilename = pathToMtl
-	m.stateChanged.Store(true)
-	m.stateMutex.Unlock()
-	return m
-}
-
-func (m *Model) SetTexture(texture Texture) *Model {
-	m.stateMutex.Lock()
-	m.texture = texture
-	m.stateChanged.Store(true)
-	m.stateMutex.Unlock()
-	return m
-}
-
-func (m *Model) WorldMatrix() mgl32.Mat4 {
-	tran := m.WorldPosition()
-	rot := m.WorldRotation()
-	scale := m.WorldScale()
-
-	var rotateMat mgl32.Mat4
-	if rot.Len() > 0.0001 {
-		rotateMat = mgl32.HomogRotate3D(rot.Len(), rot.Normalize())
-	} else {
-		rotateMat = mgl32.Ident4()
-	}
-
-	translateMat := mgl32.Translate3D(tran.X(), tran.Y(), tran.Z())
-	scaleMat := mgl32.Scale3D(scale.X(), scale.Y(), scale.Z())
-	a := translateMat.Mul4(rotateMat.Mul4(scaleMat))
-	return a
-}
-
-func (m *Model) Camera() *Camera {
-	m.stateMutex.Lock()
-	cam := m.camera
-	m.stateMutex.Unlock()
-	return cam
-}
-
-func (m *Model) SetCamera(camera *Camera) *Model {
-	m.stateMutex.Lock()
-	m.camera = camera
-	m.stateMutex.Unlock()
-	return m
-}
-
-func (m *Model) AddLight(light *Light) *Model {
-	m.stateMutex.Lock()
-	m.lights = append(m.lights, light)
-	m.stateMutex.Unlock()
-	return m
-}
-
-func (m *Model) GetLight(index int) *Light {
-	m.stateMutex.Lock()
-	if index < 0 || index >= len(m.lights) {
-		m.stateMutex.Unlock()
-		return nil
-	}
-	light := m.lights[index]
-	m.stateMutex.Unlock()
-	return light
-}
-
-func (m *Model) RemoveLights() *Model {
-	m.stateMutex.Lock()
-	m.lights = make([]*Light, 0)
-	m.stateMutex.Unlock()
-	return m
-}
-
-func (m *Model) AddMaterial(material *obj.Material) *Model {
-	m.stateMutex.Lock()
-	m.materials = append(m.materials, material)
-	m.stateMutex.Unlock()
-	return m
-}
-
-func (m *Model) RemoveMaterials() *Model {
-	m.stateMutex.Lock()
-	m.materials = make([]*obj.Material, 0)
-	m.stateMutex.Unlock()
-	return m
+	AttachedMaterial() Material
 }
 
 /******************************************************************************
- New Model Function
+ ModelBase
 ******************************************************************************/
 
-func NewModel() *Model {
-	m := &Model{
-		WindowObjectBase: *NewObject(nil),
-		camera:           NewCamera(),
-		lights:           make([]*Light, 0),
-		viewport:         mgl32.Vec4{0, 0, 1, 1},
-		materials:        make([]*obj.Material, 0),
+type ModelBase struct {
+	AssetBase
+}
+
+func (m *ModelBase) Vertices() []float32 {
+	return nil
+}
+
+func (m *ModelBase) Colors() []float32 {
+	return nil
+}
+
+func (m *ModelBase) UVs() []float32 {
+	return nil
+}
+
+func (m *ModelBase) Normals() []float32 {
+	return nil
+}
+
+func (m *ModelBase) Tangents() []float32 {
+	return nil
+}
+
+func (m *ModelBase) Bitangents() []float32 {
+	return nil
+}
+
+/******************************************************************************
+ MeshBase
+******************************************************************************/
+
+type MeshBase struct {
+	ObjectTransform
+}
+
+func (m *MeshBase) Name() string {
+	return ""
+}
+
+/******************************************************************************
+ FaceBase
+******************************************************************************/
+
+type FaceBase struct{}
+
+func (f *FaceBase) VertexIndices() []int {
+	return nil
+}
+
+func (f *FaceBase) ColorIndices() []int {
+	return nil
+}
+
+func (f *FaceBase) UvIndices() []int {
+	return nil
+}
+
+func (f *FaceBase) NormalIndices() []int {
+	return nil
+}
+
+func (f *FaceBase) TangentIndices() []int {
+	return nil
+}
+
+func (f *FaceBase) BitangentIndices() []int {
+	return nil
+}
+
+func (f *FaceBase) AttachedMaterial() Material {
+	return nil
+}
+
+/******************************************************************************
+ modelRenderer
+******************************************************************************/
+
+type modelRenderer struct {
+	model *modelInstance
+
+	activeCameraBinder *ShaderBinder
+	cameraBinders      map[Camera]*ShaderBinder
+
+	activeLightingBinder *ShaderBinder
+	lightingBinders      map[any]*ShaderBinder
+}
+
+func (r *modelRenderer) setCamera(camera Camera) {
+	if c, ok := r.cameraBinders[camera]; ok {
+		r.activeCameraBinder = c
+	} else {
+		r.activeCameraBinder = newShaderBinder(r.model.shaders, camera, func() uint32 { return cameraUboBindPoint })
+		r.activeCameraBinder.Init()
+		r.cameraBinders[camera] = r.activeCameraBinder
+	}
+}
+
+func (r *modelRenderer) setLighting(lighting any) {
+	if b, ok := r.lightingBinders[lighting]; ok {
+		r.activeLightingBinder = b
+	} else {
+		r.activeLightingBinder = newShaderBinder(r.model.shaders, lighting, func() uint32 { return lightingUboBindPoint })
+		r.activeLightingBinder.Init()
+		r.lightingBinders[lighting] = r.activeLightingBinder
+	}
+}
+
+func (r *modelRenderer) drawFaces() {
+	for _, mesh := range r.model.meshes {
+		mesh.updateBindings()
+		for _, group := range mesh.faceGroups {
+			group.materialBinding.Update()
+			gl.BindVertexArray(group.vao)
+			gl.DrawArrays(gl.TRIANGLES, 0, group.vertexCount)
+		}
+	}
+}
+
+func (r *modelRenderer) render() {
+	if r.activeCameraBinder != nil {
+		r.activeCameraBinder.Update()
+	}
+	if r.activeLightingBinder != nil {
+		r.activeLightingBinder.Update()
+	}
+	r.drawFaces()
+}
+
+func newModelRenderer(model *modelInstance) *modelRenderer {
+	return &modelRenderer{
+		model:           model,
+		cameraBinders:   make(map[Camera]*ShaderBinder),
+		lightingBinders: make(map[any]*ShaderBinder),
+	}
+}
+
+/******************************************************************************
+ modelInstance
+******************************************************************************/
+
+type modelInstance struct {
+	model        Model
+	meshes       []*meshInstance
+	shaders      map[uint32]Shader
+	bindingPoint uint32
+}
+
+func (m *modelInstance) getBindingPoint() uint32 {
+	return m.bindingPoint
+}
+
+func (m *modelInstance) close() {
+	for _, mesh := range m.meshes {
+		mesh.close()
+	}
+}
+
+func (m *modelInstance) getLayout() VertexAttributeLayout {
+	if len(m.model.Bitangents()) > 0 && len(m.model.Tangents()) > 0 &&
+		len(m.model.UVs()) > 0 && len(m.model.Normals()) > 0 && len(m.model.Vertices()) > 0 {
+		return PositionNormalUvTangentsVaoLayout
+	} else if len(m.model.UVs()) > 0 && len(m.model.Normals()) > 0 && len(m.model.Vertices()) > 0 {
+		return PositionNormalUvVaoLayout
+	} else if len(m.model.UVs()) > 0 && len(m.model.Vertices()) > 0 {
+		return PositionUvVaoLayout
+	} else if len(m.model.Colors()) > 0 && len(m.model.Vertices()) > 0 {
+		return PositionColorVaoLayout
+	} else if len(m.model.Vertices()) > 0 {
+		return PositionOnlyVaoLayout
+	}
+	panic("unsupported vertex attribute layout")
+}
+
+func (m *modelInstance) Meshes() []*meshInstance {
+	return m.meshes
+}
+
+func newModelInstance(model Model, parentTransform Transform) *modelInstance {
+	if model == nil {
+		panic("model cannot be nil")
 	}
 
-	m.SetName(defaultModelName)
-	return m
+	if !model.Initialized() {
+		if ok := model.Init(); !ok {
+			panic("failed to initialize model")
+		}
+	}
+
+	meshes := model.Meshes()
+	if len(meshes) == 0 {
+		panic("model must have at least one mesh")
+	}
+
+	instance := &modelInstance{}
+	instance.model = model
+	instance.meshes = make([]*meshInstance, len(meshes))
+	instance.shaders = make(map[uint32]Shader)
+	instance.bindingPoint = 5 // allow other bindings to take 0-4
+
+	for i, mesh := range meshes {
+		meshInst := newMeshInstance(mesh, parentTransform, instance)
+		instance.meshes[i] = meshInst
+		for shaderName, shader := range meshInst.shaders {
+			instance.shaders[shaderName] = shader
+		}
+	}
+
+	return instance
+}
+
+/******************************************************************************
+ meshInstance
+******************************************************************************/
+
+type meshInstance struct {
+	ObjectTransform
+
+	parent *modelInstance
+
+	name string
+
+	faces      []*faceInstance
+	faceGroups []*faceRenderGroup
+
+	shaders map[uint32]Shader
+	binder  *ShaderBinder
+
+	WorldMat mgl32.Mat4
+}
+
+func (m *meshInstance) initFaces(mesh Mesh) {
+	m.shaders = make(map[uint32]Shader)
+
+	faces := mesh.Faces()
+	if len(faces) == 0 {
+		panic("mesh must have at least one face")
+	}
+
+	m.faces = make([]*faceInstance, len(faces))
+	for j, face := range faces {
+		faceInst := newFaceInstance(face)
+		m.faces[j] = faceInst
+		m.shaders[faceInst.shaderName] = faceInst.material.AttachedShader()
+	}
+}
+
+func (m *meshInstance) initFaceGroups(mesh Mesh) {
+	model := m.parent.model
+	vertices := model.Vertices()
+	colors := model.Colors()
+	uvs := model.UVs()
+	normals := model.Normals()
+	tangents := model.Tangents()
+	bitangents := model.Bitangents()
+
+	layout := m.parent.getLayout()
+	faces := mesh.Faces()
+
+	group := &faceRenderGroup{
+		model:    m.parent,
+		layout:   layout,
+		material: m.faces[0].material,
+	}
+	for _, face := range faces {
+		material := face.AttachedMaterial()
+		if material != group.material {
+			group.vertexCount = int32(group.faceCount * 3)
+			m.faceGroups = append(m.faceGroups, group)
+			group = &faceRenderGroup{
+				model:    m.parent,
+				layout:   layout,
+				material: material,
+			}
+		}
+
+		switch layout {
+		case PositionOnlyVaoLayout:
+			vertIndices := face.VertexIndices()
+			for i := 0; i < 3; i++ {
+				vertexIdx := vertIndices[i] * 3
+				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+			}
+		case PositionColorVaoLayout:
+			vertIndices := face.VertexIndices()
+			colIndices := face.ColorIndices()
+			for i := 0; i < 3; i++ {
+				vertexIdx := vertIndices[i] * 3
+				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+
+				colIdx := colIndices[i] * 3
+				group.buffer = append(group.buffer, colors[colIdx:colIdx+3]...)
+			}
+		case PositionUvVaoLayout:
+			vertIndices := face.VertexIndices()
+			uvIndices := face.UvIndices()
+			for i := 0; i < 3; i++ {
+				vertexIdx := vertIndices[i] * 3
+				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+
+				uvIdx := uvIndices[i] * 2
+				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
+			}
+		case PositionNormalUvVaoLayout:
+			vertIndices := face.VertexIndices()
+			normIndices := face.NormalIndices()
+			uvIndices := face.UvIndices()
+			for i := 0; i < 3; i++ {
+				vertexIdx := vertIndices[i] * 3
+				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+
+				normalIdx := normIndices[i] * 3
+				group.buffer = append(group.buffer, normals[normalIdx:normalIdx+3]...)
+
+				uvIdx := uvIndices[i] * 2
+				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
+			}
+		case PositionNormalUvTangentsVaoLayout:
+			vertIndices := face.VertexIndices()
+			normIndices := face.NormalIndices()
+			uvIndices := face.UvIndices()
+			tanIndices := face.TangentIndices()
+			bitanIndices := face.BitangentIndices()
+			for i := 0; i < 3; i++ {
+				vertexIdx := vertIndices[i] * 3
+				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+
+				normalIdx := normIndices[i] * 3
+				group.buffer = append(group.buffer, normals[normalIdx:normalIdx+3]...)
+
+				uvIdx := uvIndices[i] * 2
+				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
+
+				tanIdx := tanIndices[i] * 3
+				group.buffer = append(group.buffer, tangents[tanIdx:tanIdx+3]...)
+
+				bitanIdx := bitanIndices[i] * 3
+				group.buffer = append(group.buffer, bitangents[bitanIdx:bitanIdx+3]...)
+			}
+		}
+
+		group.faceCount++
+	}
+
+	if group.faceCount > 0 {
+		group.vertexCount = int32(group.faceCount * 3)
+		m.faceGroups = append(m.faceGroups, group)
+	}
+
+	for _, group = range m.faceGroups {
+		group.init()
+	}
+}
+
+func (m *meshInstance) initBindings() {
+	m.binder = newShaderBinder(m.shaders, m, nil)
+	m.binder.Init()
+}
+
+func (m *meshInstance) updateBindings() {
+	m.WorldMat = m.WorldMatrix()
+	m.binder.Update()
+}
+
+func (m *meshInstance) close() {
+	for _, g := range m.faceGroups {
+		g.close()
+	}
+	m.binder.Close()
+}
+
+func (m *meshInstance) Name() string {
+	return m.name
+}
+
+func (m *meshInstance) Faces() []*faceInstance {
+	return m.faces
+}
+
+func newMeshInstance(mesh Mesh, parentTransform Transform, parentModel *modelInstance) *meshInstance {
+	instance := &meshInstance{
+		parent: parentModel,
+		name:   mesh.Name(),
+	}
+
+	instance.SetParentTransform(parentTransform)
+	instance.SetOrigin(mesh.Origin())
+	instance.SetPosition(mesh.Position())
+	instance.SetRotation(mesh.Rotation())
+	instance.SetScale(mesh.Scale())
+	if rot := mesh.RotationQuat(); rot != mgl32.QuatIdent() {
+		instance.SetRotationQuat(rot)
+	}
+
+	instance.initFaces(mesh)
+	instance.initFaceGroups(mesh)
+	instance.initBindings()
+
+	return instance
+}
+
+/******************************************************************************
+ faceInstance
+******************************************************************************/
+
+type faceInstance struct {
+	material   Material
+	shaderName uint32
+}
+
+func (f *faceInstance) Material() Material {
+	return f.material
+}
+
+func newFaceInstance(face Face) *faceInstance {
+	material := face.AttachedMaterial()
+	if material == nil {
+		panic("face must have an attached material")
+	}
+	if shader := material.AttachedShader(); shader == nil {
+		panic("material must have an attached shader")
+	} else {
+		return &faceInstance{
+			material:   material,
+			shaderName: shader.GlName(),
+		}
+	}
+}
+
+/******************************************************************************
+ faceRenderGroup
+******************************************************************************/
+
+type faceRenderGroup struct {
+	model           *modelInstance
+	material        Material
+	shader          Shader
+	layout          VertexAttributeLayout
+	buffer          []float32
+	faceCount       int
+	vertexCount     int32
+	materialBinding *ShaderBinding
+	vao             uint32
+	closeFunc       func()
+}
+
+func (g *faceRenderGroup) init() {
+	g.shader = g.material.AttachedShader()
+	g.materialBinding = newShaderBinding(g.shader.GlName(), g.material, func() uint32 { return materialUboBindPoint })
+	g.materialBinding.Init()
+	g.vao, g.closeFunc = newVertexArrayObject(g.layout, g.shader, g.buffer)
+}
+
+func (g *faceRenderGroup) close() {
+	if g.closeFunc != nil {
+		g.closeFunc()
+	}
+	g.materialBinding.Close()
 }

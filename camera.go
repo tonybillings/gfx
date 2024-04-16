@@ -9,121 +9,147 @@ import (
  Camera
 ******************************************************************************/
 
-type Camera struct {
-	position    mgl32.Vec3
-	target      mgl32.Vec3
-	up          mgl32.Vec3
-	fovY        float32
-	aspectRatio float32
-	near        float32
-	far         float32
+type Camera interface {
+	Object
+	sync.Locker
 
+	Location() mgl32.Vec4
+	View() mgl32.Mat4
+	Projection() mgl32.Mat4
+	ViewProjection() mgl32.Mat4
+}
+
+/******************************************************************************
+ CameraBase
+******************************************************************************/
+
+type CameraBase struct {
+	ObjectBase
 	stateMutex sync.Mutex
 }
 
 /******************************************************************************
- Camera Functions
+ sync.Locker Implementation
 ******************************************************************************/
 
-func (c *Camera) View() mgl32.Mat4 {
+func (c *CameraBase) Lock() {
 	c.stateMutex.Lock()
-	view := mgl32.LookAtV(c.position, c.target, c.up)
-	c.stateMutex.Unlock()
-	return view
 }
 
-func (c *Camera) Position() mgl32.Vec3 {
-	c.stateMutex.Lock()
-	pos := mgl32.Vec3{c.position[0], c.position[1], c.position[2]}
+func (c *CameraBase) Unlock() {
 	c.stateMutex.Unlock()
-	return pos
 }
 
-func (c *Camera) SetPosition(position mgl32.Vec3) *Camera {
-	c.stateMutex.Lock()
-	c.position = mgl32.Vec3{position[0], position[1], position[2]}
-	c.stateMutex.Unlock()
-	return c
+/******************************************************************************
+ BasicCamera
+******************************************************************************/
+
+type BasicCamera struct {
+	CameraBase
+
+	verticalFoV float32
+	near, far   float32
+	projection  mgl32.Mat4
+
+	Properties *BasicCameraProperties
 }
 
-func (c *Camera) SetPositionX(x float32) *Camera {
-	c.stateMutex.Lock()
-	c.position[0] = x
-	c.stateMutex.Unlock()
-	return c
+type BasicCameraProperties struct {
+	Position    mgl32.Vec4
+	Target      mgl32.Vec4
+	Up          mgl32.Vec4
+	ViewProjMat mgl32.Mat4
 }
 
-func (c *Camera) SetPositionY(y float32) *Camera {
+/******************************************************************************
+ Object Implementation
+******************************************************************************/
+
+func (c *BasicCamera) Update(_ int64) (ok bool) {
 	c.stateMutex.Lock()
-	c.position[1] = y
+	c.Properties.ViewProjMat = c.projection.Mul4(mgl32.LookAtV(
+		mgl32.Vec3{c.Properties.Position[0], c.Properties.Position[1], c.Properties.Position[2]},
+		mgl32.Vec3{c.Properties.Target[0], c.Properties.Target[1], c.Properties.Target[2]},
+		mgl32.Vec3{c.Properties.Up[0], c.Properties.Up[1], c.Properties.Up[2]}))
 	c.stateMutex.Unlock()
-	return c
+	return true
 }
 
-func (c *Camera) SetPositionZ(z float32) *Camera {
+/******************************************************************************
+ Resizer Implementation
+******************************************************************************/
+
+func (c *BasicCamera) Resize(_, _, newWidth, newHeight int32) {
 	c.stateMutex.Lock()
-	c.position[2] = z
+	c.projection = mgl32.Perspective(mgl32.DegToRad(c.verticalFoV), float32(newWidth)/float32(newHeight), c.near, c.far)
 	c.stateMutex.Unlock()
-	return c
 }
 
-func (c *Camera) Target() mgl32.Vec3 {
+/******************************************************************************
+ Camera Implementation
+******************************************************************************/
+
+func (c *BasicCamera) Location() (loc mgl32.Vec4) {
 	c.stateMutex.Lock()
-	target := mgl32.Vec3{c.target[0], c.target[1], c.target[2]}
+	loc = c.Properties.Position
 	c.stateMutex.Unlock()
-	return target
+	return
 }
 
-func (c *Camera) SetTarget(target mgl32.Vec3) *Camera {
+func (c *BasicCamera) View() (view mgl32.Mat4) {
 	c.stateMutex.Lock()
-	c.target = mgl32.Vec3{target[0], target[1], target[2]}
+	view = mgl32.LookAtV(mgl32.Vec3{c.Properties.Position[0], c.Properties.Position[1], c.Properties.Position[2]},
+		mgl32.Vec3{c.Properties.Target[0], c.Properties.Target[1], c.Properties.Target[2]},
+		mgl32.Vec3{c.Properties.Up[0], c.Properties.Up[1], c.Properties.Up[2]})
 	c.stateMutex.Unlock()
-	return c
+	return
 }
 
-func (c *Camera) Up() mgl32.Vec3 {
+func (c *BasicCamera) Projection() (proj mgl32.Mat4) {
 	c.stateMutex.Lock()
-	up := mgl32.Vec3{c.up[0], c.up[1], c.up[2]}
+	proj = c.projection
 	c.stateMutex.Unlock()
-	return up
+	return
 }
 
-func (c *Camera) SetUp(up mgl32.Vec3) *Camera {
+func (c *BasicCamera) ViewProjection() (viewProj mgl32.Mat4) {
 	c.stateMutex.Lock()
-	c.up = mgl32.Vec3{up[0], up[1], up[2]}
+	viewProj = c.projection.Mul4(mgl32.LookAtV(
+		mgl32.Vec3{c.Properties.Position[0], c.Properties.Position[1], c.Properties.Position[2]},
+		mgl32.Vec3{c.Properties.Target[0], c.Properties.Target[1], c.Properties.Target[2]},
+		mgl32.Vec3{c.Properties.Up[0], c.Properties.Up[1], c.Properties.Up[2]}))
 	c.stateMutex.Unlock()
-	return c
+	return
 }
 
-func (c *Camera) Projection() mgl32.Mat4 {
+/******************************************************************************
+ BasicCamera Functions
+******************************************************************************/
+
+func (c *BasicCamera) SetProjection(verticalFoV, aspectRatio, near, far float32) mgl32.Mat4 {
 	c.stateMutex.Lock()
-	proj := mgl32.Perspective(mgl32.DegToRad(c.fovY), c.aspectRatio, c.near, c.far)
+	c.verticalFoV = verticalFoV
+	c.near = near
+	c.far = far
+	proj := mgl32.Perspective(mgl32.DegToRad(verticalFoV), aspectRatio, near, far)
+	c.projection = proj
 	c.stateMutex.Unlock()
 	return proj
 }
 
-func (c *Camera) SetProjection(fovY, aspectRatio, near, far float32) *Camera {
-	c.stateMutex.Lock()
-	c.fovY = fovY
-	c.aspectRatio = aspectRatio
-	c.near = near
-	c.far = far
-	c.stateMutex.Unlock()
-	return c
-}
-
 /******************************************************************************
- New Camera Function
+ New BasicCamera Function
 ******************************************************************************/
 
-func NewCamera() *Camera {
-	return &Camera{
-		position:    mgl32.Vec3{0, 0, -1},
-		target:      mgl32.Vec3{0, 0, 0},
-		up:          mgl32.Vec3{0, 1, 0},
-		fovY:        45,
-		aspectRatio: 16 / 9,
-		near:        .5,
-		far:         1000,
+func NewCamera() *BasicCamera {
+	c := &BasicCamera{
+		Properties: &BasicCameraProperties{
+			Position: mgl32.Vec4{0, 0, -1},
+			Target:   mgl32.Vec4{0, 0, 0},
+			Up:       mgl32.Vec4{0, 1, 0},
+		},
 	}
+
+	c.SetProjection(45.0, 16.0/9.0, 0.5, 1000.0)
+	return c
 }

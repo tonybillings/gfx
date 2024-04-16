@@ -49,3 +49,11 @@ const (
 type Margin struct {
 	Top, Right, Bottom, Left float32
 }
+
+/******************************************************************************
+ Resizer
+******************************************************************************/
+
+type Resizer interface {
+	Resize(oldWidth, oldHeight, newWidth, newHeight int32)
+}

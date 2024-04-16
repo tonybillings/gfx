@@ -7,6 +7,10 @@ import (
 	"tonysoft.com/gfx/examples/ui/textures"
 )
 
+const (
+	buttonImage = "button.png"
+)
+
 func onClick(button gfx.WindowObject, _ *gfx.MouseState) {
 	clickCount := 0
 	if count, ok := button.Tag().(int); ok { // use a map[string]any to store multiple values
@@ -29,7 +33,7 @@ func onDepressed(button gfx.WindowObject, _ *gfx.MouseState) {
 // NewButtonView In this example, the buttons are anchored to the
 // corners, regardless of their size (scale) or the size/ratio of the window.
 func NewButtonView(window *gfx.Window) gfx.WindowObject {
-	gfx.AddEmbeddedAsset("button.png", textures.Assets)
+	gfx.Assets.AddEmbeddedFile(buttonImage, textures.Assets)
 
 	btnWidth := float32(.25) // try changing the width/height!
 	btnHeight := float32(.25)
@@ -50,12 +54,12 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetTextColor(gfx.Red).
 		OnClick(onClick).
 		SetMaintainAspectRatio(false).(*gfx.Button). // *see note...
-		SetTexture(gfx.NewTexture("button.png")).
+		SetTexture(gfx.NewTexture2D(buttonImage, buttonImage)).
 		SetBorderColor(gfx.Magenta).
 		SetBorderThickness(.1).
 		SetFillColor(gfx.Blue).
-		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetAnchor(gfx.TopLeft)
+		SetAnchor(gfx.TopLeft).
+		SetScaleX(btnWidth).SetScaleY(btnHeight)
 
 	// *Be careful when method-chaining, particularly when calling shadowed methods.
 	// Here, we want to call Button's version of MaintainAspectRatio, so where this
@@ -71,8 +75,8 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetBorderThickness(.05).
 		SetBorderColor(gfx.White).
 		SetFillColor(color.RGBA{R: 160, G: 160, B: 255, A: 255}).
-		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetAnchor(gfx.BottomRight)
+		SetAnchor(gfx.BottomRight).
+		SetScaleX(btnWidth).SetScaleY(btnHeight)
 
 	// Can't put these calls in the chain above, even with type assertion, if
 	// we want to call button2.FillColor() after it has been set.
@@ -92,8 +96,8 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetBorderThickness(0).
 		SetBorderColor(gfx.Blue).
 		SetFillColor(gfx.Orange).
-		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetAnchor(gfx.BottomLeft)
+		SetAnchor(gfx.BottomLeft).
+		SetScaleX(btnWidth).SetScaleY(btnHeight)
 
 	button4 := gfx.NewButton()
 	button4.
@@ -103,12 +107,12 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetFontSize(textSize).
 		SetTextColor(gfx.Red).
 		OnClick(onClick).
-		SetTexture(gfx.NewTexture("button.png")).
+		SetTexture(gfx.NewTexture2D(buttonImage, buttonImage)).
 		SetBorderThickness(.1).
 		SetBorderColor(gfx.Magenta).
 		SetFillColor(gfx.Blue).
-		SetScaleX(btnWidth).SetScaleY(btnHeight).
-		SetAnchor(gfx.TopRight)
+		SetAnchor(gfx.TopRight).
+		SetScaleX(btnWidth).SetScaleY(btnHeight)
 
 	btnWidth = .1
 	btnHeight = .1
@@ -155,7 +159,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetFontSize(.05).
 		SetPositionY(-.1)
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(button1)
 	container.AddChild(button2)
 	container.AddChild(button3)

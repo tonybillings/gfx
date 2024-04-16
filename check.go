@@ -20,29 +20,33 @@ type CheckButton struct {
 
 	circular bool
 
-	check   *Shape
+	check   *Shape2D
 	checked atomic.Bool
 
 	onCheckedChangedHandlers []func(sender WindowObject, checked bool)
 }
 
 /******************************************************************************
- WindowObject Implementation
+ Object Implementation
 ******************************************************************************/
 
-func (b *CheckButton) Init(window *Window) (ok bool) {
-	if !b.text.Init(window) || !b.bounds.Init(window) || !b.check.Init(window) {
-		return false
+func (b *CheckButton) Init() (ok bool) {
+	if b.Initialized() {
+		return true
 	}
 
-	if !b.View.Init(window) {
+	b.text.SetWindow(b.window)
+	b.bounds.SetWindow(b.window)
+	b.check.SetWindow(b.window)
+
+	if !b.text.Init() || !b.bounds.Init() || !b.check.Init() {
 		return false
 	}
 
 	b.initLayout()
 	b.RefreshLayout()
 
-	return true
+	return b.View.Init()
 }
 
 func (b *CheckButton) Update(deltaTime int64) (ok bool) {
@@ -53,6 +57,15 @@ func (b *CheckButton) Update(deltaTime int64) (ok bool) {
 	return b.check.Update(deltaTime)
 }
 
+func (b *CheckButton) Close() {
+	b.check.Close()
+	b.Button.Close()
+}
+
+/******************************************************************************
+ DrawableObject Implementation
+******************************************************************************/
+
 func (b *CheckButton) Draw(deltaTime int64) (ok bool) {
 	if !b.Button.Draw(deltaTime) {
 		return false
@@ -61,26 +74,30 @@ func (b *CheckButton) Draw(deltaTime int64) (ok bool) {
 	return b.check.Draw(deltaTime)
 }
 
-func (b *CheckButton) Close() {
-	b.check.Close()
-	b.Button.Close()
+/******************************************************************************
+ Resizer Implementation
+******************************************************************************/
+
+func (b *CheckButton) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	b.Button.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	b.check.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	b.text.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
+
+/******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
 
 func (b *CheckButton) SetColor(rgba color.RGBA) WindowObject {
 	b.check.SetColor(rgba)
-	return b.SetBorderColor(rgba)
+	b.SetBorderColor(rgba)
+	return b
 }
 
 func (b *CheckButton) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	b.Button.SetMaintainAspectRatio(maintainAspectRatio)
 	b.check.SetMaintainAspectRatio(maintainAspectRatio)
 	return b
-}
-
-func (b *CheckButton) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	b.Button.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	b.check.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	b.text.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
 
 func (b *CheckButton) SetWindow(window *Window) WindowObject {
@@ -94,6 +111,8 @@ func (b *CheckButton) SetWindow(window *Window) WindowObject {
 ******************************************************************************/
 
 func (b *CheckButton) defaultLayout() {
+	b.check.SetParent(b)
+
 	b.Button.defaultLayout()
 
 	b.SetBorderThickness(0.15)
@@ -211,7 +230,7 @@ func (b *CheckButton) SetChecked(checked bool) {
 	b.check.SetVisibility(checked)
 }
 
-func (b *CheckButton) CheckShape() *Shape {
+func (b *CheckButton) CheckShape() *Shape2D {
 	return b.check
 }
 
@@ -231,7 +250,7 @@ func (b *CheckButton) SetMouseDownColor(rgba color.RGBA) *CheckButton {
 
 func newCheckButton(name string, circular ...bool) *CheckButton {
 	b := &CheckButton{}
-	b.View.WindowObjectBase = *NewObject(nil)
+	b.View.WindowObjectBase = *NewWindowObject(nil)
 	b.text = NewLabel()
 
 	if len(circular) > 0 && circular[0] {
@@ -248,8 +267,6 @@ func newCheckButton(name string, circular ...bool) *CheckButton {
 	}
 
 	b.SetName(name)
-	b.check.SetParent(b)
-
 	b.defaultLayout()
 
 	return b

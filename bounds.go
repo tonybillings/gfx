@@ -12,7 +12,7 @@ const (
 )
 
 /******************************************************************************
- Interface
+ BoundingObject
 ******************************************************************************/
 
 type BoundingObject interface {
@@ -56,6 +56,79 @@ type BoundingObjectBase struct {
 	winMouseState   *MouseState
 	mouseStateMutex sync.Mutex
 }
+
+/******************************************************************************
+ Object Implementation
+******************************************************************************/
+
+func (o *BoundingObjectBase) Init() bool {
+	if o.Initialized() {
+		return true
+	}
+
+	o.window.EnableMouseTracking()
+
+	return o.WindowObjectBase.Init()
+}
+
+/******************************************************************************
+ BoundingObject Implementation
+******************************************************************************/
+
+func (o *BoundingObjectBase) OnMouseEnter(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onMouseEnterHandlers = append(o.onMouseEnterHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnMouseLeave(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onMouseLeaveHandlers = append(o.onMouseLeaveHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnPMouseDown(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onPMouseDownHandlers = append(o.onPMouseDownHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnSMouseDown(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onSMouseDownHandlers = append(o.onSMouseDownHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnPMouseUp(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onPMouseUpHandlers = append(o.onPMouseUpHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnSMouseUp(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onSMouseUpHandlers = append(o.onSMouseUpHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnPMouseDepressed(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onPMouseDepressedHandlers = append(o.onPMouseDepressedHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnSMouseDepressed(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onSMouseDepressedHandlers = append(o.onSMouseDepressedHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnPMouseClick(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onPMouseClickHandlers = append(o.onPMouseClickHandlers, handler)
+}
+
+func (o *BoundingObjectBase) OnSMouseClick(handler func(sender WindowObject, mouseState *MouseState)) {
+	o.onSMouseClickHandlers = append(o.onSMouseClickHandlers, handler)
+}
+
+func (o *BoundingObjectBase) LocalMouse() *MouseState {
+	o.mouseStateMutex.Lock()
+	ms := o.mouseState
+	o.mouseStateMutex.Unlock()
+	return &ms
+}
+
+func (o *BoundingObjectBase) MouseOver() bool {
+	return o.mouseOver.Load()
+}
+
+/******************************************************************************
+ BoundingObjectBase Functions
+******************************************************************************/
 
 func (o *BoundingObjectBase) beginUpdate() (*MouseState, mgl32.Vec3, [2]float32) {
 	winMouse := o.window.Mouse()
@@ -258,70 +331,13 @@ func (o *BoundingObjectBase) endUpdate(winMouse *MouseState, mouseOver bool, xLo
 	}
 }
 
-func (o *BoundingObjectBase) Init(window *Window) bool {
-	if !o.WindowObjectBase.Init(window) {
-		return false
-	}
-
-	o.window.EnableMouseTracking()
-	o.initialized.Store(true)
-	return true
-}
-
-func (o *BoundingObjectBase) OnMouseEnter(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onMouseEnterHandlers = append(o.onMouseEnterHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnMouseLeave(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onMouseLeaveHandlers = append(o.onMouseLeaveHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnPMouseDown(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onPMouseDownHandlers = append(o.onPMouseDownHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnSMouseDown(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onSMouseDownHandlers = append(o.onSMouseDownHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnPMouseUp(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onPMouseUpHandlers = append(o.onPMouseUpHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnSMouseUp(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onSMouseUpHandlers = append(o.onSMouseUpHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnPMouseDepressed(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onPMouseDepressedHandlers = append(o.onPMouseDepressedHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnSMouseDepressed(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onSMouseDepressedHandlers = append(o.onSMouseDepressedHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnPMouseClick(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onPMouseClickHandlers = append(o.onPMouseClickHandlers, handler)
-}
-
-func (o *BoundingObjectBase) OnSMouseClick(handler func(sender WindowObject, mouseState *MouseState)) {
-	o.onSMouseClickHandlers = append(o.onSMouseClickHandlers, handler)
-}
-
-func (o *BoundingObjectBase) LocalMouse() *MouseState {
-	o.mouseStateMutex.Lock()
-	ms := o.mouseState
-	o.mouseStateMutex.Unlock()
-	return &ms
-}
-
-func (o *BoundingObjectBase) MouseOver() bool {
-	return o.mouseOver.Load()
-}
+/******************************************************************************
+ New BoundingObjectBase Function
+******************************************************************************/
 
 func NewBoundingObject() *BoundingObjectBase {
 	bo := &BoundingObjectBase{
-		WindowObjectBase: *NewObject(nil),
+		WindowObjectBase: *NewWindowObject(nil),
 	}
 
 	bo.winMouseState = &bo.mouseState

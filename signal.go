@@ -12,15 +12,7 @@ import (
 )
 
 /******************************************************************************
- Interface
-******************************************************************************/
-
-type SignalControl interface {
-	*SignalLine | *SignalGroup
-}
-
-/******************************************************************************
- Types
+ Signal
 ******************************************************************************/
 
 type Signal struct {
@@ -47,14 +39,21 @@ type Signal struct {
 	freqSpectrum   []float64
 }
 
+/******************************************************************************
+ SignalLine
+******************************************************************************/
+
 type SignalLine struct {
 	View
 	Signal
 
+	vertices    []float32
+	vertexCount int32
+
 	vao uint32
 	vbo uint32
 
-	shader uint32
+	shader Shader
 
 	colorUniformLoc     int32
 	thicknessUniformLoc int32
@@ -70,7 +69,13 @@ type SignalLine struct {
 
 	dataExportKey           glfw.Key
 	dataExportKeyRegistered atomic.Bool
+
+	stateChanged atomic.Bool
 }
+
+/******************************************************************************
+ SignalGroup
+******************************************************************************/
 
 type SignalGroup struct {
 	View
@@ -87,7 +92,13 @@ type SignalGroup struct {
 
 	dataExportKey           glfw.Key
 	dataExportKeyRegistered atomic.Bool
+
+	stateChanged atomic.Bool
 }
+
+/******************************************************************************
+ SignalInspector
+******************************************************************************/
 
 type SignalInspector struct {
 	WindowObjectBase
@@ -104,10 +115,340 @@ type SignalInspector struct {
 	sample   *Label
 
 	fontSize float32
+
+	stateChanged atomic.Bool
 }
 
 /******************************************************************************
- Signal Functions
+ SignalControl
+******************************************************************************/
+
+type SignalControl interface {
+	*SignalLine | *SignalGroup
+}
+
+/******************************************************************************
+ Object Implementation
+******************************************************************************/
+
+func (l *SignalLine) Init() (ok bool) {
+	if l.Initialized() {
+		return true
+	}
+
+	if ok = l.View.Init(); !ok {
+		return
+	}
+
+	l.initVertices()
+	l.initVertexVao()
+
+	if l.dataExportKey != glfw.KeyUnknown {
+		l.EnableDataExportKey(l.dataExportKey)
+	}
+
+	if l.inspectorKey != glfw.KeyUnknown {
+		l.EnableInspector()
+	}
+	l.inspector.Init()
+
+	return l.label.Init()
+}
+
+func (l *SignalLine) Update(deltaTime int64) (ok bool) {
+	if !l.View.Update(deltaTime) {
+		return false
+	}
+
+	if l.stateChanged.Load() {
+		l.stateChanged.Store(false)
+		l.updateVertices()
+	}
+
+	l.inspector.Update(deltaTime)
+	l.label.Update(deltaTime)
+
+	return true
+}
+
+func (l *SignalLine) Close() {
+	l.View.Close()
+	l.label.Close()
+	l.inspector.Close()
+	l.closeVertexVao()
+}
+
+func (g *SignalGroup) Init() (ok bool) {
+	if g.Initialized() {
+		return true
+	}
+
+	g.initLayout()
+
+	if ok = g.View.Init(); !ok {
+		return
+	}
+
+	if g.dataExportKey != glfw.KeyUnknown {
+		g.EnableDataExportKey(g.dataExportKey)
+	}
+
+	if g.inspectorKey != glfw.KeyUnknown {
+		g.EnableInspector()
+	}
+
+	return g.inspector.Init()
+}
+
+func (g *SignalGroup) Update(deltaTime int64) (ok bool) {
+	if !g.View.Update(deltaTime) {
+		return false
+	}
+
+	if g.stateChanged.Load() {
+		g.stateChanged.Store(false)
+		g.updateSignalLayout()
+	}
+
+	g.inspector.Update(deltaTime)
+
+	return true
+}
+
+func (g *SignalGroup) Close() {
+	g.View.Close()
+	g.inspector.Close()
+}
+
+func (g *SignalGroup) SetEnabled(enabled bool) Object {
+	if g.enabled.Load() != enabled {
+		g.stateChanged.Store(true)
+	}
+
+	g.WindowObjectBase.SetEnabled(enabled)
+	return g
+}
+
+func (i *SignalInspector) Init() (ok bool) {
+	if i.Initialized() {
+		return true
+	}
+
+	i.initLayout()
+	i.RefreshLayout()
+
+	return i.WindowObjectBase.Init()
+}
+
+func (i *SignalInspector) Update(deltaTime int64) (ok bool) {
+	if !i.enabled.Load() {
+		return true
+	}
+
+	if i.stateChanged.Load() {
+		i.stateChanged.Store(false)
+		i.updateLayout()
+	}
+
+	i.bounds.Update(deltaTime)
+	i.panel.Update(deltaTime)
+
+	mouse := i.bounds.LocalMouse()
+	xScale := (mouse.X + 1.0) / 2.0
+
+	updatePanel := func(signal *SignalLine) {
+		if signal.fftEnabled {
+			idx := int(xScale * float32(signal.dataSize-1))
+			i.minValue.SetText("")
+			i.maxValue.SetText("")
+			i.avg.SetText(fmt.Sprintf("Freq: %.6f", signal.freqSpectrum[idx])) // hijacking this label
+			i.std.SetText("")
+			i.deltaAvg.SetText(fmt.Sprintf("Mag: %.6f", signal.dataTransformed[idx])) // hijacking this label
+			i.deltaStd.SetText("")
+			i.sample.SetText("")
+		} else {
+			sampleIdx := int(xScale * float32(signal.BufferSize()-1))
+			i.minValue.SetText(fmt.Sprintf("Min:  %.6f", signal.MinValue()))
+			i.maxValue.SetText(fmt.Sprintf("Max:  %.6f", signal.MaxValue()))
+			i.avg.SetText(fmt.Sprintf("Avg:  %.6f", signal.Average()))
+			i.std.SetText(fmt.Sprintf("Std:  %.6f", signal.StdDev()))
+			i.deltaAvg.SetText(fmt.Sprintf("ΔAvg: %.6f", signal.DeltaAverage()))
+			i.deltaStd.SetText(fmt.Sprintf("ΔStd: %.6f", signal.DeltaStdDev(false)))
+			i.sample.SetText(fmt.Sprintf("%f", signal.dataTransformed[sampleIdx]))
+		}
+	}
+
+	if i.bounds.MouseOver() {
+		var signal *SignalLine
+		if s, okay := i.Parent().(*SignalLine); okay {
+			signal = s
+		}
+		if signal == nil {
+			sg := i.Parent().(*SignalGroup)
+			signalCount := len(sg.Children())
+			if signalCount > 0 {
+				idx := int(((mouse.Y + 1.0) / 2.0) * float32(signalCount))
+				if idx == signalCount {
+					idx--
+				}
+				signal = sg.Children()[(signalCount-1)-idx].(*SignalLine)
+				i.SetVisibility(true)
+				updatePanel(signal)
+			} else {
+				i.SetVisibility(false)
+			}
+		} else {
+			i.SetVisibility(true)
+			updatePanel(signal)
+		}
+	} else {
+		i.SetVisibility(false)
+	}
+
+	return true
+}
+
+func (i *SignalInspector) Close() {
+	i.bounds.Close()
+	i.panel.Close()
+}
+
+/******************************************************************************
+ DrawableObject Implementation
+******************************************************************************/
+
+func (l *SignalLine) Draw(deltaTime int64) (ok bool) {
+	if !l.visible.Load() {
+		return false
+	}
+
+	l.fill.Draw(deltaTime)
+
+	l.shader.Activate()
+
+	l.stateMutex.Lock()
+	gl.Uniform1f(l.thicknessUniformLoc, float32(l.thickness))
+	gl.Uniform4fv(l.colorUniformLoc, 1, &l.color[0])
+	l.stateMutex.Unlock()
+
+	gl.BindVertexArray(l.vao)
+	gl.BindBuffer(gl.ARRAY_BUFFER, l.vbo)
+
+	gl.Viewport(0, 0, l.window.Width(), l.window.Height())
+
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(l.vertices)*sizeOfFloat32, gl.Ptr(l.vertices))
+
+	gl.DrawArrays(gl.LINE_STRIP_ADJACENCY, 0, l.vertexCount)
+
+	gl.BindVertexArray(0)
+	gl.UseProgram(0)
+
+	l.border.Draw(deltaTime)
+	l.label.Draw(deltaTime)
+	l.drawChildren(deltaTime)
+	l.inspector.Draw(deltaTime)
+
+	return true
+}
+
+func (g *SignalGroup) Draw(deltaTime int64) (ok bool) {
+	if !g.View.Draw(deltaTime) {
+		return false
+	}
+
+	g.inspector.Draw(deltaTime)
+
+	return g.inspector.Draw(deltaTime)
+}
+
+func (i *SignalInspector) Draw(deltaTime int64) (ok bool) {
+	if !i.visible.Load() {
+		return false
+	}
+
+	i.panel.Draw(deltaTime)
+
+	return i.WindowObjectBase.Draw(deltaTime)
+}
+
+/******************************************************************************
+ Resizer Implementation
+******************************************************************************/
+
+func (l *SignalLine) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	l.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	l.label.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	l.inspector.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	l.initVertices()
+}
+
+/******************************************************************************
+ Resizer Implementation
+******************************************************************************/
+
+func (g *SignalGroup) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	g.inspector.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	g.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
+}
+
+/******************************************************************************
+ Resizer Implementation
+******************************************************************************/
+
+func (i *SignalInspector) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	i.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	i.panel.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	i.stateChanged.Store(true)
+}
+
+/******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
+
+func (l *SignalLine) SetColor(rgba color.RGBA) WindowObject {
+	l.WindowObjectBase.SetColor(rgba)
+	return l
+}
+
+func (i *SignalInspector) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+	i.bounds.SetMaintainAspectRatio(maintainAspectRatio)
+	return i
+}
+
+func (l *SignalLine) SetWindow(window *Window) WindowObject {
+	l.View.SetWindow(window)
+	l.label.SetWindow(window)
+	l.inspector.SetWindow(window)
+	return l
+}
+
+func (g *SignalGroup) SetWindow(window *Window) WindowObject {
+	g.View.SetWindow(window)
+	g.stateMutex.Lock()
+	for _, s := range g.children {
+		s.SetWindow(window)
+	}
+	g.stateMutex.Unlock()
+	g.inspector.SetWindow(window)
+	return g
+}
+
+func (i *SignalInspector) SetWindow(window *Window) WindowObject {
+	i.WindowObjectBase.SetWindow(window)
+	i.panel.SetWindow(window)
+	i.bounds.SetWindow(window)
+	i.minValue.SetWindow(window)
+	i.maxValue.SetWindow(window)
+	i.avg.SetWindow(window)
+	i.std.SetWindow(window)
+	i.deltaAvg.SetWindow(window)
+	i.deltaStd.SetWindow(window)
+	i.sample.SetWindow(window)
+	return i
+}
+
+/******************************************************************************
+ sync.Locker Implementation
 ******************************************************************************/
 
 func (s *Signal) Lock() {
@@ -117,6 +458,10 @@ func (s *Signal) Lock() {
 func (s *Signal) Unlock() {
 	s.dataMutex.Unlock()
 }
+
+/******************************************************************************
+ Signal Functions
+******************************************************************************/
 
 func (s *Signal) Label() string {
 	return s.label
@@ -402,16 +747,18 @@ func (l *SignalLine) updateVertices() {
 	l.Signal.Unlock()
 }
 
-func (l *SignalLine) initGl() {
-	l.shader = GetShaderProgram(SignalShaderProgram)
-	l.thicknessUniformLoc = gl.GetUniformLocation(l.shader, gl.Str("thickness\x00"))
-	l.colorUniformLoc = gl.GetUniformLocation(l.shader, gl.Str("color\x00"))
+func (l *SignalLine) initVertexVao() {
+	l.shader = Assets.Get(SignalShader).(Shader)
+
+	l.thicknessUniformLoc = l.shader.GetUniformLocation("u_Thickness")
+	l.colorUniformLoc = l.shader.GetUniformLocation("u_Color")
 
 	_, height := l.window.glwin.GetSize()
 	pixelHeight := 2.0 / float32(height)
-	stepUniformPos := gl.GetUniformLocation(l.shader, gl.Str("step\x00"))
-	gl.UseProgram(l.shader)
-	gl.Uniform1f(stepUniformPos, pixelHeight)
+	pixelHeightUniformPos := l.shader.GetUniformLocation("u_PixelHeight")
+
+	l.shader.Activate()
+	gl.Uniform1f(pixelHeightUniformPos, pixelHeight)
 	gl.UseProgram(0)
 
 	gl.GenVertexArrays(1, &l.vao)
@@ -420,8 +767,9 @@ func (l *SignalLine) initGl() {
 	gl.BindVertexArray(l.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, l.vbo)
 
+	posLoc := l.shader.GetAttribLocation("a_Position")
 	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, nil)
+	gl.VertexAttribPointer(uint32(posLoc), 2, gl.FLOAT, false, 0, nil)
 
 	gl.BufferData(gl.ARRAY_BUFFER, len(l.vertices)*sizeOfFloat32, gl.Ptr(l.vertices), gl.DYNAMIC_DRAW)
 
@@ -429,20 +777,14 @@ func (l *SignalLine) initGl() {
 	gl.BindVertexArray(0)
 }
 
-func (l *SignalLine) uninitGl() {
-	if !l.Initialized() {
-		return
-	}
-	l.SetInitialized(false)
+func (l *SignalLine) closeVertexVao() {
 	l.stateMutex.Lock()
 
-	gl.BindVertexArray(l.vao)
-	gl.DisableVertexAttribArray(0)
-	gl.DisableVertexAttribArray(1)
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	gl.BindVertexArray(0)
-	gl.DeleteBuffers(1, &l.vbo)
 	gl.DeleteVertexArrays(1, &l.vao)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	gl.DeleteBuffers(1, &l.vbo)
 
 	l.stateMutex.Unlock()
 }
@@ -461,90 +803,6 @@ func (l *SignalLine) defaultLayout() {
 	l.label.SetMaintainAspectRatio(false)
 }
 
-func (l *SignalLine) Init(window *Window) (ok bool) {
-	if !l.View.Init(window) {
-		return false
-	}
-
-	l.initVertices()
-	l.initGl()
-	l.initialized.Store(true)
-
-	if l.dataExportKey != glfw.KeyUnknown {
-		l.EnableDataExportKey(l.dataExportKey)
-	}
-
-	if l.inspectorKey != glfw.KeyUnknown {
-		l.EnableInspector()
-	}
-	l.inspector.Init(window)
-
-	return l.label.Init(window)
-}
-
-func (l *SignalLine) Update(deltaTime int64) (ok bool) {
-	if !l.View.Update(deltaTime) {
-		return false
-	}
-
-	if l.stateChanged.Load() {
-		l.stateChanged.Store(false)
-		l.updateVertices()
-	}
-
-	l.inspector.Update(deltaTime)
-	l.label.Update(deltaTime)
-
-	return true
-}
-
-func (l *SignalLine) Draw(deltaTime int64) (ok bool) {
-	if !l.visible.Load() || l.closed.Load() {
-		return false
-	}
-
-	if l.closing.Load() {
-		l.uninitGl()
-		l.closed.Store(true)
-		l.closing.Store(false)
-		return false
-	}
-
-	l.fill.Draw(deltaTime)
-
-	gl.UseProgram(l.shader)
-
-	l.stateMutex.Lock()
-	gl.Uniform1f(l.thicknessUniformLoc, float32(l.thickness))
-	gl.Uniform4fv(l.colorUniformLoc, 1, &l.color[0])
-	l.stateMutex.Unlock()
-
-	gl.BindVertexArray(l.vao)
-	gl.BindBuffer(gl.ARRAY_BUFFER, l.vbo)
-
-	gl.Viewport(0, 0, l.window.Width(), l.window.Height())
-
-	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(l.vertices)*sizeOfFloat32, gl.Ptr(l.vertices))
-
-	gl.DrawArrays(gl.LINE_STRIP_ADJACENCY, 0, l.vertexCount)
-
-	gl.BindVertexArray(0)
-	gl.UseProgram(0)
-
-	l.border.Draw(deltaTime)
-	l.label.Draw(deltaTime)
-	l.drawChildren(deltaTime)
-	l.inspector.Draw(deltaTime)
-
-	return true
-}
-
-func (l *SignalLine) Close() {
-	l.View.Close()
-	l.label.Close()
-	l.inspector.Close()
-}
-
 func (l *SignalLine) Thickness() uint {
 	l.stateMutex.Lock()
 	thickness := l.thickness
@@ -559,11 +817,6 @@ func (l *SignalLine) SetThickness(thickness uint) *SignalLine {
 	l.stateMutex.Lock()
 	l.thickness = thickness
 	l.stateMutex.Unlock()
-	return l
-}
-
-func (l *SignalLine) SetColor(rgba color.RGBA) WindowObject {
-	l.WindowObjectBase.SetColor(rgba)
 	return l
 }
 
@@ -626,20 +879,6 @@ func (l *SignalLine) InspectorPanel() *View {
 	return l.inspector.Panel()
 }
 
-func (l *SignalLine) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	l.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	l.label.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	l.inspector.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	l.initVertices()
-}
-
-func (l *SignalLine) SetWindow(window *Window) WindowObject {
-	l.View.SetWindow(window)
-	l.label.SetWindow(window)
-	l.inspector.SetWindow(window)
-	return l
-}
-
 func (l *SignalLine) EnableDataExportKey(key glfw.Key) *SignalLine {
 	l.dataExportKey = key
 	if l.dataExportKeyRegistered.Load() || !l.initialized.Load() {
@@ -680,69 +919,24 @@ func (g *SignalGroup) updateSignalLayout() {
 	g.stateMutex.Unlock()
 }
 
-func (g *SignalGroup) Init(window *Window) (ok bool) {
-	if !g.View.Init(window) {
-		return false
-	}
-
-	g.initLayout()
-	g.initialized.Store(true)
-
-	if g.dataExportKey != glfw.KeyUnknown {
-		g.EnableDataExportKey(g.dataExportKey)
-	}
-
-	if g.inspectorKey != glfw.KeyUnknown {
-		g.EnableInspector()
-	}
-	return g.inspector.Init(window)
-}
-
-func (g *SignalGroup) Update(deltaTime int64) (ok bool) {
-	if g.enabled.Load() && g.stateChanged.Load() {
-		g.stateChanged.Store(false)
-		g.updateSignalLayout()
-	}
-
-	if !g.View.Update(deltaTime) {
-		return false
-	}
-
-	g.inspector.Update(deltaTime)
-	return true
-}
-
-func (g *SignalGroup) Draw(deltaTime int64) (ok bool) {
-	if !g.View.Draw(deltaTime) {
-		return false
-	}
-
-	g.inspector.Draw(deltaTime)
-
-	return g.inspector.Draw(deltaTime)
-}
-
-func (g *SignalGroup) Close() {
-	g.View.Close()
-	g.inspector.Close()
-}
-
 func (g *SignalGroup) New(label string) *SignalLine {
 	g.stateMutex.Lock()
 	newSignal := NewSignalLine(label, g.defaultSampleCount)
 	newSignal.
 		SetThickness(g.defaultThickness).
-		SetColor(g.defaultColors[g.defaultColorIdx])
+		SetColor(g.defaultColors[g.defaultColorIdx]).
+		SetWindow(g.window).
+		SetParent(g)
 
 	g.children = append(g.children, newSignal)
 	g.defaultColorIdx = (g.defaultColorIdx + 1) % len(g.defaultColors)
 	g.stateMutex.Unlock()
-	newSignal.SetParent(g)
 	g.updateSignalLayout()
 	return newSignal
 }
 
 func (g *SignalGroup) Add(signal *SignalLine) *SignalLine {
+	signal.SetWindow(g.window)
 	g.stateMutex.Lock()
 	g.children = append(g.children, signal)
 	g.stateChanged.Store(true)
@@ -784,15 +978,6 @@ func (g *SignalGroup) Remove(signal *SignalLine) *SignalLine {
 	g.stateChanged.Store(true)
 	g.stateMutex.Unlock()
 	return nil
-}
-
-func (g *SignalGroup) SetEnabled(enabled bool) WindowObject {
-	if g.enabled.Load() != enabled {
-		g.stateChanged.Store(true)
-	}
-
-	g.WindowObjectBase.SetEnabled(enabled)
-	return g
 }
 
 func (g *SignalGroup) EnableInspector(inspectKey ...glfw.Key) {
@@ -855,20 +1040,6 @@ func (g *SignalGroup) Signals() []*SignalLine {
 	return signals
 }
 
-func (g *SignalGroup) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	g.inspector.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	g.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
-}
-
-func (g *SignalGroup) SetWindow(window *Window) WindowObject {
-	g.stateMutex.Lock()
-	for _, s := range g.children {
-		s.SetWindow(window)
-	}
-	g.stateMutex.Unlock()
-	return g
-}
-
 func (g *SignalGroup) EnableDataExportKey(key glfw.Key) *SignalGroup {
 	g.dataExportKey = key
 	if g.dataExportKeyRegistered.Load() || !g.initialized.Load() {
@@ -903,10 +1074,10 @@ func (i *SignalInspector) defaultLayout() {
 	i.sample.SetName("sample")
 }
 
-func (i *SignalInspector) initLayout(window *Window) {
+func (i *SignalInspector) initLayout() {
 	i.panel.AddChildren(i.minValue, i.maxValue, i.avg, i.std, i.deltaAvg, i.deltaStd, i.sample)
-	i.panel.Init(window)
-	i.bounds.Init(window)
+	i.panel.Init()
+	i.bounds.Init()
 	i.updateLayout()
 }
 
@@ -936,100 +1107,6 @@ func (i *SignalInspector) updateLayout() {
 	i.stateMutex.Unlock()
 }
 
-func (i *SignalInspector) Init(window *Window) (ok bool) {
-	if !i.WindowObjectBase.Init(window) {
-		return false
-	}
-
-	i.initLayout(window)
-	i.RefreshLayout()
-	i.initialized.Store(true)
-	return true
-}
-
-func (i *SignalInspector) Update(deltaTime int64) (ok bool) {
-	if !i.enabled.Load() {
-		return true
-	}
-
-	if i.stateChanged.Load() {
-		i.stateChanged.Store(false)
-		i.updateLayout()
-	}
-
-	i.bounds.Update(deltaTime)
-	i.panel.Update(deltaTime)
-
-	mouse := i.bounds.LocalMouse()
-	xScale := (mouse.X + 1.0) / 2.0
-
-	updatePanel := func(signal *SignalLine) {
-		if signal.fftEnabled {
-			idx := int(xScale * float32(signal.dataSize-1))
-			i.minValue.SetText("")
-			i.maxValue.SetText("")
-			i.avg.SetText(fmt.Sprintf("Freq: %.6f", signal.freqSpectrum[idx])) // hijacking this label
-			i.std.SetText("")
-			i.deltaAvg.SetText(fmt.Sprintf("Mag: %.6f", signal.dataTransformed[idx])) // hijacking this label
-			i.deltaStd.SetText("")
-			i.sample.SetText("")
-		} else {
-			sampleIdx := int(xScale * float32(signal.BufferSize()-1))
-			i.minValue.SetText(fmt.Sprintf("Min:  %.6f", signal.MinValue()))
-			i.maxValue.SetText(fmt.Sprintf("Max:  %.6f", signal.MaxValue()))
-			i.avg.SetText(fmt.Sprintf("Avg:  %.6f", signal.Average()))
-			i.std.SetText(fmt.Sprintf("Std:  %.6f", signal.StdDev()))
-			i.deltaAvg.SetText(fmt.Sprintf("ΔAvg: %.6f", signal.DeltaAverage()))
-			i.deltaStd.SetText(fmt.Sprintf("ΔStd: %.6f", signal.DeltaStdDev(false)))
-			i.sample.SetText(fmt.Sprintf("%f", signal.dataTransformed[sampleIdx]))
-		}
-	}
-
-	if i.bounds.MouseOver() {
-		var signal *SignalLine
-		if s, okay := i.Parent().(*SignalLine); okay {
-			signal = s
-		}
-		if signal == nil {
-			sg := i.Parent().(*SignalGroup)
-			signalCount := len(sg.Children())
-			if signalCount > 0 {
-				idx := int(((mouse.Y + 1.0) / 2.0) * float32(signalCount))
-				if idx == signalCount {
-					idx--
-				}
-				signal = sg.Children()[(signalCount-1)-idx].(*SignalLine)
-				i.SetVisibility(true)
-				updatePanel(signal)
-			} else {
-				i.SetVisibility(false)
-			}
-		} else {
-			i.SetVisibility(true)
-			updatePanel(signal)
-		}
-	} else {
-		i.SetVisibility(false)
-	}
-
-	return true
-}
-
-func (i *SignalInspector) Draw(deltaTime int64) (ok bool) {
-	if !i.visible.Load() {
-		return false
-	}
-
-	i.panel.Draw(deltaTime)
-
-	return i.WindowObjectBase.Draw(deltaTime)
-}
-
-func (i *SignalInspector) Close() {
-	i.bounds.Close()
-	i.panel.Close()
-}
-
 func (i *SignalInspector) SetFontSize(size float32) *SignalInspector {
 	i.stateMutex.Lock()
 	i.fontSize = size
@@ -1044,32 +1121,8 @@ func (i *SignalInspector) SetPanelSize(size float32) *SignalInspector {
 	return i
 }
 
-func (i *SignalInspector) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	i.bounds.SetMaintainAspectRatio(maintainAspectRatio)
-	return i
-}
-
 func (i *SignalInspector) Panel() *View {
 	return i.panel
-}
-
-func (i *SignalInspector) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	i.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	i.panel.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	i.stateChanged.Store(true)
-}
-
-func (i *SignalInspector) SetWindow(window *Window) WindowObject {
-	i.WindowObjectBase.SetWindow(window)
-	i.bounds.SetWindow(window)
-	i.minValue.SetWindow(window)
-	i.maxValue.SetWindow(window)
-	i.avg.SetWindow(window)
-	i.std.SetWindow(window)
-	i.deltaAvg.SetWindow(window)
-	i.deltaStd.SetWindow(window)
-	i.sample.SetWindow(window)
-	return i
 }
 
 /******************************************************************************
@@ -1147,7 +1200,7 @@ func NewSignalInspector[T SignalControl](parent T) *SignalInspector {
 	}
 
 	si := &SignalInspector{
-		WindowObjectBase: *NewObject(nil),
+		WindowObjectBase: *NewWindowObject(nil),
 		bounds:           NewBoundingBox(),
 		panel:            NewView(),
 		minValue:         NewLabel(),

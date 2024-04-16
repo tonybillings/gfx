@@ -7,11 +7,11 @@ import (
 )
 
 type Carousel struct {
-	gfx.Shape
+	gfx.Shape2D
 	rotIndex int
-	triangle *gfx.Shape
-	quad     *gfx.Shape
-	dot      *gfx.Shape
+	triangle *gfx.Shape2D
+	quad     *gfx.Shape2D
+	dot      *gfx.Shape2D
 	hello    *gfx.Label
 	world    *gfx.Label
 }
@@ -107,8 +107,8 @@ func (c *Carousel) Update(deltaTime int64) bool {
 
 func NewCarousel() *Carousel {
 	c := &Carousel{
-		Shape:    *gfx.NewShape(),
-		triangle: gfx.NewShape(),
+		Shape2D:  *gfx.NewShape2D(),
+		triangle: gfx.NewShape2D(),
 		quad:     gfx.NewQuad(),
 		dot:      gfx.NewDot(),
 		hello:    gfx.NewLabel(),

@@ -9,143 +9,167 @@ import (
 	"golang.org/x/image/math/fixed"
 	"image"
 	"image/color"
-	"os"
-	"path/filepath"
-	"strings"
 	"sync"
+	"tonysoft.com/gfx/fonts"
 )
 
 const (
-	DefaultFont = "default"
-	SquareFont  = "square"
-	AnitaFont   = "anita"
-	fontsDir    = "fonts"
+	DefaultFont = "_font_default"
+	SquareFont  = "_font_square"
+	AnitaFont   = "_font_anita"
 )
 
 var (
-	//go:embed fonts/default.ttf
-	defaultFontTtf string
-
-	//go:embed fonts/square.ttf
-	squareFontTtf string
-
-	//go:embed fonts/anita.ttf
-	anitaFontTtf string
+	labelTextureCache = make(map[string]*Texture2D)
+	labelTextureMutex sync.Mutex
 )
 
-var (
-	loadedFonts      map[string]*truetype.Font
-	loadedFontsMutex = sync.Mutex{}
-	renderedLabels   = make(map[string]*image.RGBA)
-)
+/******************************************************************************
+ Font
+******************************************************************************/
 
-func initFonts() error {
-	loadedFonts = make(map[string]*truetype.Font)
-
-	if f, err := truetype.Parse([]byte(defaultFontTtf)); err == nil {
-		loadedFonts[DefaultFont] = f
-	} else {
-		return err
-	}
-
-	if f, err := truetype.Parse([]byte(squareFontTtf)); err == nil {
-		loadedFonts[SquareFont] = f
-	} else {
-		return err
-	}
-
-	if f, err := truetype.Parse([]byte(anitaFontTtf)); err == nil {
-		loadedFonts[AnitaFont] = f
-	} else {
-		return err
-	}
-
-	return loadFonts()
+type Font interface {
+	Asset
+	TTF() *truetype.Font
 }
 
-func loadFonts() (err error) {
-	var info os.FileInfo
-	info, err = os.Stat(fontsDir)
-	if os.IsNotExist(err) {
-		return nil
+/******************************************************************************
+ TrueTypeFont
+******************************************************************************/
+
+type TrueTypeFont struct {
+	AssetBase
+	ttf *truetype.Font
+}
+
+/******************************************************************************
+ Asset Implementation
+******************************************************************************/
+
+func (f *TrueTypeFont) Init() bool {
+	if f.Initialized() {
+		return true
 	}
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return nil
-	}
 
-	var files []os.DirEntry
-	files, err = os.ReadDir(fontsDir)
-	if err != nil {
-		return err
+	switch source := f.source.(type) {
+	case []byte:
+		f.loadFromSlice(source)
+	case string:
+		f.loadFromFile(source)
+	default:
+		panic("unexpected error: source type is not supported")
 	}
 
-	for _, file := range files {
-		if file.Type().IsRegular() && strings.ToLower(filepath.Ext(file.Name())) == ".ttf" {
-			fullPath := filepath.Join(fontsDir, file.Name())
+	return f.AssetBase.Init()
+}
 
-			var data []byte
-			data, err = os.ReadFile(fullPath)
-			if err != nil {
-				return fmt.Errorf("error reading font file: %w", err)
-			}
+func (f *TrueTypeFont) Close() {
+	if !f.Initialized() {
+		return
+	}
 
-			var f *truetype.Font
-			f, err = truetype.Parse(data)
-			if err != nil {
-				return fmt.Errorf("error parsing font file: %w", err)
-			}
+	f.ttf = nil
 
-			extension := filepath.Ext(file.Name())
-			fileName := file.Name()[0 : len(file.Name())-len(extension)]
-			loadedFontsMutex.Lock()
-			loadedFonts[fileName] = f
-			loadedFontsMutex.Unlock()
+	f.AssetBase.Close()
+}
+
+/******************************************************************************
+ Font Functions
+******************************************************************************/
+
+func (f *TrueTypeFont) loadFromSlice(slice []byte) {
+	if ttf, err := truetype.Parse(slice); err != nil {
+		panic(fmt.Errorf("TTF parsing error: %w", err))
+	} else {
+		f.ttf = ttf
+	}
+}
+
+func (f *TrueTypeFont) loadFromFile(name string) {
+	reader, closeFunc := Assets.GetReader(name)
+	defer closeFunc()
+
+	fontBytes := make([]byte, reader.Size())
+	n, _ := reader.Read(fontBytes)
+	if n != reader.Size() {
+		panic("unable to read font file into memory")
+	}
+
+	f.loadFromSlice(fontBytes)
+}
+
+func (f *TrueTypeFont) TTF() *truetype.Font {
+	return f.ttf
+}
+
+/******************************************************************************
+ New Font Function
+******************************************************************************/
+
+func NewFont[T FontSource](name string, source T) *TrueTypeFont {
+	return &TrueTypeFont{
+		AssetBase: AssetBase{
+			name:   name,
+			source: source,
+		},
+	}
+}
+
+/******************************************************************************
+ Initialize Default Fonts
+******************************************************************************/
+
+func newDefaultFont(assetName string, filename string) *TrueTypeFont {
+	fs := fonts.Assets
+
+	if fontFile, err := fs.ReadFile(filename + ".ttf"); err != nil {
+		panic(fmt.Errorf("font file read error: %w", err))
+	} else {
+		ttf := NewFont(assetName, fontFile)
+		ttf.SetProtected(true)
+		return ttf
+	}
+}
+
+func initDefaultFonts(lib *AssetLibrary) {
+	lib.Add(newDefaultFont(DefaultFont, "default"))
+	lib.Add(newDefaultFont(SquareFont, "square"))
+	lib.Add(newDefaultFont(AnitaFont, "anita"))
+}
+
+func getFontOrDefault(fontName string) Font {
+	asset := Assets.Get(fontName)
+	if asset != nil {
+		if fontAsset, ok := asset.(Font); ok {
+			return fontAsset
 		}
 	}
 
-	for name, asset := range loadedAssets {
-		if strings.ToLower(filepath.Ext(name)) == ".ttf" {
-			var f *truetype.Font
-			f, err = truetype.Parse(asset)
-			if err != nil {
-				return fmt.Errorf("error parsing font file: %w", err)
-			}
-
-			loadedFontsMutex.Lock()
-			loadedFonts[name] = f
-			loadedFontsMutex.Unlock()
+	asset = Assets.Get(DefaultFont)
+	if asset != nil {
+		if fontAsset, ok := asset.(Font); ok {
+			return fontAsset
 		}
 	}
 
 	return nil
 }
 
-func getFontOrDefault(fontName string) *truetype.Font {
-	loadedFontsMutex.Lock()
-	defer loadedFontsMutex.Unlock()
+/******************************************************************************
+ Rasterization Functions
+******************************************************************************/
 
-	if f, ok := loadedFonts[fontName]; ok {
-		return f
-	} else {
-		return loadedFonts[DefaultFont]
-	}
-}
+func textToTexture(text string, ttf *truetype.Font, alignment Alignment, rgba color.RGBA,
+	windowWidth, windowHeight int, scaleX, scaleY float32, maintainAspectRatio, useCache bool) *Texture2D {
 
-func rasterizeText(text string, fontFamily string, alignment Alignment, rgba color.RGBA,
-	windowWidth, windowHeight int, scaleX, scaleY float32, maintainAspectRatio, useCache bool) *image.RGBA {
-
-	id := fmt.Sprintf("%s%s%v%v%d%d%f%f%v", text, fontFamily, alignment, rgba, windowWidth, windowHeight, scaleX, scaleY, maintainAspectRatio)
+	id := fmt.Sprintf("%s%v%v%v%d%d%f%f%v", text, ttf, alignment, rgba, windowWidth, windowHeight, scaleX, scaleY, maintainAspectRatio)
 
 	if useCache {
-		if img, ok := renderedLabels[id]; ok {
-			return img
+		cached := getLabelTextureFromCache(id)
+		if cached != nil {
+			return cached
 		}
 	}
-
-	textFont := getFontOrDefault(fontFamily)
 
 	scale := [2]float32{}
 	if maintainAspectRatio {
@@ -170,7 +194,7 @@ func rasterizeText(text string, fontFamily string, alignment Alignment, rgba col
 	img := image.NewRGBA(image.Rect(0, 0, int(scale[0]*float32(windowWidth)*1.005), int(scale[1]*float32(windowHeight)*1.005)))
 
 	ctx := freetype.NewContext()
-	ctx.SetFont(textFont)
+	ctx.SetFont(ttf)
 	ctx.SetFontSize(absFontSize)
 	ctx.SetDPI(72.0)
 	ctx.SetHinting(font.HintingVertical)
@@ -179,8 +203,8 @@ func rasterizeText(text string, fontFamily string, alignment Alignment, rgba col
 	ctx.SetDst(img)
 
 	fpFontSize := fixed.Int26_6(scale[1] * float32(windowHeight))
-	textWidth := measureTextWidth(textFont, text, fpFontSize)
-	textHeight := measureTextHeight(textFont, text, fpFontSize)
+	textWidth := measureTextWidth(ttf, text, fpFontSize)
+	textHeight := measureTextHeight(ttf, text, fpFontSize)
 
 	shapeWidth := float32(img.Bounds().Size().X) * 0.995
 	shapeHeight := float32(img.Bounds().Size().Y) * 0.995
@@ -197,11 +221,12 @@ func rasterizeText(text string, fontFamily string, alignment Alignment, rgba col
 
 	_, _ = ctx.DrawString(text, pt)
 
+	texture := NewTexture2D(id, img)
 	if useCache {
-		renderedLabels[id] = img
+		addLabelTextureToCache(id, texture)
 	}
 
-	return img
+	return texture
 }
 
 func measureTextWidth(f *truetype.Font, text string, scale fixed.Int26_6) float64 {
@@ -236,4 +261,30 @@ func measureTextHeight(f *truetype.Font, text string, scale fixed.Int26_6) float
 	} else {
 		return float32(maxTop - minBottom*2)
 	}
+}
+
+/******************************************************************************
+ Caching
+******************************************************************************/
+
+func getLabelTextureFromCache(id string) *Texture2D {
+	labelTextureMutex.Lock()
+	t := labelTextureCache[id]
+	labelTextureMutex.Unlock()
+	return t
+}
+
+func addLabelTextureToCache(id string, texture *Texture2D) {
+	labelTextureMutex.Lock()
+	labelTextureCache[id] = texture
+	labelTextureMutex.Unlock()
+}
+
+func ClearLabelTextureCache() {
+	labelTextureMutex.Lock()
+	for _, t := range labelTextureCache {
+		t.Close()
+	}
+	labelTextureCache = make(map[string]*Texture2D)
+	labelTextureMutex.Unlock()
 }

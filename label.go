@@ -1,7 +1,9 @@
 package gfx
 
 import (
+	"github.com/golang/freetype/truetype"
 	"image/color"
+	"sync/atomic"
 )
 
 const (
@@ -16,26 +18,36 @@ const (
 type Label struct {
 	View
 
-	text       string
-	fontFamily string
-	alignment  Alignment
+	text      string
+	font      Font
+	ttf       *truetype.Font
+	alignment Alignment
 
 	cacheEnabled bool
 
-	texture  Texture
+	texture  *Texture2D
 	textView *View
+
+	stateChanged atomic.Bool
 }
 
 /******************************************************************************
- WindowObject Implementation
+ Object Implementation
 ******************************************************************************/
 
-func (l *Label) Init(window *Window) (ok bool) {
-	if !l.View.Init(window) {
-		return false
+func (l *Label) Init() (ok bool) {
+	if l.Initialized() {
+		return true
 	}
 
-	return l.textView.Init(window)
+	l.textView.fill.FlipUV(true)
+	if ok = l.textView.Init(); !ok {
+		return
+	}
+
+	l.initFont()
+
+	return l.View.Init()
 }
 
 func (l *Label) Update(deltaTime int64) (ok bool) {
@@ -46,25 +58,42 @@ func (l *Label) Update(deltaTime int64) (ok bool) {
 	if l.stateChanged.Load() {
 		l.stateChanged.Store(false)
 		scale := l.WorldScale()
-		l.stateMutex.Lock()
-		img := rasterizeText(
-			l.text,
-			l.fontFamily,
-			l.alignment,
-			FloatArrayToRgba(l.color),
-			int(l.window.Width()), int(l.window.Height()),
-			scale.X(),
-			scale.Y(),
-			l.maintainAspectRatio,
-			l.cacheEnabled)
-		l.texture = NewTexture(img)
-		l.texture.init()
-		l.stateMutex.Unlock()
-		l.textView.SetTexture(l.texture)
+
+		if l.ttf != nil {
+			l.stateMutex.Lock()
+			if l.texture != nil {
+				l.texture.Close()
+			}
+			l.texture = textToTexture(
+				l.text,
+				l.ttf,
+				l.alignment,
+				FloatArrayToRgba(l.color),
+				int(l.window.Width()), int(l.window.Height()),
+				scale.X(),
+				scale.Y(),
+				l.maintainAspectRatio,
+				l.cacheEnabled)
+			l.texture.Init()
+			l.stateMutex.Unlock()
+			l.textView.SetTexture(l.texture)
+		}
 	}
 
 	return l.textView.Update(deltaTime)
 }
+
+func (l *Label) Close() {
+	l.View.Close()
+	l.textView.Close()
+	if l.texture != nil {
+		l.texture.Close()
+	}
+}
+
+/******************************************************************************
+ DrawableObject Implementation
+******************************************************************************/
 
 func (l *Label) Draw(deltaTime int64) (ok bool) {
 	if !l.View.Draw(deltaTime) {
@@ -74,13 +103,9 @@ func (l *Label) Draw(deltaTime int64) (ok bool) {
 	return l.textView.Draw(deltaTime)
 }
 
-func (l *Label) Close() {
-	l.View.Close()
-	l.textView.Close()
-	if l.texture != nil {
-		l.texture.close()
-	}
-}
+/******************************************************************************
+ Resizer Implementation
+******************************************************************************/
 
 func (l *Label) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 	l.stateChanged.Store(true)
@@ -88,19 +113,31 @@ func (l *Label) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 	l.textView.Resize(oldWidth, oldHeight, newWidth, newHeight)
 }
 
+/******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
+
+func (l *Label) SetColor(rgba color.RGBA) WindowObject {
+	l.WindowObjectBase.SetColor(rgba)
+	l.stateChanged.Store(true)
+	return l
+}
+
+func (l *Label) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+	l.View.SetMaintainAspectRatio(maintainAspectRatio)
+	l.textView.SetMaintainAspectRatio(maintainAspectRatio)
+	l.stateChanged.Store(true)
+	return l
+}
+
 func (l *Label) RefreshLayout() {
 	l.WindowObjectBase.RefreshLayout()
 	l.textView.RefreshLayout()
 }
 
-func (l *Label) SetFillColor(rgba color.RGBA) *Label {
-	l.fill.SetColor(rgba)
-	return l
-}
-
-func (l *Label) SetColor(rgba color.RGBA) WindowObject {
-	l.WindowObjectBase.SetColor(rgba)
-	l.stateChanged.Store(true)
+func (l *Label) SetWindow(window *Window) WindowObject {
+	l.View.SetWindow(window)
+	l.textView.SetWindow(window)
 	return l
 }
 
@@ -114,6 +151,13 @@ func (l *Label) defaultLayout() {
 
 	l.textView.SetFillColor(White)
 	l.textView.SetAnchor(Center)
+}
+
+func (l *Label) initFont() {
+	if l.font == nil {
+		l.font = getFontOrDefault(DefaultFont)
+		l.ttf = l.font.TTF()
+	}
 }
 
 func (l *Label) Text() string {
@@ -131,16 +175,17 @@ func (l *Label) SetText(text string) *Label {
 	return l
 }
 
-func (l *Label) FontFamily() string {
+func (l *Label) Font() Font {
 	l.stateMutex.Lock()
-	font := l.fontFamily
+	ttfFont := l.font
 	l.stateMutex.Unlock()
-	return font
+	return ttfFont
 }
 
-func (l *Label) SetFontFamily(font string) *Label {
+func (l *Label) SetFont(ttfFont Font) *Label {
 	l.stateMutex.Lock()
-	l.fontFamily = font
+	l.font = ttfFont
+	l.ttf = ttfFont.TTF()
 	l.stateChanged.Store(true)
 	l.stateMutex.Unlock()
 	return l
@@ -183,13 +228,6 @@ func (l *Label) SetCacheEnabled(enabled bool) *Label {
 	return l
 }
 
-func (l *Label) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	l.View.SetMaintainAspectRatio(maintainAspectRatio)
-	l.textView.SetMaintainAspectRatio(maintainAspectRatio)
-	l.stateChanged.Store(true)
-	return l
-}
-
 func (l *Label) SetPaddingTop(padding float32) *Label {
 	l.stateMutex.Lock()
 	l.textView.margin.Top = padding
@@ -218,6 +256,11 @@ func (l *Label) SetPaddingLeft(padding float32) *Label {
 	return l
 }
 
+func (l *Label) SetFillColor(rgba color.RGBA) *Label {
+	l.fill.SetColor(rgba)
+	return l
+}
+
 /******************************************************************************
  New Label Function
 ******************************************************************************/
@@ -225,7 +268,6 @@ func (l *Label) SetPaddingLeft(padding float32) *Label {
 func NewLabel() *Label {
 	l := &Label{
 		View:         *NewView(),
-		fontFamily:   DefaultFont,
 		cacheEnabled: true,
 		textView:     NewView(),
 	}

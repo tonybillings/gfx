@@ -9,6 +9,7 @@ import (
 	"image/color"
 	"math"
 	"os"
+	"reflect"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -40,14 +41,24 @@ type Window struct {
 	targetFramerate atomic.Uint32
 	clearColor      mgl32.Vec4
 
-	objects []WindowObject
+	objects         []Object
+	drawableObjects []DrawableObject
+	windowObjects   []WindowObject
+
+	services []Service
+
+	objectInitQueue  []*asyncBoolInvocation
+	objectCloseQueue []*asyncVoidInvocation
+
+	serviceInitQueue  []*asyncBoolInvocation
+	serviceCloseQueue []*asyncVoidInvocation
 
 	keyEventHandlers      []*KeyEventHandler
 	keyEventHandlersMutex sync.Mutex
 	inputEnabled          atomic.Bool
 
-	tranTarget      WindowObject
-	tranQuad        *Shape
+	tranTarget      DrawableObject
+	tranQuad        *Shape2D
 	tranQuadShowing bool
 	tranQuadHiding  bool
 	tranQuadOpacity float64
@@ -59,8 +70,8 @@ type Window struct {
 
 	initialized atomic.Bool
 	cancelFunc  context.CancelFunc
-	stateMutex  sync.Mutex
 
+	stateMutex    sync.Mutex
 	readyChannels []chan bool
 }
 
@@ -100,16 +111,10 @@ func (w *Window) enableWindowedMode() {
 	w.fullscreen.Store(false)
 }
 
-func (w *Window) initAssets() error {
-	if err := initFonts(); err != nil {
-		return fmt.Errorf("error initializing fonts: %w", err)
-	}
-
-	if err := initShaders(); err != nil {
-		return fmt.Errorf("error initializing shaders: %w", err)
-	}
-
-	return nil
+func (w *Window) initAssets() {
+	Assets.SetName("_assets")
+	Assets.SetWindow(w)
+	w.AddService(Assets)
 }
 
 func (w *Window) initTransitionQuad() {
@@ -118,46 +123,115 @@ func (w *Window) initTransitionQuad() {
 		SetColor(w.ClearColor()).
 		SetOpacity(0).
 		SetMaintainAspectRatio(false)
-	w.tranQuad.Init(w)
+	w.tranQuad.SetWindow(w)
+	w.tranQuad.Init()
 }
 
 func (w *Window) initObjects() {
-	for _, o := range w.objects {
-		o.Init(w)
+	for i := len(w.objectInitQueue) - 1; i >= 0; i-- {
+		initInv := w.objectInitQueue[i]
+		ok := initInv.Func()
+		if initInv.ReturnChan != nil {
+			select {
+			case initInv.ReturnChan <- ok:
+			default:
+			}
+		}
+		close(initInv.ReturnChan)
+		w.objectInitQueue = w.objectInitQueue[:i]
+	}
+}
+
+func (w *Window) initServices() {
+	for i := len(w.serviceInitQueue) - 1; i >= 0; i-- {
+		initInv := w.serviceInitQueue[i]
+		ok := initInv.Func()
+		if initInv.ReturnChan != nil {
+			select {
+			case initInv.ReturnChan <- ok:
+			default:
+			}
+		}
+		close(initInv.ReturnChan)
+		w.serviceInitQueue = w.serviceInitQueue[:i]
 	}
 }
 
 func (w *Window) updateObjects(deltaTime int64) {
 	for _, o := range w.objects {
-		if !o.Closed() {
-			o.Update(deltaTime)
-		}
+		o.Update(deltaTime)
+	}
+}
+
+func (w *Window) updateServices(deltaTime int64) {
+	for _, s := range w.services {
+		s.Update(deltaTime)
 	}
 }
 
 func (w *Window) drawObjects(deltaTime int64) {
-	for _, o := range w.objects {
-		if !o.Closed() {
-			o.Draw(deltaTime)
-		}
+	for _, o := range w.drawableObjects {
+		o.Draw(deltaTime)
 	}
 }
 
 func (w *Window) closeObjects() {
-	for _, o := range w.objects {
-		o.Close()
+	for i := len(w.objectCloseQueue) - 1; i >= 0; i-- {
+		closeInv := w.objectCloseQueue[i]
+		closeInv.Func()
+		if closeInv.DoneChan != nil {
+			select {
+			case closeInv.DoneChan <- true:
+			default:
+			}
+		}
+		close(closeInv.DoneChan)
+		w.objectCloseQueue = w.objectCloseQueue[:i]
+	}
+}
+
+func (w *Window) closeServices() {
+	for i := len(w.serviceCloseQueue) - 1; i >= 0; i-- {
+		closeInv := w.serviceCloseQueue[i]
+		closeInv.Func()
+		if closeInv.DoneChan != nil {
+			select {
+			case closeInv.DoneChan <- true:
+			default:
+			}
+		}
+		close(closeInv.DoneChan)
+		w.serviceCloseQueue = w.serviceCloseQueue[:i]
 	}
 }
 
 func (w *Window) resizeObjects(oldWidth, oldHeight, newWidth, newHeight int32) {
+	for _, o := range w.windowObjects {
+		o.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	}
+
 	for _, o := range w.objects {
-		if !o.Closed() {
-			o.Resize(oldWidth, oldHeight, newWidth, newHeight)
+		if resizer, ok := o.(Resizer); ok {
+			resizer.Resize(oldWidth, oldHeight, newWidth, newHeight)
 		}
 	}
 }
 
+func (w *Window) drawTranQuad(deltaTime int64) {
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	w.tranQuad.Draw(deltaTime)
+	gl.Disable(gl.BLEND)
+}
+
 func (w *Window) tick(deltaTime int64) {
+	w.initServices()
+	w.closeServices()
+	w.updateServices(deltaTime)
+
+	w.initObjects()
+	w.closeObjects()
+
 	if w.tranQuadShowing {
 		w.tranQuadOpacity += w.tranSpeed
 		w.tranQuad.SetOpacity(uint8(math.Min(255.0, w.tranQuadOpacity*255.0)))
@@ -165,20 +239,14 @@ func (w *Window) tick(deltaTime int64) {
 			w.tranQuadShowing = false
 			w.tranQuadHiding = true
 			w.tranQuadOpacity = 1
-
-			for _, o := range w.objects {
-				o.SetEnabled(false).SetVisibility(false)
+			for _, o := range w.windowObjects {
+				o.SetVisibility(false).SetEnabled(false)
 			}
-
-			w.tranTarget.SetEnabled(true).SetVisibility(true)
+			w.tranTarget.SetVisibility(true).SetEnabled(true)
 		}
-
 		w.updateObjects(deltaTime)
 		w.drawObjects(deltaTime)
-
-		gl.Enable(gl.BLEND)
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-		w.tranQuad.Draw(deltaTime)
+		w.drawTranQuad(deltaTime)
 	} else if w.tranQuadHiding {
 		w.tranQuadOpacity -= w.tranSpeed
 		w.tranQuad.SetOpacity(uint8(math.Max(0, w.tranQuadOpacity*255.0)))
@@ -187,13 +255,9 @@ func (w *Window) tick(deltaTime int64) {
 			w.tranQuadOpacity = 0
 			gl.Disable(gl.BLEND)
 		}
-
 		w.tranTarget.Update(deltaTime)
 		w.tranTarget.Draw(deltaTime)
-
-		gl.Enable(gl.BLEND)
-		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-		w.tranQuad.Draw(deltaTime)
+		w.drawTranQuad(deltaTime)
 	} else {
 		w.updateObjects(deltaTime)
 		w.drawObjects(deltaTime)
@@ -223,6 +287,7 @@ func (w *Window) keyEventCallback(_ *glfw.Window, key glfw.Key, _ int, action gl
 func (w *Window) close() {
 	w.stateMutex.Lock()
 	w.closeObjects()
+	w.closeServices()
 	w.stateMutex.Unlock()
 
 	w.glwin.SetKeyCallback(nil)
@@ -236,7 +301,6 @@ func (w *Window) close() {
 
 func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 	if w.initialized.Load() {
-		cancelFunc()
 		return
 	}
 
@@ -247,22 +311,18 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 
 		window, err := newGlfwWindow(w.Title(), w.Width(), w.Height())
 		if err != nil {
-			cancelFunc()
 			panic(err)
 		}
 
-		if err = w.initAssets(); err != nil {
-			cancelFunc()
-			panic(err)
-		}
-
+		w.initAssets()
 		w.initialized.Store(true)
 
 		w.stateMutex.Lock()
 		w.glwin = window
 		w.glwin.SetKeyCallback(w.keyEventCallback)
-		w.initTransitionQuad()
+		w.initServices()
 		w.initObjects()
+		w.initTransitionQuad()
 		w.stateMutex.Unlock()
 
 		for _, c := range w.readyChannels {
@@ -418,31 +478,364 @@ func (w *Window) SetClearColor(rgba color.RGBA) *Window {
 	return w
 }
 
-func (w *Window) Object(name string) WindowObject {
-	for _, obj := range w.objects {
+func (w *Window) InitObject(object Initer) (ok bool) {
+	initInv := newAsyncBoolInvocation(object.Init)
+	w.stateMutex.Lock()
+	w.objectInitQueue = append(w.objectInitQueue, initInv)
+	w.stateMutex.Unlock()
+	return <-initInv.ReturnChan
+}
+
+func (w *Window) InitObjectAsync(object Initer) {
+	initInv := newAsyncBoolInvocation(object.Init)
+	w.stateMutex.Lock()
+	w.objectInitQueue = append(w.objectInitQueue, initInv)
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) CloseObject(object Closer) {
+	closeInv := newAsyncVoidInvocation(object.Close)
+	w.stateMutex.Lock()
+	w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+	w.stateMutex.Unlock()
+	<-closeInv.DoneChan
+}
+
+func (w *Window) CloseObjectAsync(object Closer) {
+	closeInv := newAsyncVoidInvocation(object.Close)
+	w.stateMutex.Lock()
+	w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) GetObject(name string) Object {
+	w.stateMutex.Lock()
+	for _, obj := range w.windowObjects {
 		if obj.Name() == name {
+			w.stateMutex.Unlock()
 			return obj
 		}
 		o := obj.Child(name)
 		if o != nil {
+			w.stateMutex.Unlock()
 			return o
 		}
 	}
+	for _, obj := range w.drawableObjects {
+		if obj.Name() == name {
+			w.stateMutex.Unlock()
+			return obj
+		}
+	}
+	for _, obj := range w.objects {
+		if obj.Name() == name {
+			w.stateMutex.Unlock()
+			return obj
+		}
+	}
+	w.stateMutex.Unlock()
 	return nil
 }
 
-func (w *Window) AddObjects(objects ...WindowObject) {
-	w.objects = append(w.objects, objects...)
+func (w *Window) AddObject(object any, waitForInit ...bool) {
+	w.stateMutex.Lock()
+
+	wait := false
+	if len(waitForInit) > 0 && waitForInit[0] {
+		wait = true
+	}
+
+	var initInv *asyncBoolInvocation
+
+	if o, ok := object.(WindowObject); ok {
+		o.SetWindow(w)
+		w.objects = append(w.objects, o)
+		w.drawableObjects = append(w.drawableObjects, o)
+		w.windowObjects = append(w.windowObjects, o)
+		initInv = newAsyncBoolInvocation(o.Init)
+	}
+
+	if initInv == nil {
+		if o, ok := object.(DrawableObject); ok {
+			w.objects = append(w.objects, o)
+			w.drawableObjects = append(w.drawableObjects, o)
+			initInv = newAsyncBoolInvocation(o.Init)
+		}
+	}
+
+	if initInv == nil {
+		if o, ok := object.(Object); ok {
+			w.objects = append(w.objects, o)
+			initInv = newAsyncBoolInvocation(o.Init)
+		} else {
+			panic(fmt.Errorf("cannot add struct of type %s, does not implement one of [Object|DrawableObject|WindowObject]", reflect.TypeOf(object).Name()))
+		}
+	}
+
+	w.objectInitQueue = append(w.objectInitQueue, initInv)
+	w.stateMutex.Unlock()
+
+	if wait {
+		<-initInv.ReturnChan
+	}
 }
 
-func (w *Window) RemoveObjectAt(index int) {
-	if index < 0 || index > len(w.objects)-1 {
-		return
+func (w *Window) AddObjects(objects ...any) {
+	w.stateMutex.Lock()
+
+	for _, obj := range objects {
+		if o, ok := obj.(WindowObject); ok {
+			o.SetWindow(w)
+			w.objects = append(w.objects, o)
+			w.drawableObjects = append(w.drawableObjects, o)
+			w.windowObjects = append(w.windowObjects, o)
+			w.objectInitQueue = append(w.objectInitQueue, newAsyncBoolInvocation(o.Init))
+			continue
+		}
+
+		if o, ok := obj.(DrawableObject); ok {
+			w.objects = append(w.objects, o)
+			w.drawableObjects = append(w.drawableObjects, o)
+			w.objectInitQueue = append(w.objectInitQueue, newAsyncBoolInvocation(o.Init))
+			continue
+		}
+
+		if o, ok := obj.(Object); ok {
+			w.objects = append(w.objects, o)
+			w.objectInitQueue = append(w.objectInitQueue, newAsyncBoolInvocation(o.Init))
+			continue
+		} else {
+			panic(fmt.Errorf("cannot add struct of type %s, does not implement one of [Object|DrawableObject|WindowObject]", reflect.TypeOf(obj).Name()))
+		}
 	}
-	w.objects = append(w.objects[:index], w.objects[index+1:]...)
+
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) RemoveObject(name string) {
+	w.stateMutex.Lock()
+
+	for i := len(w.objects) - 1; i >= 0; i-- {
+		if w.objects[i].Name() == name {
+			w.objects = append(w.objects[:i], w.objects[i+1:]...)
+			break
+		}
+	}
+	for i := len(w.drawableObjects) - 1; i >= 0; i-- {
+		if w.drawableObjects[i].Name() == name {
+			w.drawableObjects = append(w.drawableObjects[:i], w.drawableObjects[i+1:]...)
+			break
+		}
+	}
+	for i := len(w.windowObjects) - 1; i >= 0; i-- {
+		if w.windowObjects[i].Name() == name {
+			w.windowObjects = append(w.windowObjects[:i], w.windowObjects[i+1:]...)
+			break
+		}
+	}
+
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) RemoveAllObjects() {
+	w.stateMutex.Lock()
+	w.objects = make([]Object, 0)
+	w.drawableObjects = make([]DrawableObject, 0)
+	w.windowObjects = make([]WindowObject, 0)
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) DisposeObject(name string) {
+	obj := w.GetObject(name)
+
+	if obj != nil {
+		w.stateMutex.Lock()
+		for i := len(w.objects) - 1; i >= 0; i-- {
+			if w.objects[i].Name() == name {
+				w.objects = append(w.objects[:i], w.objects[i+1:]...)
+				break
+			}
+		}
+		for i := len(w.drawableObjects) - 1; i >= 0; i-- {
+			if w.drawableObjects[i].Name() == name {
+				w.drawableObjects = append(w.drawableObjects[:i], w.drawableObjects[i+1:]...)
+				break
+			}
+		}
+		for i := len(w.windowObjects) - 1; i >= 0; i-- {
+			if w.windowObjects[i].Name() == name {
+				w.windowObjects = append(w.windowObjects[:i], w.windowObjects[i+1:]...)
+				break
+			}
+		}
+		closeInv := newAsyncVoidInvocation(obj.Close)
+		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+		w.stateMutex.Unlock()
+		<-closeInv.DoneChan
+	}
+}
+
+func (w *Window) DisposeObjectAsync(name string) {
+	obj := w.GetObject(name)
+
+	if obj != nil {
+		w.stateMutex.Lock()
+		for i := len(w.objects) - 1; i >= 0; i-- {
+			if w.objects[i].Name() == name {
+				w.objects = append(w.objects[:i], w.objects[i+1:]...)
+				break
+			}
+		}
+		for i := len(w.drawableObjects) - 1; i >= 0; i-- {
+			if w.drawableObjects[i].Name() == name {
+				w.drawableObjects = append(w.drawableObjects[:i], w.drawableObjects[i+1:]...)
+				break
+			}
+		}
+		for i := len(w.windowObjects) - 1; i >= 0; i-- {
+			if w.windowObjects[i].Name() == name {
+				w.windowObjects = append(w.windowObjects[:i], w.windowObjects[i+1:]...)
+				break
+			}
+		}
+		w.objectCloseQueue = append(w.objectCloseQueue, newAsyncVoidInvocation(obj.Close))
+		w.stateMutex.Unlock()
+	}
+}
+
+func (w *Window) DisposeAllObjects() {
+	doneChans := make([]chan bool, 0)
+	w.stateMutex.Lock()
+	for _, obj := range w.objects {
+		closeInv := newAsyncVoidInvocation(obj.Close)
+		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+		doneChans = append(doneChans, closeInv.DoneChan)
+	}
+	for _, obj := range w.drawableObjects {
+		closeInv := newAsyncVoidInvocation(obj.Close)
+		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+		doneChans = append(doneChans, closeInv.DoneChan)
+	}
+	for _, obj := range w.windowObjects {
+		closeInv := newAsyncVoidInvocation(obj.Close)
+		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+		doneChans = append(doneChans, closeInv.DoneChan)
+	}
+	w.objects = make([]Object, 0)
+	w.drawableObjects = make([]DrawableObject, 0)
+	w.windowObjects = make([]WindowObject, 0)
+	w.stateMutex.Unlock()
+
+	for _, doneChan := range doneChans {
+		<-doneChan
+	}
+}
+
+func (w *Window) DisposeAllObjectsAsync() {
+	w.stateMutex.Lock()
+	for _, obj := range w.objects {
+		w.objectCloseQueue = append(w.objectCloseQueue, newAsyncVoidInvocation(obj.Close))
+	}
+	for _, obj := range w.drawableObjects {
+		w.objectCloseQueue = append(w.objectCloseQueue, newAsyncVoidInvocation(obj.Close))
+	}
+	for _, obj := range w.windowObjects {
+		w.objectCloseQueue = append(w.objectCloseQueue, newAsyncVoidInvocation(obj.Close))
+	}
+	w.objects = make([]Object, 0)
+	w.drawableObjects = make([]DrawableObject, 0)
+	w.windowObjects = make([]WindowObject, 0)
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) GetService(name string) Service {
+	w.stateMutex.Lock()
+	for _, svc := range w.services {
+		if svc.Name() == name {
+			w.stateMutex.Unlock()
+			return svc
+		}
+	}
+	w.stateMutex.Unlock()
+	return nil
+}
+
+func (w *Window) AddService(service Service) {
+	w.stateMutex.Lock()
+	w.services = append(w.services, service)
+	w.serviceInitQueue = append(w.serviceInitQueue, newAsyncBoolInvocation(service.Init))
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) RemoveService(name string) {
+	w.stateMutex.Lock()
+	for i := len(w.services) - 1; i >= 0; i-- {
+		if w.services[i].Name() == name && !w.services[i].Protected() {
+			w.services = append(w.services[:i], w.services[i+1:]...)
+			break
+		}
+	}
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) InitService(name string) (ok bool) {
+	service := w.GetService(name)
+	initInv := newAsyncBoolInvocation(service.Init)
+	w.stateMutex.Lock()
+	w.serviceInitQueue = append(w.serviceInitQueue, initInv)
+	w.stateMutex.Unlock()
+	return <-initInv.ReturnChan
+}
+
+func (w *Window) InitServiceAsync(name string) {
+	service := w.GetService(name)
+	w.stateMutex.Lock()
+	w.serviceInitQueue = append(w.serviceInitQueue, newAsyncBoolInvocation(service.Init))
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) DisposeService(name string) {
+	service := w.GetService(name)
+
+	if service != nil && !service.Protected() {
+		w.stateMutex.Lock()
+		for i := len(w.services) - 1; i >= 0; i-- {
+			if w.services[i].Name() == name {
+				w.services = append(w.services[:i], w.services[i+1:]...)
+				break
+			}
+		}
+		closeInv := newAsyncVoidInvocation(service.Close)
+		w.serviceCloseQueue = append(w.serviceCloseQueue, closeInv)
+		w.stateMutex.Unlock()
+		<-closeInv.DoneChan
+	}
+}
+
+func (w *Window) DisposeServiceAsync(name string) {
+	w.stateMutex.Lock()
+	for i := len(w.services) - 1; i >= 0; i-- {
+		if w.services[i].Name() == name && !w.services[i].Protected() {
+			w.serviceCloseQueue = append(w.serviceCloseQueue, newAsyncVoidInvocation(w.services[i].Close))
+			w.services = append(w.services[:i], w.services[i+1:]...)
+			break
+		}
+	}
+	w.stateMutex.Unlock()
 }
 
 func (w *Window) TransitionTo(name string, speed ...float64) {
+	target := w.GetObject(name)
+	if target == nil {
+		return
+	}
+
+	var obj DrawableObject
+	var ok bool
+	if obj, ok = target.(DrawableObject); !ok {
+		return
+	}
+
 	w.stateMutex.Lock()
 	if len(speed) > 0 {
 		w.tranSpeed = speed[0]
@@ -455,7 +848,7 @@ func (w *Window) TransitionTo(name string, speed ...float64) {
 		return
 	}
 
-	w.tranTarget = w.Object(name)
+	w.tranTarget = obj
 	w.tranQuadShowing = true
 	w.stateMutex.Unlock()
 }
@@ -632,12 +1025,16 @@ func (w *Window) EnableMouseTracking() *Window {
 	return w
 }
 
-func (w *Window) GetReadyChan() <-chan bool {
+func (w *Window) ReadyChan() <-chan bool {
 	c := make(chan bool)
 	w.stateMutex.Lock()
 	w.readyChannels = append(w.readyChannels, c)
 	w.stateMutex.Unlock()
 	return c
+}
+
+func (w *Window) Initialized() bool {
+	return w.initialized.Load()
 }
 
 /******************************************************************************
@@ -646,7 +1043,10 @@ func (w *Window) GetReadyChan() <-chan bool {
 
 func NewWindow() *Window {
 	w := &Window{
-		objects:          make([]WindowObject, 0),
+		objects:          make([]Object, 0),
+		drawableObjects:  make([]DrawableObject, 0),
+		windowObjects:    make([]WindowObject, 0),
+		services:         make([]Service, 0),
 		keyEventHandlers: make([]*KeyEventHandler, 0),
 	}
 

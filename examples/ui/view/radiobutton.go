@@ -195,7 +195,7 @@ func NewRadioButtonView(ctx context.Context, window *gfx.Window, signalSampleCou
 	source := signal.NewSource()
 	source.Run(ctx)
 
-	container := gfx.NewObject(nil)
+	container := gfx.NewWindowObject(nil)
 	container.AddChild(newExtendedRawSignalView(window, signalSampleCount, source))
 
 	return container
