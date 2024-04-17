@@ -96,6 +96,10 @@ func (t *Texture2D) createFromFile(name string) {
 }
 
 func (t *Texture2D) createFromReader(reader *bufio.Reader) {
+	if reader == nil {
+		panic(fmt.Errorf("reader cannot be nil"))
+	}
+
 	var img image.Image
 	var err error
 	if img, _, err = image.Decode(reader); err != nil {

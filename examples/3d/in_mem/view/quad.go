@@ -156,21 +156,40 @@ func (f *Face) AttachedMaterial() gfx.Material {
 ******************************************************************************/
 
 func NewQuadView(window *gfx.Window) gfx.WindowObject {
-	gfx.Assets.AddEmbeddedFiles(textures.Assets)
-
-	// Create the shader asset and add to AssetLibrary for life-cycle management
-	shader := gfx.NewBasicShader("test", vertShader, fragShader)
+	// Create the Shader asset and add to AssetLibrary for life-cycle management
+	shader := gfx.NewBasicShader("my_shader", vertShader, fragShader)
 	gfx.Assets.Add(shader)
 
 	// Create the texture from an on-disk PNG (this part is not very
 	// "in mem[ory]" but textures can also be created from solid colors,
 	// which can be helpful for use in shaders where the absence of
 	// a proper texture must be handled gracefully/seamlessly, but here
-	// we'll go for something more interesting to see)
+	// we'll go for something more interesting to see).  First, we
+	// load the PNG's raw binary data into RAM and store as an asset:
+	gfx.Assets.AddEmbeddedFiles(textures.Assets)
+	// Next, we create a Texture asset using the filename of the PNG
+	// asset as the source.  Because it exists in gfx.Assets, it will
+	// be loaded from there (RAM); if it doesn't exist in gfx.Assets,
+	// then it will look for the PNG on the local file system (disk).
+	// Texture assets, once initialized, are references to texture
+	// data stored in graphics card memory (VRAM).
 	emojiTexture := gfx.NewTexture2D("emoji.t2d", "emoji.png")
+	// Finally, because Texture assets require participation in the
+	// Init()/Close() life-cycle, they should be managed by an
+	// AssetLibrary, so here we'll just add to the default one:
 	gfx.Assets.Add(emojiTexture)
+	// Alternatively, you could manually initialize/close the texture
+	// using the related InitObject()/CloseObject() functions the
+	// Window struct provides (unless the object does nothing OpenGL-
+	// related, you shouldn't directly invoke the life-cycle methods
+	// Init()/Update()/Draw()/Close() that the object exposes).
 
-	// Instantiate our material, attach the diffuse map and shader
+	// Instantiate our Material, attach the diffuse map and shader.
+	// Materials are also assets but don't necessarily need to participate
+	// in any life-cycle routine, as they are just data containers at
+	// the very least (but "smart/dynamic" Materials could be imagined
+	// that could require such participation).  So no need to add to
+	// gfx.Assets...
 	material := &BasicMaterial{
 		Properties: &MaterialProperties{
 			Ambient: mgl32.Vec4{0, 0, .5, 0},
@@ -197,7 +216,10 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 		faces: []*Face{face0, face1},
 	}
 
-	// Instantiate the model
+	// Instantiate the Model.  Models are also assets, but again there
+	// is no need to add to gfx.Assets as there's nothing to "initialize"
+	// or "update", though you could of course use gfx.Assets simply
+	// to make the asset available throughout the application.
 	model := &Model{ // here we store the data referenced by the faces
 		vertices: []float32{
 			0, 0, 0,
@@ -214,9 +236,9 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 		meshes: []*Mesh{mesh},
 	}
 
-	// Create the Shape3D object used to render the model
+	// Create the Shape3D object used to render the Model
 	quad := gfx.NewShape3D()
-	quad.SetModel(model)
+	quad.SetModel(model) // and simply provide the Model asset
 
 	// Normally, you would also provide a Camera for space
 	// transformations, but in this example we'll deal strictly
@@ -224,7 +246,7 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// the vertices were defined in the positive X/Y quadrant
 	// only, we can use a custom viewport to effectively stretch
 	// and reposition the rendered quad such that it fills the
-	// entire screen instead of just the upper-right quadrant
+	// entire screen instead of just the upper-right quadrant.
 	vp := gfx.NewViewport(window.Width(), window.Height())
 	vp.Set(-1, -1, 2, 2)
 	quad.SetViewport(vp)
