@@ -8,70 +8,102 @@ import (
 	"tonysoft.com/gfx/examples/3d/in_mem/textures"
 )
 
+/******************************************************************************
+ 1. Create structs that implement Model/Mesh/Face
+
+ Embedding the "Base" structs means we only have to define funcs
+ for the combination of vertex attributes that the model will support.
+ For example, it can contain just vertex position and color
+ information or, like in the example that follows, it can be meant
+ to hold texture coordinates instead of hard-coded colors. The gfx.Model
+ interface also embeds the gfx.Asset interface; i.e., Models are Assets.
+ gfx.ModelBase takes care of that concern for us as it embeds gfx.AssetBase.
+******************************************************************************/
+
 type Model struct {
 	gfx.ModelBase
 	vertices []float32
-	normals  []float32
 	uvs      []float32
 	meshes   []*Mesh
 }
 
-type Mesh struct {
-	gfx.MeshBase
-	faces []*Face
+type Mesh struct { // Mesh's must also implement gfx.Transform...
+	gfx.MeshBase // ...and this takes care of that concern for us
+	faces        []*Face
 }
 
 type Face struct {
 	gfx.FaceBase
 	vertexIndices []int
-	normalIndices []int
 	uvIndices     []int
 	material      gfx.Material
 }
 
+/******************************************************************************
+ 2. Create a struct that implements Material
+
+ Here, we're creating a shader-bindable struct, which just means that it
+ contains fields that can be "bound" to uniform variables/buffers defined in
+ a shader program. These bindings make it easy to send data from system memory
+ (RAM) to graphics card memory (VRAM). Fields meant to be bound must adhere to
+ a set of rules defined in detail elsewhere, but for now know that they must
+ be exported, be of a certain type, and be named exactly as they are in the
+ shader, sans the "u_" and "a_" prefix for uniform variables and vertex
+ attributes, respectively.
+******************************************************************************/
+
 type BasicMaterial struct {
 	gfx.MaterialBase
-	Time       float32
-	WaveFactor float32
-	DiffuseMap gfx.Texture
-	Properties *MaterialProperties
+	Time       float32             // binds to float
+	WaveFactor float32             // binds to float
+	DiffuseMap gfx.Texture         // binds to sampler2D
+	Properties *MaterialProperties // pointers to structs are bound as UBOs
 }
 
-type MaterialProperties struct {
-	Ambient mgl32.Vec4
-	Diffuse mgl32.Vec4
-}
+type MaterialProperties struct { // will be bound as a Uniform Buffer Object, std140 layout
+	Ambient mgl32.Vec4 // binds to vec4
+	Diffuse mgl32.Vec4 // binds to vec4
+} // ensure the fields are 2/4/16-byte aligned as per std140...careful using Vec3!
+
+/******************************************************************************
+ 3. Define the shader program
+******************************************************************************/
 
 var vertShader = `#version 410 core
+// Vertex attributes can come in any order but must be  
+// named a_Position, a_Color, a_UV, a_Normal, a_Tangent, or a_Bitangent
 in vec3 a_Position;
-in vec3 a_Normal;
 in vec2 a_UV;
 
-out vec3 Normal;
 out vec2 UV;
 
 void main() {
-	Normal = a_Normal;
 	UV = a_UV;
   	gl_Position = vec4(a_Position, 1.0);
 }
 `
 
 var fragShader = `#version 410 core
-in vec3 Normal;
 in vec2 UV;
 
 out vec4 FragColor;
 
-uniform sampler2D u_DiffuseMap;
-uniform sampler2D u_DiffuseMap2;
+// Uniforms (that you plan to bind to) must begin with u_
+uniform sampler2D u_DiffuseMap; 
 uniform float u_Time;
 uniform float u_WaveFactor;
 
-layout (std140) uniform BasicMaterial {
+// For whole-struct binding (UBOs), use std140 layout.  The 
+// given name must match the name of the bound struct field,
+// unless that name is Properties, in which case the given 
+// name here must match the name of the struct's type. In 
+// our example, the bound struct field is named Properties,
+// so the name here should be BasicMaterial since that's what
+// we named the material struct defined above.
+layout (std140) uniform BasicMaterial {  
     vec4 Ambient;
     vec4 Diffuse;
-};
+}; // you can also assign an instance name here, if you like
 
 void main() {
   	vec4 diffuseMap = texture(u_DiffuseMap, UV);
@@ -79,12 +111,12 @@ void main() {
 }
 `
 
+/******************************************************************************
+ 4. Finish implementing Model/Mesh/Face
+******************************************************************************/
+
 func (m *Model) Vertices() []float32 {
 	return m.vertices
-}
-
-func (m *Model) Normals() []float32 {
-	return m.normals
 }
 
 func (m *Model) UVs() []float32 {
@@ -111,10 +143,6 @@ func (f *Face) VertexIndices() []int {
 	return f.vertexIndices
 }
 
-func (f *Face) NormalIndices() []int {
-	return f.normalIndices
-}
-
 func (f *Face) UvIndices() []int {
 	return f.uvIndices
 }
@@ -123,50 +151,58 @@ func (f *Face) AttachedMaterial() gfx.Material {
 	return f.material
 }
 
+/******************************************************************************
+ 5. Create a fullscreen quad that will be textured and animated
+******************************************************************************/
+
 func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	gfx.Assets.AddEmbeddedFiles(textures.Assets)
 
+	// Create the shader asset and add to AssetLibrary for life-cycle management
 	shader := gfx.NewBasicShader("test", vertShader, fragShader)
 	gfx.Assets.Add(shader)
 
-	cubetxt2d := gfx.NewTexture2D("cube.t2d", "cube.png")
-	gfx.Assets.Add(cubetxt2d)
+	// Create the texture from an on-disk PNG (this part is not very
+	// "in mem[ory]" but textures can also be created from solid colors,
+	// which can be helpful for use in shaders where the absence of
+	// a proper texture must be handled gracefully/seamlessly, but here
+	// we'll go for something more interesting to see)
+	emojiTexture := gfx.NewTexture2D("emoji.t2d", "emoji.png")
+	gfx.Assets.Add(emojiTexture)
 
+	// Instantiate our material, attach the diffuse map and shader
 	material := &BasicMaterial{
 		Properties: &MaterialProperties{
 			Ambient: mgl32.Vec4{0, 0, .5, 0},
 			Diffuse: mgl32.Vec4{0.0001, .5, .5, 1},
 		},
-		DiffuseMap: cubetxt2d,
+		DiffuseMap: emojiTexture,
 	}
 	material.AttachShader(shader)
 
+	// Instantiate the two faces of the quad, CCW winding order
 	face0 := &Face{
-		vertexIndices: []int{0, 1, 2},
-		normalIndices: []int{1, 1, 0},
+		vertexIndices: []int{0, 1, 2}, // like the OBJ format, faces contain only indices
 		uvIndices:     []int{0, 1, 2},
 		material:      material,
 	}
 	face1 := &Face{
 		vertexIndices: []int{2, 3, 0},
-		normalIndices: []int{0, 0, 1},
 		uvIndices:     []int{2, 3, 0},
 		material:      material,
 	}
 
+	// Instantiate the mesh that will contain the faces
 	mesh := &Mesh{
 		faces: []*Face{face0, face1},
 	}
 
-	model := &Model{
+	// Instantiate the model
+	model := &Model{ // here we store the data referenced by the faces
 		vertices: []float32{
 			0, 0, 0,
 			1, 0, 0,
 			1, 1, 0,
-			0, 1, 0,
-		},
-		normals: []float32{
-			0, -1, 0,
 			0, 1, 0,
 		},
 		uvs: []float32{
@@ -178,21 +214,29 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 		meshes: []*Mesh{mesh},
 	}
 
+	// Create the Shape3D object used to render the model
 	quad := gfx.NewShape3D()
 	quad.SetModel(model)
 
+	// Normally, you would also provide a Camera for space
+	// transformations, but in this example we'll deal strictly
+	// with normalized device/screen-space coordinates.  Because
+	// the vertices were defined in the positive X/Y quadrant
+	// only, we can use a custom viewport to effectively stretch
+	// and reposition the rendered quad such that it fills the
+	// entire screen instead of just the upper-right quadrant
 	vp := gfx.NewViewport(window.Width(), window.Height())
 	vp.Set(-1, -1, 2, 2)
 	quad.SetViewport(vp)
 
 	go func() {
 		for {
-			material.Lock()
+			material.Lock() // gfx types that implement sync.Locker should be used like this...
 			material.Properties.Ambient[2] += 0.001
 			material.Properties.Diffuse[0] += 0.001
 			material.Time += .004
 			material.WaveFactor = float32(1000 - (math.Sin(float64(material.Time*2)) * 999))
-			material.Unlock()
+			material.Unlock() // ...to ensure changes aren't made while sending data to VRAM
 			time.Sleep(4 * time.Millisecond)
 		}
 	}()
