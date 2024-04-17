@@ -150,6 +150,6 @@ func NewCamera() *BasicCamera {
 		},
 	}
 
-	c.SetProjection(45.0, 16.0/9.0, 0.5, 1000.0)
+	c.SetProjection(45.0, 16.0/9.0, 0.1, 1000.0)
 	return c
 }

@@ -41,9 +41,10 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// by a separate material, if desired.
 
 	camera := gfx.NewCamera()
-	camera.SetProjection(45, window.AspectRatio(), .5, 100)
-	camera.Lock() // not really necessary at this time, but is recommended once the Window is running
-	camera.Properties.Up = mgl32.Vec4{0, 1, 0}
+	camera.SetProjection(45, window.AspectRatio(), .1, 1000)
+	camera.Lock()                                  // not really necessary at this time, but is recommended once the Window is running
+	camera.Properties.Target = mgl32.Vec4{0, 0, 0} // this is the default Target vector
+	camera.Properties.Up = mgl32.Vec4{0, 1, 0}     // this is the default Up vector
 	camera.Properties.Position = mgl32.Vec4{0, 0, 2}
 	camera.Unlock() // the Properties struct is bound to the shader as a UBO, hence the need to lock later
 
