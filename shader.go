@@ -16,14 +16,15 @@ import (
 )
 
 const (
-	SignalShader            = "_shader_signal"
-	Shape2DShader           = "_shader_shape2d"
-	TexturedShape2DShader   = "_shader_shape2d_textured"
-	BlurXShader             = "_shader_blur_x"
-	BlurYShader             = "_shader_blur_y"
-	TextureShader           = "_shader_texture"
-	Shape3DShader           = "_shader_shape3d"
-	Shape3DNoLightingShader = "_shader_shape3d_no_lighting"
+	SignalShader                = "_shader_signal"
+	Shape2DShader               = "_shader_shape2d"
+	TexturedShape2DShader       = "_shader_shape2d_textured"
+	BlurXShader                 = "_shader_blur_x"
+	BlurYShader                 = "_shader_blur_y"
+	TextureShader               = "_shader_texture"
+	Shape3DShader               = "_shader_shape3d"
+	Shape3DNoLightingShader     = "_shader_shape3d_no_lighting"
+	Shape3DBumpedSpecularShader = "_shader_shape3d_bump_spec"
 )
 
 /******************************************************************************
@@ -264,6 +265,7 @@ func initDefaultShaders(lib *AssetLibrary) {
 	lib.Add(newDefaultShader(BlurYShader, "texture", "blur_y"))
 	lib.Add(newDefaultShader(Shape3DShader, "shape3d"))
 	lib.Add(newDefaultShader(Shape3DNoLightingShader, "shape3d_no_lighting"))
+	lib.Add(newDefaultShader(Shape3DBumpedSpecularShader, "shape3d_bump_spec"))
 }
 
 /******************************************************************************

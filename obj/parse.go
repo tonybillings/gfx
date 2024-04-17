@@ -2,6 +2,7 @@ package obj
 
 import (
 	"fmt"
+	"github.com/go-gl/mathgl/mgl32"
 	"strconv"
 	"strings"
 )
@@ -112,4 +113,46 @@ func parseFace(components []string) (*Face, error) {
 	}
 
 	return &face, nil
+}
+
+func setFaceTangents(model *Model, face *Face) {
+	v0Idx := face.vertices[0] * 3
+	v1Idx := face.vertices[1] * 3
+	v2Idx := face.vertices[2] * 3
+
+	v0 := mgl32.Vec3{model.vertices[v0Idx], model.vertices[v0Idx+1], model.vertices[v0Idx+2]}
+	v1 := mgl32.Vec3{model.vertices[v1Idx], model.vertices[v1Idx+1], model.vertices[v1Idx+2]}
+	v2 := mgl32.Vec3{model.vertices[v2Idx], model.vertices[v2Idx+1], model.vertices[v2Idx+2]}
+
+	deltaPos1 := v1.Sub(v0)
+	deltaPos2 := v2.Sub(v0)
+
+	uv0Idx := face.uvs[0] * 2
+	uv1Idx := face.uvs[1] * 2
+	uv2Idx := face.uvs[2] * 2
+
+	uv0 := mgl32.Vec2{model.uvs[uv0Idx], model.uvs[uv0Idx+1]}
+	uv1 := mgl32.Vec2{model.uvs[uv1Idx], model.uvs[uv1Idx+1]}
+	uv2 := mgl32.Vec2{model.uvs[uv2Idx], model.uvs[uv2Idx+1]}
+
+	deltaUV1 := uv1.Sub(uv0)
+	deltaUV2 := uv2.Sub(uv0)
+
+	d := deltaUV1.X()*deltaUV2.Y() - deltaUV1.Y()*deltaUV2.X()
+	if d == 0 {
+		return
+	}
+
+	r := 1.0 / d
+	tan := ((deltaPos1.Mul(deltaUV2.Y()).Sub(deltaPos2.Mul(deltaUV1.Y()))).Mul(r)).Normalize()
+	bitan := ((deltaPos2.Mul(deltaUV1.X()).Sub(deltaPos1.Mul(deltaUV2.X()))).Mul(r)).Normalize()
+
+	model.tangents = append(model.tangents, []float32{tan[0], tan[1], tan[2]}...)
+	model.bitangents = append(model.bitangents, []float32{bitan[0], bitan[1], bitan[2]}...)
+
+	tanIdx := (len(model.tangents) / 3) - 1
+	bitanIdx := (len(model.bitangents) / 3) - 1
+
+	face.tangents = []int{tanIdx, tanIdx, tanIdx}
+	face.bitangents = []int{bitanIdx, bitanIdx, bitanIdx}
 }

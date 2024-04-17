@@ -19,15 +19,19 @@ type Model struct {
 
 	mtllibs []string
 
-	vertices []float32
-	normals  []float32
-	uvs      []float32
+	vertices   []float32
+	normals    []float32
+	uvs        []float32
+	tangents   []float32
+	bitangents []float32
 
 	meshes       []*Mesh
 	materialLibs []*MaterialLibrary
 
 	defaultMaterial *BasicMaterial
 	defaultShader   gfx.Shader
+
+	computeTangentsOnLoad bool
 
 	loaded atomic.Bool
 }
@@ -79,6 +83,14 @@ func (m *Model) Normals() []float32 {
 
 func (m *Model) UVs() []float32 {
 	return m.uvs
+}
+
+func (m *Model) Tangents() []float32 {
+	return m.tangents
+}
+
+func (m *Model) Bitangents() []float32 {
+	return m.bitangents
 }
 
 func (m *Model) Meshes() []gfx.Mesh {
@@ -178,6 +190,14 @@ func (m *Model) loadFromReader(reader *bufio.Reader) {
 	m.meshes = append(m.meshes, currentMesh)
 }
 
+func (m *Model) computeTangents() {
+	for _, mesh := range m.meshes {
+		for _, face := range mesh.faces {
+			setFaceTangents(m, face)
+		}
+	}
+}
+
 func (m *Model) loadMaterialLibraries() {
 	for _, mtllib := range m.mtllibs {
 		mtl := NewMaterialLibrary(mtllib, mtllib)
@@ -275,9 +295,17 @@ func (m *Model) Load() {
 		panic("unexpected error: source type is not supported")
 	}
 
+	if m.computeTangentsOnLoad {
+		m.computeTangents()
+	}
+
 	m.loadMaterialLibraries()
 	m.setMaterials()
 	m.loaded.Store(true)
+}
+
+func (m *Model) ComputeTangents(computeOnLoad bool) {
+	m.computeTangentsOnLoad = computeOnLoad
 }
 
 /******************************************************************************

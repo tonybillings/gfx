@@ -19,7 +19,9 @@ time-sensitive process, etc.)  The underlying graphics framework is OpenGL.
  | FFT and custom (user-defined) transformers                       | ✅ |
  | Common UI controls: Label, Button, Slider, Checkbox, RadioButton | ✅ |
  | Texture and blur support (for blur, 2D only)                     | ✅ |
- | Ambient, diffuse, specular lighting support (3D only)            | ✅ |
+ | Ambient/diffuse/specular/emissive/transparent lighting           | ✅ |
+ | Normal/specular map sampling-based lighting                      | ✅ |
+ | Easily bind custom structs to shader uniforms/buffers            | ✅ |
  | Camera, light, and custom viewport support (3D only)             | ✅ |
  | Text rendering and custom (TTF) font support (2D only)           | ✅ |
  | Interface-based and object-oriented for flexible customization   | ✅ |
@@ -77,3 +79,5 @@ Most, if not all, of the features are flexed in the example code.
 ![pacman](img/pacman.png)  
 
 ![cube](img/cube.png)  
+
+![stone](img/stone.png)  

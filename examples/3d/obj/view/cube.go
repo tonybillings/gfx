@@ -25,6 +25,21 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// so we'll add to gfx.Assets.
 	gfx.Assets.Add(model)
 
+	// Optionally, if you plan to use a normal map and the model
+	// doesn't come with tangent/bitangent vectors, you can have it
+	// generate them automatically.
+	model.ComputeTangents(true)
+
+	// The default shader that the obj package uses is gfx.Shape3DShader.
+	// That shader fully supports obj.BasicMaterial, except for
+	// sampling normal and specular maps. For that, we need to
+	// provide a capable shader such as this one:
+	model.SetDefaultShader(gfx.Assets.Get(gfx.Shape3DBumpedSpecularShader).(gfx.Shader))
+	// That will set the default shader assigned to materials,
+	// though you can always load the model now and change the
+	// shader for any given material and each face can be rendered
+	// by a separate material, if desired.
+
 	camera := gfx.NewCamera()
 	camera.SetProjection(45, window.AspectRatio(), .5, 100)
 	camera.Lock() // not really necessary at this time, but is recommended once the Window is running
@@ -63,10 +78,12 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 
 	// You could also change the transforms for individual meshes, where
 	// the transform for the Shape3D object becomes their parent transform:
+	// model.Load() // have to do this first, if model is uninitialized
 	// model.Meshes()[0].SetRotationZ(1.5)
-	// Note that changing the model means affecting all instances used by Shape3D,
-	// but only at the time of initialization.  After initialization, changes can
-	// be made to a specific instance for a Shape3D with the same syntax:
+	// Note that changing the model asset means affecting all future instances
+	// that are based off this asset and does not affect existing model instances.
+	// After a Shape3D has been initialized, changes can be made to that specific
+	// instance using the same syntax:
 	// cube.Meshes()[0].SetRotationZ(1.5)
 
 	cube := gfx.NewShape3D()
@@ -75,6 +92,12 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 		SetCamera(camera).
 		SetLighting(lighting).
 		SetName("TestCube")
+
+	go func() {
+		<-window.ReadyChan()            // cube must be initialized before Meshes() is ready
+		cube.Meshes()[0].SetScaleY(.5)  // changes just this instance
+		model.Meshes()[0].SetScaleX(.5) // changes the model asset itself, affecting only new instances
+	}()
 
 	return object.NewViewer(window, cube)
 }

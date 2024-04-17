@@ -322,6 +322,7 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 		layout:   layout,
 		material: m.faces[0].material,
 	}
+
 	for _, face := range faces {
 		material := face.AttachedMaterial()
 		if material != group.material {

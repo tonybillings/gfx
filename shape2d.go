@@ -126,11 +126,13 @@ func (s *Shape2D) Draw(deltaTime int64) (ok bool) {
 
 	if s.texture == nil {
 		s.shapeShader.Activate()
+		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, 0)
 		gl.Uniform4fv(s.shapeColorUniformLoc, 1, &s.color[0])
 		s.shapeShaderBinding.Update()
 	} else {
 		s.texShapeShader.Activate()
+		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, s.texture.GlName())
 		gl.Uniform1i(s.shapeTexUniformLoc, 0)
 		gl.Uniform4fv(s.texShapeColorUniformLoc, 1, &s.color[0])

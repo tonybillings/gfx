@@ -18,13 +18,17 @@ import (
 type BasicMaterial struct {
 	gfx.MaterialBase
 
-	name  string
-	mapKd string
+	name    string
+	mapKd   string
+	mapKs   string
+	mapNorm string
 
 	textures []gfx.Texture
 
-	Properties *BasicMaterialProperties
-	DiffuseMap gfx.Texture
+	Properties  *BasicMaterialProperties
+	DiffuseMap  gfx.Texture
+	SpecularMap gfx.Texture
+	NormalMap   gfx.Texture
 }
 
 type BasicMaterialProperties struct {
@@ -214,6 +218,22 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 				currentMat.DiffuseMap = gfx.NewTexture2D(value, value)
 				currentMat.textures = append(currentMat.textures, currentMat.DiffuseMap)
 			}
+		case "map_Ks":
+			if value, err := parseString(fields[1:]); err != nil {
+				panic(fmt.Errorf("MTL map_Ks parsing error: line %d: %w", lineNumber, err))
+			} else {
+				currentMat.mapKs = value
+				currentMat.SpecularMap = gfx.NewTexture2D(value, value)
+				currentMat.textures = append(currentMat.textures, currentMat.SpecularMap)
+			}
+		case "norm", "map_Kn":
+			if value, err := parseString(fields[1:]); err != nil {
+				panic(fmt.Errorf("MTL norm/map_Kn parsing error: line %d: %w", lineNumber, err))
+			} else {
+				currentMat.mapNorm = value
+				currentMat.NormalMap = gfx.NewTexture2D(value, value)
+				currentMat.textures = append(currentMat.textures, currentMat.NormalMap)
+			}
 		}
 	}
 
@@ -223,6 +243,16 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 		if mat.DiffuseMap == nil {
 			mat.DiffuseMap = gfx.NewTexture2D("", gfx.White)
 			mat.textures = append(mat.textures, mat.DiffuseMap)
+		}
+
+		if mat.NormalMap == nil {
+			mat.NormalMap = gfx.NewTexture2D("", gfx.White)
+			mat.textures = append(mat.textures, mat.NormalMap)
+		}
+
+		if mat.SpecularMap == nil {
+			mat.SpecularMap = gfx.NewTexture2D("", gfx.White)
+			mat.textures = append(mat.textures, mat.SpecularMap)
 		}
 	}
 }

@@ -11,9 +11,11 @@ type Face struct {
 
 	usemtl string
 
-	vertices []int
-	normals  []int
-	uvs      []int
+	vertices   []int
+	normals    []int
+	uvs        []int
+	tangents   []int
+	bitangents []int
 
 	material *BasicMaterial
 }
@@ -32,6 +34,14 @@ func (f *Face) NormalIndices() []int {
 
 func (f *Face) UvIndices() []int {
 	return f.uvs
+}
+
+func (f *Face) TangentIndices() []int {
+	return f.tangents
+}
+
+func (f *Face) BitangentIndices() []int {
+	return f.bitangents
 }
 
 func (f *Face) AttachedMaterial() gfx.Material {
