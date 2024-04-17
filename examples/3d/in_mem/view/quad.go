@@ -107,7 +107,7 @@ layout (std140) uniform BasicMaterial {
 
 void main() {
   	vec4 diffuseMap = texture(u_DiffuseMap, UV);
-	FragColor = Diffuse * texture(u_DiffuseMap, vec2(UV.x + sin(UV.y * 100.0 + u_Time) / u_WaveFactor, UV.y));
+	FragColor = Ambient + Diffuse * texture(u_DiffuseMap, vec2(UV.x + sin(UV.y * 100.0 + u_Time) / u_WaveFactor, UV.y));
 }
 `
 
@@ -192,8 +192,8 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// gfx.Assets...
 	material := &BasicMaterial{
 		Properties: &MaterialProperties{
-			Ambient: mgl32.Vec4{0, 0, .5, 0},
-			Diffuse: mgl32.Vec4{0.0001, .5, .5, 1},
+			Ambient: mgl32.Vec4{.1, .1, .1, 1},
+			Diffuse: mgl32.Vec4{0, .5, .5, 1},
 		},
 		DiffuseMap: emojiTexture,
 	}
@@ -256,6 +256,7 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 			material.Lock() // gfx types that implement sync.Locker should be used like this...
 			material.Properties.Ambient[2] += 0.001
 			material.Properties.Diffuse[0] += 0.001
+			material.Properties.Diffuse[1] -= 0.001
 			material.Time += .004
 			material.WaveFactor = float32(1000 - (math.Sin(float64(material.Time*2)) * 999))
 			material.Unlock() // ...to ensure changes aren't made while sending data to VRAM
