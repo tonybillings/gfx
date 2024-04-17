@@ -165,7 +165,7 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// which can be helpful for use in shaders where the absence of
 	// a proper texture must be handled gracefully/seamlessly, but here
 	// we'll go for something more interesting to see).  First, we
-	// load the PNG's raw binary data into RAM and store as an asset:
+	// load the PNG's raw binary data into RAM and store as an Asset:
 	gfx.Assets.AddEmbeddedFiles(textures.Assets)
 	// Next, we create a Texture asset using the filename of the PNG
 	// asset as the source.  Because it exists in gfx.Assets, it will
@@ -185,7 +185,7 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// Init()/Update()/Draw()/Close() that the object exposes).
 
 	// Instantiate our Material, attach the diffuse map and shader.
-	// Materials are also assets but don't necessarily need to participate
+	// Materials are also Assets but don't necessarily need to participate
 	// in any life-cycle routine, as they are just data containers at
 	// the very least (but "smart/dynamic" Materials could be imagined
 	// that could require such participation).  So no need to add to
@@ -216,10 +216,10 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 		faces: []*Face{face0, face1},
 	}
 
-	// Instantiate the Model.  Models are also assets, but again there
-	// is no need to add to gfx.Assets as there's nothing to "initialize"
-	// or "update", though you could of course use gfx.Assets simply
-	// to make the asset available throughout the application.
+	// Instantiate the Model.  Models are also Assets, but in this case
+	// there is no need to add to gfx.Assets as there's nothing to
+	// "initialize"	or "update", though you could of course use gfx.Assets
+	// simply to make the Asset available throughout the application.
 	model := &Model{ // here we store the data referenced by the faces
 		vertices: []float32{
 			0, 0, 0,

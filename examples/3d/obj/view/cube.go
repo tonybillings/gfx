@@ -10,11 +10,19 @@ import (
 )
 
 func NewCubeView(window *gfx.Window) gfx.WindowObject {
+	// Make the Model/Texture source available to other Assets
 	gfx.Assets.AddEmbeddedFiles(models.Assets)
 	gfx.Assets.AddEmbeddedFiles(textures.Assets)
 
-	// Use the obj package to import Wavefront .OBJ files
+	// Use the obj package to import Wavefront .OBJ files.  Since
+	// the OBJ source file was just added as an Asset, the Model
+	// will load from that source, otherwise it will search for the
+	// .obj file on the local file system.
 	model := obj.NewModel("cube", "cube.obj")
+	// Unlike with the "in_mem" example, this Model asset needs to
+	// participate in the Init()/Close() life-cycle.  Like all
+	// Assets, it's best to manage them via an AssetLibrary anyway,
+	// so we'll add to gfx.Assets.
 	gfx.Assets.Add(model)
 
 	camera := gfx.NewCamera()
@@ -22,8 +30,12 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	camera.Lock() // not really necessary at this time, but is recommended once the Window is running
 	camera.Properties.Up = mgl32.Vec4{0, 1, 0}
 	camera.Properties.Position = mgl32.Vec4{0, 0, 2}
-	camera.Unlock()          // the Properties struct is bound to the shader as a UBO, hence the need to lock later
-	window.AddObject(camera) // needs to participate in the Update() cycle
+	camera.Unlock() // the Properties struct is bound to the shader as a UBO, hence the need to lock later
+
+	// A Camera is not an Asset, just an Object, but it still needs
+	// to participate in the Update() loop so it can update its
+	// view-projection matrix, so we'll add it to the Window.
+	window.AddObject(camera)
 
 	lighting := gfx.NewQuadDirectionalLighting() // "lighting" can be any shader-bindable object (see README)
 	lighting.Lock()                              // like the camera, not really necessary to lock now
