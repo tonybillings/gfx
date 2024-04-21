@@ -325,17 +325,17 @@ type shaderTransform struct {
 }
 
 func (s *shaderTransform) setOrigin(value mgl32.Vec3) {
-	s.Transform.Origin = mgl32.Vec4{value[0], value[1], value[2]}
+	s.Transform.Origin = mgl32.Vec4{value[0], value[1], value[2], 1}
 }
 
 func (s *shaderTransform) setPosition(value mgl32.Vec3) {
-	s.Transform.Position = mgl32.Vec4{value[0], value[1], value[2]}
+	s.Transform.Position = mgl32.Vec4{value[0], value[1], value[2], 1}
 }
 
 func (s *shaderTransform) setRotation(value mgl32.Vec3) {
-	s.Transform.Rotation = mgl32.Vec4{value[0], value[1], value[2]}
+	s.Transform.Rotation = mgl32.Vec4{value[0], value[1], value[2], 1}
 }
 
 func (s *shaderTransform) setScale(value mgl32.Vec3) {
-	s.Transform.Scale = mgl32.Vec4{value[0], value[1], value[2]}
+	s.Transform.Scale = mgl32.Vec4{value[0], value[1], value[2], 1}
 }

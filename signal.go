@@ -29,14 +29,14 @@ type Signal struct {
 	filters      []Filter
 	dataFiltered []float64
 
-	transformers       []Transformer
-	dataTransformed    []float64
-	minTransformedData float64
-	maxTransformedData float64
+	transformers          []Transformer
+	dataTransformed       []float64
+	minTransformedData    float64
+	maxTransformedData    float64
+	dataTransformedLabels []float64
 
 	fftEnabled     bool
 	fftTransformer *FastFourierTransformer
-	freqSpectrum   []float64
 }
 
 /******************************************************************************
@@ -261,7 +261,7 @@ func (i *SignalInspector) Update(deltaTime int64) (ok bool) {
 			idx := int(xScale * float32(signal.dataSize-1))
 			i.minValue.SetText("")
 			i.maxValue.SetText("")
-			i.avg.SetText(fmt.Sprintf("Freq: %.6f", signal.freqSpectrum[idx])) // hijacking this label
+			i.avg.SetText(fmt.Sprintf("Freq: %.6f", signal.dataTransformedLabels[idx])) // hijacking this label
 			i.std.SetText("")
 			i.deltaAvg.SetText(fmt.Sprintf("Mag: %.6f", signal.dataTransformed[idx])) // hijacking this label
 			i.deltaStd.SetText("")
@@ -475,6 +475,14 @@ func (s *Signal) FilteredData() []float64 {
 	return s.dataFiltered
 }
 
+func (s *Signal) TransformedData() []float64 {
+	return s.dataTransformed
+}
+
+func (s *Signal) TransformedDataLabels() []float64 {
+	return s.dataTransformedLabels
+}
+
 func (s *Signal) AddSamples(data []float64) {
 	s.dataMutex.Lock()
 
@@ -506,17 +514,20 @@ func (s *Signal) AddSamples(data []float64) {
 
 	transformed := false
 	if s.fftEnabled {
-		s.freqSpectrum = s.fftTransformer.Transform(s.dataTransformed, s.dataFiltered)
+		s.dataTransformedLabels = s.fftTransformer.Transform(s.dataTransformed, s.dataFiltered)
 		transformed = true
-	} else {
-		for i, t := range s.transformers {
-			if i == 0 {
-				t.Transform(s.dataTransformed, s.dataFiltered)
-			} else {
-				t.Transform(s.dataTransformed, s.dataTransformed)
-			}
-			transformed = true
+	}
+
+	for i, t := range s.transformers {
+		if !t.Enabled() {
+			continue
 		}
+		if i == 0 {
+			s.dataTransformedLabels = t.Transform(s.dataTransformed, s.dataFiltered)
+		} else {
+			s.dataTransformedLabels = t.Transform(s.dataTransformed, s.dataTransformed)
+		}
+		transformed = true
 	}
 
 	if transformed {
@@ -1131,14 +1142,18 @@ func (i *SignalInspector) Panel() *View {
 
 func NewSignal(label string, bufferSize int) *Signal {
 	return &Signal{
-		label:           label,
-		data:            make([]float64, bufferSize),
-		dataSize:        bufferSize,
-		deltas:          make([]float64, bufferSize-1),
-		deltasSize:      bufferSize - 1,
-		dataFiltered:    make([]float64, bufferSize),
-		dataTransformed: make([]float64, bufferSize),
-		freqSpectrum:    make([]float64, bufferSize),
+		label:                 label,
+		data:                  make([]float64, bufferSize),
+		dataSize:              bufferSize,
+		deltas:                make([]float64, bufferSize-1),
+		deltasSize:            bufferSize - 1,
+		dataFiltered:          make([]float64, bufferSize),
+		dataTransformed:       make([]float64, bufferSize),
+		dataTransformedLabels: make([]float64, bufferSize),
+		minData:               math.Inf(1),
+		maxData:               math.Inf(-1),
+		minTransformedData:    math.Inf(1),
+		maxTransformedData:    math.Inf(-1),
 	}
 }
 

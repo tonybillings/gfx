@@ -137,9 +137,20 @@ func (l *MaterialLibrary) loadFromSlice(slice []byte) {
 	l.loadFromReader(reader)
 }
 
-func (l *MaterialLibrary) loadFromFile(name string) {
+func (l *MaterialLibrary) loadFromFile(name string) (ok bool) {
 	reader, closeFunc := gfx.Assets.GetReader(name)
 	defer closeFunc()
+
+	if reader == nil {
+		return false
+	}
+
+	l.loadFromReader(reader)
+	return true
+}
+
+func (l *MaterialLibrary) loadFromString(mtl string) {
+	reader := bufio.NewReader(strings.NewReader(mtl))
 	l.loadFromReader(reader)
 }
 
@@ -292,7 +303,9 @@ func (l *MaterialLibrary) Load() {
 	case []byte:
 		l.loadFromSlice(source)
 	case string:
-		l.loadFromFile(source)
+		if ok := l.loadFromFile(source); !ok {
+			l.loadFromString(source)
+		}
 	default:
 		panic("unexpected error: source type is not supported")
 	}

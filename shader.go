@@ -307,12 +307,16 @@ func checkProgramError(program uint32) error {
 ******************************************************************************/
 
 type ShaderBinding struct {
+	ObjectBase
+
+	shader              Shader
 	shaderName          uint32
 	boundStruct         any
 	getBindingPointFunc func() uint32
 
 	bindingPoint uint32
 	textureCount uint32
+	uboNames     []uint32
 
 	updateFunc  func()
 	updateFuncs []func()
@@ -350,6 +354,8 @@ func (b *ShaderBinding) bindStruct(uniformName string, nestedStruct reflect.Valu
 	gl.GenBuffers(1, &ubo)
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
 	gl.BufferData(gl.UNIFORM_BUFFER, bufferSize, nil, gl.DYNAMIC_DRAW)
+
+	b.uboNames = append(b.uboNames, ubo)
 
 	b.updateFuncs = append(b.updateFuncs, func() {
 		gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
@@ -552,23 +558,36 @@ func (b *ShaderBinding) initFuncs() {
 	}
 }
 
-func (b *ShaderBinding) Init() {
+func (b *ShaderBinding) Init() (ok bool) {
+	if !b.shader.Initialized() {
+		b.shader.Init()
+	}
+	b.shaderName = b.shader.GlName()
+
 	b.bindStructFields(reflect.Indirect(reflect.ValueOf(b.boundStruct)), "")
 	b.initFuncs()
+
+	return b.ObjectBase.Init()
 }
 
-func (b *ShaderBinding) Update() {
+func (b *ShaderBinding) Update(_ int64) (ok bool) {
 	b.activate()
 	b.updateFunc()
+	return true
 }
 
 func (b *ShaderBinding) Close() {
 	b.closeFunc()
+	b.ObjectBase.Close()
 }
 
-func newShaderBinding(shaderName uint32, boundStruct any, getBindingPointFunc func() uint32) *ShaderBinding {
+func (b *ShaderBinding) UboNames() []uint32 {
+	return b.uboNames
+}
+
+func NewShaderBinding(shader Shader, boundStruct any, getBindingPointFunc func() uint32) *ShaderBinding {
 	return &ShaderBinding{
-		shaderName:          shaderName,
+		shader:              shader,
 		boundStruct:         boundStruct,
 		getBindingPointFunc: getBindingPointFunc,
 	}
@@ -579,32 +598,38 @@ func newShaderBinding(shaderName uint32, boundStruct any, getBindingPointFunc fu
 ******************************************************************************/
 
 type ShaderBinder struct {
+	ObjectBase
 	bindings    []*ShaderBinding
 	boundStruct any
 }
 
-func (b *ShaderBinder) Init() {
+func (b *ShaderBinder) Init() (ok bool) {
+	ok = true
 	for _, binding := range b.bindings {
-		binding.Init()
+		ok = ok && binding.Init()
 	}
+	return ok && b.ObjectBase.Init()
 }
 
-func (b *ShaderBinder) Update() {
+func (b *ShaderBinder) Update(deltaTime int64) (ok bool) {
+	ok = true
 	for _, binding := range b.bindings {
-		binding.Update()
+		ok = ok && binding.Update(deltaTime)
 	}
+	return
 }
 
 func (b *ShaderBinder) Close() {
 	for _, binding := range b.bindings {
 		binding.Close()
 	}
+	b.ObjectBase.Close()
 }
 
-func newShaderBinder(shaders map[uint32]Shader, boundStruct any, getBindingPointFunc func() uint32) *ShaderBinder {
+func NewShaderBinder(shaders map[uint32]Shader, boundStruct any, getBindingPointFunc func() uint32) *ShaderBinder {
 	binder := &ShaderBinder{}
-	for shader := range shaders {
-		binding := newShaderBinding(shader, boundStruct, getBindingPointFunc)
+	for _, shader := range shaders {
+		binding := NewShaderBinding(shader, boundStruct, getBindingPointFunc)
 		binder.bindings = append(binder.bindings, binding)
 	}
 	return binder

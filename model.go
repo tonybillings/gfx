@@ -150,7 +150,7 @@ func (r *modelRenderer) setCamera(camera Camera) {
 	if c, ok := r.cameraBinders[camera]; ok {
 		r.activeCameraBinder = c
 	} else {
-		r.activeCameraBinder = newShaderBinder(r.model.shaders, camera, func() uint32 { return cameraUboBindPoint })
+		r.activeCameraBinder = NewShaderBinder(r.model.shaders, camera, func() uint32 { return cameraUboBindPoint })
 		r.activeCameraBinder.Init()
 		r.cameraBinders[camera] = r.activeCameraBinder
 	}
@@ -160,7 +160,7 @@ func (r *modelRenderer) setLighting(lighting any) {
 	if b, ok := r.lightingBinders[lighting]; ok {
 		r.activeLightingBinder = b
 	} else {
-		r.activeLightingBinder = newShaderBinder(r.model.shaders, lighting, func() uint32 { return lightingUboBindPoint })
+		r.activeLightingBinder = NewShaderBinder(r.model.shaders, lighting, func() uint32 { return lightingUboBindPoint })
 		r.activeLightingBinder.Init()
 		r.lightingBinders[lighting] = r.activeLightingBinder
 	}
@@ -170,7 +170,7 @@ func (r *modelRenderer) drawFaces() {
 	for _, mesh := range r.model.meshes {
 		mesh.updateBindings()
 		for _, group := range mesh.faceGroups {
-			group.materialBinding.Update()
+			group.materialBinding.Update(0)
 			gl.BindVertexArray(group.vao)
 			gl.DrawArrays(gl.TRIANGLES, 0, group.vertexCount)
 		}
@@ -179,12 +179,21 @@ func (r *modelRenderer) drawFaces() {
 
 func (r *modelRenderer) render() {
 	if r.activeCameraBinder != nil {
-		r.activeCameraBinder.Update()
+		r.activeCameraBinder.Update(0)
 	}
 	if r.activeLightingBinder != nil {
-		r.activeLightingBinder.Update()
+		r.activeLightingBinder.Update(0)
 	}
 	r.drawFaces()
+}
+
+func (r *modelRenderer) close() {
+	for _, b := range r.cameraBinders {
+		b.Close()
+	}
+	for _, b := range r.lightingBinders {
+		b.Close()
+	}
 }
 
 func newModelRenderer(model *modelInstance) *modelRenderer {
@@ -210,12 +219,6 @@ func (m *modelInstance) getBindingPoint() uint32 {
 	return m.bindingPoint
 }
 
-func (m *modelInstance) close() {
-	for _, mesh := range m.meshes {
-		mesh.close()
-	}
-}
-
 func (m *modelInstance) getLayout() VertexAttributeLayout {
 	if len(m.model.Bitangents()) > 0 && len(m.model.Tangents()) > 0 &&
 		len(m.model.UVs()) > 0 && len(m.model.Normals()) > 0 && len(m.model.Vertices()) > 0 {
@@ -230,6 +233,12 @@ func (m *modelInstance) getLayout() VertexAttributeLayout {
 		return PositionOnlyVaoLayout
 	}
 	panic("unsupported vertex attribute layout")
+}
+
+func (m *modelInstance) close() {
+	for _, mesh := range m.meshes {
+		mesh.close()
+	}
 }
 
 func (m *modelInstance) Meshes() []*meshInstance {
@@ -414,13 +423,13 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 }
 
 func (m *meshInstance) initBindings() {
-	m.binder = newShaderBinder(m.shaders, m, nil)
+	m.binder = NewShaderBinder(m.shaders, m, nil)
 	m.binder.Init()
 }
 
 func (m *meshInstance) updateBindings() {
 	m.WorldMat = m.WorldMatrix()
-	m.binder.Update()
+	m.binder.Update(0)
 }
 
 func (m *meshInstance) close() {
@@ -507,7 +516,7 @@ type faceRenderGroup struct {
 
 func (g *faceRenderGroup) init() {
 	g.shader = g.material.AttachedShader()
-	g.materialBinding = newShaderBinding(g.shader.GlName(), g.material, func() uint32 { return materialUboBindPoint })
+	g.materialBinding = NewShaderBinding(g.shader, g.material, func() uint32 { return materialUboBindPoint })
 	g.materialBinding.Init()
 	g.vao, g.closeFunc = newVertexArrayObject(g.layout, g.shader, g.buffer)
 }

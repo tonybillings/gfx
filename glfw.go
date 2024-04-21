@@ -86,3 +86,13 @@ func Init() error {
 	glfwInitialized.Store(true)
 	return nil
 }
+
+// Close Calling this is only necessary if you need to re-initialize,
+// which seems to be the case in a testing context.
+func Close() {
+	if !glfwInitialized.Load() {
+		return
+	}
+
+	glfwInitialized.Store(false)
+}

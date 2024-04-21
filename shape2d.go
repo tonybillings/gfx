@@ -129,14 +129,14 @@ func (s *Shape2D) Draw(deltaTime int64) (ok bool) {
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, 0)
 		gl.Uniform4fv(s.shapeColorUniformLoc, 1, &s.color[0])
-		s.shapeShaderBinding.Update()
+		s.shapeShaderBinding.Update(deltaTime)
 	} else {
 		s.texShapeShader.Activate()
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, s.texture.GlName())
 		gl.Uniform1i(s.shapeTexUniformLoc, 0)
 		gl.Uniform4fv(s.texShapeColorUniformLoc, 1, &s.color[0])
-		s.texShapeShaderBinding.Update()
+		s.texShapeShaderBinding.Update(deltaTime)
 	}
 
 	if s.blurEnabled {
@@ -621,10 +621,10 @@ func (s *Shape2D) initShaders() {
 	s.blurTex1UniformLoc = s.blurXShader.GetUniformLocation("u_TextureMap")
 	s.blurTex2UniformLoc = s.textureShader.GetUniformLocation("u_TextureMap")
 
-	s.shapeShaderBinding = newShaderBinding(s.shapeShader.GlName(), s.boundStruct, nil)
+	s.shapeShaderBinding = NewShaderBinding(s.shapeShader, s.boundStruct, nil)
 	s.shapeShaderBinding.Init()
 
-	s.texShapeShaderBinding = newShaderBinding(s.texShapeShader.GlName(), s.boundStruct, nil)
+	s.texShapeShaderBinding = NewShaderBinding(s.texShapeShader, s.boundStruct, nil)
 	s.texShapeShaderBinding.Init()
 }
 

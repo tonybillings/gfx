@@ -10,11 +10,10 @@ import (
 	"tonysoft.com/gfx/examples/ui/view"
 )
 
-func BenchmarkSignals(b *testing.B) {
+func BenchmarkSignalGroup(b *testing.B) {
 	_test.PanicOnErr(gfx.Init())
 
 	startRoutineCount := runtime.NumGoroutine()
-	b.Logf("Starting routine count: %d", startRoutineCount)
 
 	for i := 0; i < b.N; i++ {
 		win := gfx.NewWindow().SetTitle(_test.WindowTitle).
@@ -47,10 +46,9 @@ func BenchmarkSignals(b *testing.B) {
 	}
 
 	endRoutineCount := runtime.NumGoroutine()
-	b.Logf("Ending routine count: %d", endRoutineCount)
-
 	if endRoutineCount != startRoutineCount {
-		b.Log("Test failed: routine leak")
-		b.Fail()
+		b.Logf("Starting routine count: %d", startRoutineCount)
+		b.Logf("Ending routine count: %d", endRoutineCount)
+		b.Error("routine leak")
 	}
 }

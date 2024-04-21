@@ -110,9 +110,20 @@ func (m *Model) loadFromSlice(slice []byte) {
 	m.loadFromReader(reader)
 }
 
-func (m *Model) loadFromFile(name string) {
+func (m *Model) loadFromFile(name string) (ok bool) {
 	reader, closeFunc := gfx.Assets.GetReader(name)
 	defer closeFunc()
+
+	if reader == nil {
+		return false
+	}
+
+	m.loadFromReader(reader)
+	return true
+}
+
+func (m *Model) loadFromString(obj string) {
+	reader := bufio.NewReader(strings.NewReader(obj))
 	m.loadFromReader(reader)
 }
 
@@ -290,7 +301,9 @@ func (m *Model) Load() {
 	case []byte:
 		m.loadFromSlice(source)
 	case string:
-		m.loadFromFile(source)
+		if ok := m.loadFromFile(source); !ok {
+			m.loadFromString(source)
+		}
 	default:
 		panic("unexpected error: source type is not supported")
 	}

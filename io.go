@@ -12,13 +12,9 @@ const (
 	defaultSignalDataFilename = "signal_data_%d.csv"
 )
 
-func getSignalDataCsvFilename(filenameTemplate ...string) string {
-	template := defaultSignalDataFilename
-	if len(filenameTemplate) > 0 {
-		template = filenameTemplate[0]
-	}
-	return fmt.Sprintf(template, time.Now().UnixMilli())
-}
+/******************************************************************************
+ Export Functions
+******************************************************************************/
 
 func ExportSignalDataToCsv(line *SignalLine, filenameTemplate ...string) error {
 	line.Signal.Lock()
@@ -104,4 +100,16 @@ func ExportSignalGroupDataToCsv(group *SignalGroup, filenameTemplate ...string) 
 	}
 
 	return nil
+}
+
+/******************************************************************************
+ Utility Functions
+******************************************************************************/
+
+func getSignalDataCsvFilename(filenameTemplate ...string) string {
+	template := defaultSignalDataFilename
+	if len(filenameTemplate) > 0 {
+		template = filenameTemplate[0]
+	}
+	return fmt.Sprintf(template, time.Now().UnixMilli())
 }

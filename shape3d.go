@@ -53,6 +53,10 @@ func (s *Shape3D) Close() {
 		s.modelInstance.close()
 	}
 
+	if s.modelRenderer != nil {
+		s.modelRenderer.close()
+	}
+
 	s.WindowObjectBase.Close()
 }
 

@@ -14,11 +14,13 @@ const (
 ******************************************************************************/
 
 type Transformer interface {
-	Transform(dst, src []float64) []float64
-	Enabled() bool
-	SetEnabled(bool)
 	Name() string
 	SetName(string)
+
+	Enabled() bool
+	SetEnabled(bool)
+
+	Transform(dst, src []float64) []float64
 }
 
 /******************************************************************************
@@ -31,6 +33,14 @@ type TransformerBase struct {
 	rate    float64
 }
 
+func (t *TransformerBase) Name() string {
+	return t.name
+}
+
+func (t *TransformerBase) SetName(name string) {
+	t.name = name
+}
+
 func (t *TransformerBase) Enabled() bool {
 	return t.enabled
 }
@@ -39,12 +49,9 @@ func (t *TransformerBase) SetEnabled(enabled bool) {
 	t.enabled = enabled
 }
 
-func (t *TransformerBase) Name() string {
-	return t.name
-}
-
-func (t *TransformerBase) SetName(name string) {
-	t.name = name
+func (t *TransformerBase) Transform(dst, src []float64) []float64 {
+	copy(dst, src)
+	return dst
 }
 
 func NewTransformerBase(name string) *TransformerBase {

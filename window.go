@@ -605,7 +605,8 @@ func (w *Window) AddObjects(objects ...any) {
 			w.objectInitQueue = append(w.objectInitQueue, newAsyncBoolInvocation(o.Init))
 			continue
 		} else {
-			panic(fmt.Errorf("cannot add struct of type %s, does not implement one of [Object|DrawableObject|WindowObject]", reflect.TypeOf(obj).Name()))
+			typeName := reflect.Indirect(reflect.ValueOf(obj)).Type().Name()
+			panic(fmt.Errorf("cannot add struct of type %s, does not implement one of [Object|DrawableObject|WindowObject]", typeName))
 		}
 	}
 

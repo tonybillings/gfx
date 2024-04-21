@@ -13,15 +13,18 @@ const (
 ******************************************************************************/
 
 type Filter interface {
-	GenerateCoefficients(int, float64, ...float64) []float64
-	Apply(int, []float64) float64
-	Enabled() bool
-	SetEnabled(bool)
 	Name() string
 	SetName(string)
-	CoefficientCount() int
+
+	Enabled() bool
+	SetEnabled(bool)
+
 	SampleRate() float64
 	CutoffFrequencies() []float64
+	GenerateCoefficients(int, float64, ...float64) []float64
+	CoefficientCount() int
+
+	Apply(int, []float64) float64
 }
 
 /******************************************************************************
@@ -35,6 +38,38 @@ type FilterBase struct {
 	name             string
 	rate             float64
 	cutoffs          []float64
+}
+
+func (f *FilterBase) Name() string {
+	return f.name
+}
+
+func (f *FilterBase) SetName(name string) {
+	f.name = name
+}
+
+func (f *FilterBase) Enabled() bool {
+	return f.enabled
+}
+
+func (f *FilterBase) SetEnabled(enabled bool) {
+	f.enabled = enabled
+}
+
+func (f *FilterBase) SampleRate() float64 {
+	return f.rate
+}
+
+func (f *FilterBase) CutoffFrequencies() []float64 {
+	return f.cutoffs
+}
+
+func (f *FilterBase) GenerateCoefficients(int, float64, ...float64) []float64 {
+	return nil
+}
+
+func (f *FilterBase) CoefficientCount() int {
+	return f.coefficientCount
 }
 
 func (f *FilterBase) Apply(index int, input []float64) (output float64) {
@@ -52,39 +87,11 @@ func (f *FilterBase) Apply(index int, input []float64) (output float64) {
 	return sum
 }
 
-func (f *FilterBase) Enabled() bool {
-	return f.enabled
-}
-
-func (f *FilterBase) SetEnabled(enabled bool) {
-	f.enabled = enabled
-}
-
-func (f *FilterBase) Name() string {
-	return f.name
-}
-
-func (f *FilterBase) SetName(name string) {
-	f.name = name
-}
-
 func NewFilterBase(name string) *FilterBase {
 	return &FilterBase{
 		enabled: true,
 		name:    name,
 	}
-}
-
-func (f *FilterBase) CoefficientCount() int {
-	return f.coefficientCount
-}
-
-func (f *FilterBase) SampleRate() float64 {
-	return f.rate
-}
-
-func (f *FilterBase) CutoffFrequencies() []float64 {
-	return f.cutoffs
 }
 
 /******************************************************************************
