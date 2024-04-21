@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"image/color"
 	"os"
@@ -23,18 +24,29 @@ func label(text string, rgba color.RGBA) *gfx.Label {
 
 func tab0() gfx.WindowObject {
 	container := gfx.NewView()
+	container.SetName("home")
 
 	help1 := gfx.NewLabel()
 	help1.SetText("TAB/ARROW: switch views")
 	help1.SetFontSize(.04)
-	help1.SetPositionY(.1)
+	help1.SetPositionY(.3)
 
 	help2 := gfx.NewLabel()
-	help2.SetText("F11: toggle fullscreen mode")
+	help2.SetText("PGUP/PGDN: transition views")
 	help2.SetFontSize(.04)
-	help2.SetPositionY(-.1)
+	help2.SetPositionY(.1)
 
-	container.AddChildren(help1, help2)
+	help3 := gfx.NewLabel()
+	help3.SetText("HOME: transition to here")
+	help3.SetFontSize(.04)
+	help3.SetPositionY(-.1)
+
+	help4 := gfx.NewLabel()
+	help4.SetText("F11: toggle fullscreen mode")
+	help4.SetFontSize(.04)
+	help4.SetPositionY(-.3)
+
+	container.AddChildren(help1, help2, help3, help4)
 	return container
 }
 
@@ -42,6 +54,7 @@ func tab1() gfx.WindowObject {
 	triangle := gfx.NewShape2D()
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab1")
 	container.AddChild(triangle)
 	container.AddChild(label("Triangle / White", gfx.Blue))
 	return container
@@ -52,6 +65,7 @@ func tab2() gfx.WindowObject {
 	triangleLine.SetColor(gfx.Green)
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab2")
 	container.AddChild(triangleLine)
 	container.AddChild(label("Triangle Line / Green", gfx.Blue))
 	return container
@@ -62,6 +76,7 @@ func tab3() gfx.WindowObject {
 	quad.SetTexture(gfx.NewTexture2D(testImage, testImage))
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab3")
 	container.AddChild(quad)
 	container.AddChild(label("Quad / Textured", gfx.Blue))
 	return container
@@ -72,6 +87,7 @@ func tab4() gfx.WindowObject {
 	square.SetColor(gfx.Red)
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab4")
 	container.AddChild(square)
 	container.AddChild(label("Square Line / Red", gfx.Blue))
 	return container
@@ -82,6 +98,7 @@ func tab5() gfx.WindowObject {
 	dot.SetTexture(gfx.NewTexture2D(testImage, testImage))
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab5")
 	container.AddChild(dot)
 	container.AddChild(label("Dot / Textured", gfx.Blue))
 	return container
@@ -92,6 +109,7 @@ func tab6() gfx.WindowObject {
 	circle.SetColor(gfx.Orange)
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab6")
 	container.AddChild(circle)
 	container.AddChild(label("Circle Line / Orange", gfx.Blue))
 	return container
@@ -105,6 +123,7 @@ func tab7() gfx.WindowObject {
 		SetRotationZ(mgl32.DegToRad(-30))
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab7")
 	container.AddChild(pacman)
 	container.AddChild(label("Pac-Man", gfx.Blue))
 	return container
@@ -117,6 +136,7 @@ func tab8() gfx.WindowObject {
 		SetColor(gfx.Orange)
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab8")
 	container.AddChild(arc)
 	container.AddChild(label("Arc / Orange", gfx.Blue))
 	return container
@@ -144,11 +164,12 @@ func tab9() gfx.WindowObject {
 	bottomCenter.SetAlignment(gfx.Centered)
 
 	container := gfx.NewWindowObject(nil)
+	container.SetName("tab9")
 	container.AddChildren(carousel, topLeft, bottomCenter)
 	return container
 }
 
-func New2DView() gfx.WindowObject {
+func New2DView(window *gfx.Window) gfx.WindowObject {
 	if imgBytes, err := os.ReadFile("test.png"); err == nil {
 		gfx.Assets.Add(gfx.NewTexture2D(testImage, imgBytes))
 	} else {
@@ -166,5 +187,18 @@ func New2DView() gfx.WindowObject {
 	tabGroup.AddChild(tab7())
 	tabGroup.AddChild(tab8())
 	tabGroup.AddChild(tab9())
+
+	window.AddKeyEventHandler(glfw.KeyPageUp, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
+		tabGroup.TransitionPrevious()
+	})
+
+	window.AddKeyEventHandler(glfw.KeyPageDown, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
+		tabGroup.TransitionNext()
+	})
+
+	window.AddKeyEventHandler(glfw.KeyHome, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
+		tabGroup.Transition(tabGroup.IndexOf("home"))
+	})
+
 	return tabGroup
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"image/color"
-	"math"
 	"os"
 	"reflect"
 	"runtime"
@@ -56,13 +55,6 @@ type Window struct {
 	keyEventHandlers      []*KeyEventHandler
 	keyEventHandlersMutex sync.Mutex
 	inputEnabled          atomic.Bool
-
-	tranTarget      DrawableObject
-	tranQuad        *Shape2D
-	tranQuadShowing bool
-	tranQuadHiding  bool
-	tranQuadOpacity float64
-	tranSpeed       float64
 
 	mouseTrackingEnabled atomic.Bool
 	mouseState           MouseState
@@ -115,16 +107,6 @@ func (w *Window) initAssets() {
 	Assets.SetName("_assets")
 	Assets.SetWindow(w)
 	w.AddService(Assets)
-}
-
-func (w *Window) initTransitionQuad() {
-	w.tranQuad = NewQuad()
-	w.tranQuad.
-		SetColor(w.ClearColor()).
-		SetOpacity(0).
-		SetMaintainAspectRatio(false)
-	w.tranQuad.SetWindow(w)
-	w.tranQuad.Init()
 }
 
 func (w *Window) initObjects() {
@@ -217,13 +199,6 @@ func (w *Window) resizeObjects(oldWidth, oldHeight, newWidth, newHeight int32) {
 	}
 }
 
-func (w *Window) drawTranQuad(deltaTime int64) {
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	w.tranQuad.Draw(deltaTime)
-	gl.Disable(gl.BLEND)
-}
-
 func (w *Window) tick(deltaTime int64) {
 	w.initServices()
 	w.closeServices()
@@ -232,36 +207,8 @@ func (w *Window) tick(deltaTime int64) {
 	w.initObjects()
 	w.closeObjects()
 
-	if w.tranQuadShowing {
-		w.tranQuadOpacity += w.tranSpeed
-		w.tranQuad.SetOpacity(uint8(math.Min(255.0, w.tranQuadOpacity*255.0)))
-		if w.tranQuad.Opacity() == 255 {
-			w.tranQuadShowing = false
-			w.tranQuadHiding = true
-			w.tranQuadOpacity = 1
-			for _, o := range w.windowObjects {
-				o.SetVisibility(false).SetEnabled(false)
-			}
-			w.tranTarget.SetVisibility(true).SetEnabled(true)
-		}
-		w.updateObjects(deltaTime)
-		w.drawObjects(deltaTime)
-		w.drawTranQuad(deltaTime)
-	} else if w.tranQuadHiding {
-		w.tranQuadOpacity -= w.tranSpeed
-		w.tranQuad.SetOpacity(uint8(math.Max(0, w.tranQuadOpacity*255.0)))
-		if w.tranQuad.Opacity() == 0 {
-			w.tranQuadHiding = false
-			w.tranQuadOpacity = 0
-			gl.Disable(gl.BLEND)
-		}
-		w.tranTarget.Update(deltaTime)
-		w.tranTarget.Draw(deltaTime)
-		w.drawTranQuad(deltaTime)
-	} else {
-		w.updateObjects(deltaTime)
-		w.drawObjects(deltaTime)
-	}
+	w.updateObjects(deltaTime)
+	w.drawObjects(deltaTime)
 }
 
 func (w *Window) keyEventCallback(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
@@ -322,7 +269,6 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 		w.glwin.SetKeyCallback(w.keyEventCallback)
 		w.initServices()
 		w.initObjects()
-		w.initTransitionQuad()
 		w.stateMutex.Unlock()
 
 		for _, c := range w.readyChannels {
@@ -822,35 +768,6 @@ func (w *Window) DisposeServiceAsync(name string) {
 			break
 		}
 	}
-	w.stateMutex.Unlock()
-}
-
-func (w *Window) TransitionTo(name string, speed ...float64) {
-	target := w.GetObject(name)
-	if target == nil {
-		return
-	}
-
-	var obj DrawableObject
-	var ok bool
-	if obj, ok = target.(DrawableObject); !ok {
-		return
-	}
-
-	w.stateMutex.Lock()
-	if len(speed) > 0 {
-		w.tranSpeed = speed[0]
-	} else {
-		w.tranSpeed = 0.1
-	}
-
-	if w.tranQuadShowing || w.tranQuadHiding {
-		w.stateMutex.Unlock()
-		return
-	}
-
-	w.tranTarget = obj
-	w.tranQuadShowing = true
 	w.stateMutex.Unlock()
 }
 
