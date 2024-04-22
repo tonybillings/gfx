@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"image/color"
 	"os"
+	"path"
+	"time"
 	"tonysoft.com/gfx"
 )
 
@@ -29,24 +32,29 @@ func tab0() gfx.WindowObject {
 	help1 := gfx.NewLabel()
 	help1.SetText("TAB/ARROW: switch views")
 	help1.SetFontSize(.04)
-	help1.SetPositionY(.3)
+	help1.SetPositionY(.4)
 
 	help2 := gfx.NewLabel()
 	help2.SetText("PGUP/PGDN: transition views")
 	help2.SetFontSize(.04)
-	help2.SetPositionY(.1)
+	help2.SetPositionY(.2)
 
 	help3 := gfx.NewLabel()
 	help3.SetText("HOME: transition to here")
 	help3.SetFontSize(.04)
-	help3.SetPositionY(-.1)
+	help3.SetPositionY(0)
 
 	help4 := gfx.NewLabel()
 	help4.SetText("F11: toggle fullscreen mode")
 	help4.SetFontSize(.04)
-	help4.SetPositionY(-.3)
+	help4.SetPositionY(-.2)
 
-	container.AddChildren(help1, help2, help3, help4)
+	help5 := gfx.NewLabel()
+	help5.SetText("F12: export view to PNG")
+	help5.SetFontSize(.04)
+	help5.SetPositionY(-.4)
+
+	container.AddChildren(help1, help2, help3, help4, help5)
 	return container
 }
 
@@ -198,6 +206,19 @@ func New2DView(window *gfx.Window) gfx.WindowObject {
 
 	window.AddKeyEventHandler(glfw.KeyHome, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
 		tabGroup.Transition(tabGroup.IndexOf("home"))
+	})
+
+	window.AddKeyEventHandler(glfw.KeyF12, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
+		go func() {
+			pngBytes := window.ToPNG()
+			if homeDir, err := os.UserHomeDir(); err != nil {
+				panic(fmt.Errorf("could not determine your home directory: %w", err))
+			} else {
+				if err = os.WriteFile(path.Join(homeDir, fmt.Sprintf("gfx_window_%d.png", time.Now().UnixMilli())), pngBytes, 0664); err != nil {
+					panic(fmt.Errorf("failed to save PNG to storage: %w", err))
+				}
+			}
+		}()
 	})
 
 	return tabGroup

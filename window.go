@@ -1,12 +1,15 @@
 package gfx
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
+	"image"
 	"image/color"
+	"image/png"
 	"os"
 	"reflect"
 	"runtime"
@@ -51,6 +54,8 @@ type Window struct {
 
 	serviceInitQueue  []*asyncBoolInvocation
 	serviceCloseQueue []*asyncVoidInvocation
+
+	pngExportRequest *asyncByteSliceInvocation
 
 	keyEventHandlers      []*KeyEventHandler
 	keyEventHandlersMutex sync.Mutex
@@ -199,6 +204,19 @@ func (w *Window) resizeObjects(oldWidth, oldHeight, newWidth, newHeight int32) {
 	}
 }
 
+func (w *Window) handlePngRequests() {
+	if w.pngExportRequest == nil {
+		return
+	}
+	pngBytes := w.pngExportRequest.Func()
+	select {
+	case w.pngExportRequest.ReturnChan <- &pngBytes:
+	default:
+	}
+	close(w.pngExportRequest.ReturnChan)
+	w.pngExportRequest = nil
+}
+
 func (w *Window) tick(deltaTime int64) {
 	w.initServices()
 	w.closeServices()
@@ -209,6 +227,8 @@ func (w *Window) tick(deltaTime int64) {
 
 	w.updateObjects(deltaTime)
 	w.drawObjects(deltaTime)
+
+	w.handlePngRequests()
 }
 
 func (w *Window) keyEventCallback(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
@@ -953,6 +973,41 @@ func (w *Window) ReadyChan() <-chan bool {
 
 func (w *Window) Initialized() bool {
 	return w.initialized.Load()
+}
+
+func (w *Window) toPNG() []byte {
+	width := w.width.Load()
+	height := w.height.Load()
+	pixels := make([]byte, width*height*4)
+	gl.ReadPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixels))
+
+	img := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
+
+	for y := int32(0); y < height; y++ {
+		for x := int32(0); x < width; x++ {
+			i := y*width*4 + x*4
+			j := (height-y-1)*width*4 + x*4
+			img.Pix[i+0] = pixels[j+0]
+			img.Pix[i+1] = pixels[j+1]
+			img.Pix[i+2] = pixels[j+2]
+			img.Pix[i+3] = pixels[j+3]
+		}
+	}
+
+	var resultBuffer bytes.Buffer
+	if err := png.Encode(&resultBuffer, img); err != nil {
+		panic(err)
+	}
+
+	return resultBuffer.Bytes()
+}
+
+func (w *Window) ToPNG() []byte {
+	pngInv := newAsyncByteSliceInvocation(w.toPNG)
+	w.stateMutex.Lock()
+	w.pngExportRequest = pngInv
+	w.stateMutex.Unlock()
+	return *<-pngInv.ReturnChan
 }
 
 /******************************************************************************
