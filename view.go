@@ -38,7 +38,7 @@ func (v *View) Init() (ok bool) {
 }
 
 func (v *View) Update(deltaTime int64) (ok bool) {
-	if !v.enabled.Load() {
+	if !v.enabled.Load() || !v.initialized.Load() {
 		return false
 	}
 
@@ -59,7 +59,7 @@ func (v *View) Close() {
 ******************************************************************************/
 
 func (v *View) Draw(deltaTime int64) (ok bool) {
-	if !v.visible.Load() {
+	if !v.visible.Load() || !v.initialized.Load() {
 		return false
 	}
 
@@ -195,7 +195,7 @@ func (v *View) SetBorderColor(rgba color.RGBA) *View {
 
 func NewView() *View {
 	v := &View{
-		WindowObjectBase: *NewWindowObject(nil),
+		WindowObjectBase: *NewWindowObject(),
 		fill:             NewQuad(),
 		border:           NewSquare(thicknessEpsilon * 2),
 	}

@@ -11,9 +11,9 @@ import (
 
 var (
 	windowTitle     = "3D Test"
-	windowWidth     = 1900
-	windowHeight    = 1000
-	targetFramerate = 60
+	windowWidth     = 3000
+	windowHeight    = 2000
+	targetFramerate = 120
 	backgroundColor = gfx.Black
 )
 

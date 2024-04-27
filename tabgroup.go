@@ -366,7 +366,7 @@ func (g *TabGroup) SetNavKeys(keys NavKeys) *TabGroup {
 
 func NewTabGroup(objects ...WindowObject) *TabGroup {
 	tg := &TabGroup{
-		WindowObjectBase: *NewWindowObject(nil),
+		WindowObjectBase: *NewWindowObject(),
 		tabAction:        HideAndDisable,
 		navKeys:          TabAndArrowKeys,
 	}

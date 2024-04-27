@@ -2,9 +2,9 @@ package _test
 
 import (
 	"math"
-	"math/rand"
 	"testing"
 	"tonysoft.com/gfx"
+	"tonysoft.com/gfx/_test"
 )
 
 func setupSignal() *gfx.Signal {
@@ -87,7 +87,7 @@ func TestDeltaStdDev(t *testing.T) {
 
 func TestSignalWithFilter(t *testing.T) {
 	s := setupSignal()
-	s.AddFilter(NewOddValueFilter())
+	s.AddFilter(_test.NewOddValueFilter())
 
 	s.AddSamples([]float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
@@ -110,7 +110,7 @@ func TestSignalWithFilter(t *testing.T) {
 
 func TestSignalWithTransformer(t *testing.T) {
 	s := setupSignal()
-	s.AddTransformer(NewPlusNTransformer())
+	s.AddTransformer(_test.NewPlusNTransformer())
 
 	s.AddSamples([]float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
@@ -130,43 +130,4 @@ func TestSignalWithTransformer(t *testing.T) {
 			t.Errorf("expected transformed data value %d, got %d", tV, int(v))
 		}
 	}
-}
-
-type OddValueFilter struct {
-	gfx.FilterBase
-}
-
-func (f *OddValueFilter) Apply(index int, input []float64) (output float64) {
-	if int(input[index])%2 == 0 {
-		return input[index]
-	} else {
-		return input[index] + 1
-	}
-}
-
-func NewOddValueFilter() *OddValueFilter {
-	f := &OddValueFilter{}
-	f.SetEnabled(true)
-	return f
-}
-
-type PlusNTransformer struct {
-	gfx.TransformerBase
-}
-
-func (t *PlusNTransformer) Transform(dst, src []float64) []float64 {
-	n := rand.Float64() * 10
-	nArr := make([]float64, len(src))
-	for i, v := range src {
-		dst[i] = v + n
-		nArr[i] = n
-		n = rand.Float64() * 10
-	}
-	return nArr
-}
-
-func NewPlusNTransformer() *PlusNTransformer {
-	t := &PlusNTransformer{}
-	t.SetEnabled(true)
-	return t
 }

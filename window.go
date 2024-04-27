@@ -10,7 +10,6 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	"os"
 	"reflect"
 	"runtime"
 	"sync"
@@ -66,7 +65,10 @@ type Window struct {
 	mouseStateMutex      sync.Mutex
 
 	initialized atomic.Bool
+	ctx         context.Context
 	cancelFunc  context.CancelFunc
+	doneChan    <-chan struct{}
+	closedChan  chan struct{}
 
 	stateMutex    sync.Mutex
 	readyChannels []chan bool
@@ -251,19 +253,49 @@ func (w *Window) keyEventCallback(_ *glfw.Window, key glfw.Key, _ int, action gl
 	w.keyEventHandlersMutex.Unlock()
 }
 
-func (w *Window) close() {
-	w.stateMutex.Lock()
-	w.closeObjects()
-	w.closeServices()
-	w.stateMutex.Unlock()
-
-	w.glwin.SetKeyCallback(nil)
-	w.glwin.SetShouldClose(true)
-
-	windowCount.Add(-1)
-	if windowCount.Load() == 0 {
-		glfw.Terminate()
+func (w *Window) disposeAllObjects() {
+	for _, obj := range w.objects {
+		closeInv := newAsyncVoidInvocation(obj.Close)
+		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
 	}
+	for _, obj := range w.drawableObjects {
+		closeInv := newAsyncVoidInvocation(obj.Close)
+		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+	}
+	for _, obj := range w.windowObjects {
+		closeInv := newAsyncVoidInvocation(obj.Close)
+		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+	}
+	w.closeObjects()
+	w.objects = make([]Object, 0)
+	w.drawableObjects = make([]DrawableObject, 0)
+	w.windowObjects = make([]WindowObject, 0)
+}
+
+func (w *Window) disposeAllServices(ignoreProtection bool) {
+	for _, svc := range w.services {
+		if ignoreProtection {
+			svc.SetProtected(false)
+		}
+		if svc.Protected() {
+			continue
+		}
+		closeInv := newAsyncVoidInvocation(svc.Close)
+		w.serviceCloseQueue = append(w.serviceCloseQueue, closeInv)
+	}
+	w.closeServices()
+	w.services = make([]Service, 0)
+}
+
+func (w *Window) close() {
+	w.stateMutex.Unlock()
+	w.disposeAllObjects()
+	w.disposeAllServices(true)
+	w.glwin.SetKeyCallback(nil)
+	glfw.DetachCurrentContext()
+	w.glwin.Destroy()
+	close(w.closedChan)
+	runtime.UnlockOSThread()
 }
 
 func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
@@ -271,7 +303,10 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 		return
 	}
 
+	w.ctx = ctx
 	w.cancelFunc = cancelFunc
+	w.doneChan = w.ctx.Done()
+	w.closedChan = make(chan struct{})
 
 	go func() {
 		runtime.LockOSThread()
@@ -282,13 +317,14 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 		}
 
 		w.initAssets()
-		w.initialized.Store(true)
 
 		w.stateMutex.Lock()
 		w.glwin = window
 		w.glwin.SetKeyCallback(w.keyEventCallback)
 		w.initServices()
 		w.initObjects()
+		w.clearScreen()
+		w.glwin.SwapBuffers()
 		w.stateMutex.Unlock()
 
 		for _, c := range w.readyChannels {
@@ -300,14 +336,17 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 		deltaTime := now
 		drawInterval := int64(1000000 / w.targetFramerate.Load())
 
+		w.initialized.Store(true)
+
 		for {
+			w.stateMutex.Lock()
+
 			if w.glwin.ShouldClose() {
-				w.close()
-				cancelFunc()
-				return
+				w.cancelFunc()
 			}
+
 			select {
-			case <-ctx.Done():
+			case <-w.doneChan:
 				w.close()
 				return
 			default:
@@ -321,6 +360,11 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 			deltaTime = time.Now().UnixMicro() - lastTick
 			lastTick = time.Now().UnixMicro()
 
+			w.clearScreen()
+			w.tick(deltaTime)
+			w.glwin.SwapBuffers()
+			w.stateMutex.Unlock()
+
 			if w.fullscreenRequested.Load() {
 				w.fullscreenRequested.Store(false)
 				w.enableFullscreenMode()
@@ -331,12 +375,6 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 				w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
 			}
 
-			w.stateMutex.Lock()
-			w.clearScreen()
-			w.tick(deltaTime)
-			w.glwin.SwapBuffers()
-			w.stateMutex.Unlock()
-
 			glfw.PollEvents()
 		}
 	}()
@@ -344,7 +382,11 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 
 func (w *Window) Close() {
 	if w.initialized.Load() {
-		w.cancelFunc()
+		w.stateMutex.Lock()
+		w.glwin.SetShouldClose(true)
+		w.initialized.Store(false)
+		w.stateMutex.Unlock()
+		<-w.closedChan
 	}
 }
 
@@ -423,8 +465,7 @@ func (w *Window) EnableQuitKey(cancelFuncs ...context.CancelFunc) *Window {
 			for _, cancelFunc := range cancelFuncs {
 				cancelFunc()
 			}
-			time.Sleep(time.Second)
-			os.Exit(0)
+			go w.Close()
 		})
 	}
 	return w
@@ -435,12 +476,10 @@ func (w *Window) ClearColor() color.RGBA {
 }
 
 func (w *Window) SetClearColor(rgba color.RGBA) *Window {
-	w.stateMutex.Lock()
 	w.clearColor[0] = float32(rgba.R) / 255.0
 	w.clearColor[1] = float32(rgba.G) / 255.0
 	w.clearColor[2] = float32(rgba.B) / 255.0
 	w.clearColor[3] = float32(rgba.A) / 255.0
-	w.stateMutex.Unlock()
 	return w
 }
 
@@ -734,10 +773,14 @@ func (w *Window) AddService(service Service) {
 	w.stateMutex.Unlock()
 }
 
-func (w *Window) RemoveService(name string) {
+func (w *Window) RemoveService(service Service) {
+	if service == nil || service.Protected() {
+		return
+	}
+
 	w.stateMutex.Lock()
 	for i := len(w.services) - 1; i >= 0; i-- {
-		if w.services[i].Name() == name && !w.services[i].Protected() {
+		if w.services[i].Name() == service.Name() {
 			w.services = append(w.services[:i], w.services[i+1:]...)
 			break
 		}
@@ -745,8 +788,7 @@ func (w *Window) RemoveService(name string) {
 	w.stateMutex.Unlock()
 }
 
-func (w *Window) InitService(name string) (ok bool) {
-	service := w.GetService(name)
+func (w *Window) InitService(service Service) (ok bool) {
 	initInv := newAsyncBoolInvocation(service.Init)
 	w.stateMutex.Lock()
 	w.serviceInitQueue = append(w.serviceInitQueue, initInv)
@@ -754,40 +796,79 @@ func (w *Window) InitService(name string) (ok bool) {
 	return <-initInv.ReturnChan
 }
 
-func (w *Window) InitServiceAsync(name string) {
-	service := w.GetService(name)
+func (w *Window) InitServiceAsync(service Service) {
 	w.stateMutex.Lock()
 	w.serviceInitQueue = append(w.serviceInitQueue, newAsyncBoolInvocation(service.Init))
 	w.stateMutex.Unlock()
 }
 
-func (w *Window) DisposeService(name string) {
-	service := w.GetService(name)
-
-	if service != nil && !service.Protected() {
-		w.stateMutex.Lock()
-		for i := len(w.services) - 1; i >= 0; i-- {
-			if w.services[i].Name() == name {
-				w.services = append(w.services[:i], w.services[i+1:]...)
-				break
-			}
-		}
-		closeInv := newAsyncVoidInvocation(service.Close)
-		w.serviceCloseQueue = append(w.serviceCloseQueue, closeInv)
-		w.stateMutex.Unlock()
-		<-closeInv.DoneChan
+func (w *Window) DisposeService(service Service) {
+	if service == nil || service.Protected() {
+		return
 	}
-}
 
-func (w *Window) DisposeServiceAsync(name string) {
 	w.stateMutex.Lock()
 	for i := len(w.services) - 1; i >= 0; i-- {
-		if w.services[i].Name() == name && !w.services[i].Protected() {
-			w.serviceCloseQueue = append(w.serviceCloseQueue, newAsyncVoidInvocation(w.services[i].Close))
+		if w.services[i].Name() == service.Name() {
 			w.services = append(w.services[:i], w.services[i+1:]...)
 			break
 		}
 	}
+	closeInv := newAsyncVoidInvocation(service.Close)
+	w.serviceCloseQueue = append(w.serviceCloseQueue, closeInv)
+	w.stateMutex.Unlock()
+	<-closeInv.DoneChan
+}
+
+func (w *Window) DisposeServiceAsync(service Service) {
+	if service == nil || service.Protected() {
+		return
+	}
+
+	w.stateMutex.Lock()
+	w.serviceCloseQueue = append(w.serviceCloseQueue, newAsyncVoidInvocation(service.Close))
+	for i := len(w.services) - 1; i >= 0; i-- {
+		if w.services[i].Name() == service.Name() {
+			w.services = append(w.services[:i], w.services[i+1:]...)
+			break
+		}
+	}
+	w.stateMutex.Unlock()
+}
+
+func (w *Window) DisposeAllServices(ignoreProtection bool) {
+	doneChans := make([]chan bool, 0)
+	w.stateMutex.Lock()
+	for _, svc := range w.services {
+		if ignoreProtection {
+			svc.SetProtected(false)
+		}
+		if svc.Protected() {
+			continue
+		}
+		closeInv := newAsyncVoidInvocation(svc.Close)
+		w.serviceCloseQueue = append(w.serviceCloseQueue, closeInv)
+		doneChans = append(doneChans, closeInv.DoneChan)
+	}
+	w.services = make([]Service, 0)
+	w.stateMutex.Unlock()
+	for _, doneChan := range doneChans {
+		<-doneChan
+	}
+}
+
+func (w *Window) DisposeAllServicesAsync(ignoreProtection bool) {
+	w.stateMutex.Lock()
+	for _, svc := range w.services {
+		if ignoreProtection {
+			svc.SetProtected(false)
+		}
+		if svc.Protected() {
+			continue
+		}
+		w.serviceCloseQueue = append(w.serviceCloseQueue, newAsyncVoidInvocation(svc.Close))
+	}
+	w.services = make([]Service, 0)
 	w.stateMutex.Unlock()
 }
 
@@ -817,8 +898,11 @@ func (w *Window) Width() int32 {
 func (w *Window) SetWidth(width int) *Window {
 	w.width.Store(int32(width))
 	if w.glwin != nil {
+		oldWidth := w.width.Load()
+		oldHeight := w.height.Load()
 		w.stateMutex.Lock()
-		w.glwin.SetSize(int(w.width.Load()), int(w.height.Load()))
+		w.glwin.SetSize(width, int(oldHeight))
+		w.resizeObjects(oldWidth, oldHeight, int32(width), oldHeight)
 		w.stateMutex.Unlock()
 	}
 	return w
@@ -831,8 +915,29 @@ func (w *Window) Height() int32 {
 func (w *Window) SetHeight(height int) *Window {
 	w.height.Store(int32(height))
 	if w.glwin != nil {
+		oldWidth := w.width.Load()
+		oldHeight := w.height.Load()
 		w.stateMutex.Lock()
-		w.glwin.SetSize(int(w.width.Load()), int(w.height.Load()))
+		w.glwin.SetSize(int(oldWidth), height)
+		w.resizeObjects(oldWidth, oldHeight, oldWidth, int32(height))
+		w.stateMutex.Unlock()
+	}
+	return w
+}
+
+func (w *Window) Size() (width, height int32) {
+	return w.width.Load(), w.height.Load()
+}
+
+func (w *Window) SetSize(width, height int) *Window {
+	w.width.Store(int32(width))
+	w.height.Store(int32(height))
+	if w.glwin != nil {
+		oldWidth := w.width.Load()
+		oldHeight := w.height.Load()
+		w.stateMutex.Lock()
+		w.glwin.SetSize(width, height)
+		w.resizeObjects(oldWidth, oldHeight, int32(width), int32(height))
 		w.stateMutex.Unlock()
 	}
 	return w
@@ -935,9 +1040,15 @@ func (w *Window) SwapMouseButtons(swapped bool) {
 
 func (w *Window) Mouse() *MouseState {
 	w.mouseStateMutex.Lock()
-	ms := w.mouseState
+	state := w.mouseState
 	w.mouseStateMutex.Unlock()
-	return &ms
+	return &state
+}
+
+func (w *Window) OverrideMouseState(state *MouseState) {
+	w.mouseStateMutex.Lock()
+	w.mouseState = *state
+	w.mouseStateMutex.Unlock()
 }
 
 func (w *Window) EnableMouseTracking() *Window {
@@ -1026,6 +1137,6 @@ func NewWindow() *Window {
 	w.SetWidth(defaultWinWidth)
 	w.SetHeight(defaultWinHeight)
 	w.SetTargetFramerate(defaultTargetFramerate)
-	w.inputEnabled.Store(true)
+	w.SetInputEnabled(true)
 	return w
 }

@@ -25,6 +25,9 @@ type Button struct {
 	mouseDownFillColorSet    atomic.Bool
 	mouseDownBorderColorSet  atomic.Bool
 	mouseDownTextColorSet    atomic.Bool
+	disabledFillColorSet     atomic.Bool
+	disabledBorderColorSet   atomic.Bool
+	disabledTextColorSet     atomic.Bool
 
 	mouseEnterFillColor   color.RGBA
 	mouseEnterBorderColor color.RGBA
@@ -32,6 +35,9 @@ type Button struct {
 	mouseDownFillColor    color.RGBA
 	mouseDownBorderColor  color.RGBA
 	mouseDownTextColor    color.RGBA
+	disabledFillColor     color.RGBA
+	disabledBorderColor   color.RGBA
+	disabledTextColor     color.RGBA
 
 	originalFillColor   color.RGBA
 	originalBorderColor color.RGBA
@@ -75,6 +81,31 @@ func (b *Button) Close() {
 	b.text.Close()
 	b.bounds.Close()
 	b.View.Close()
+}
+
+func (b *Button) SetEnabled(enabled bool) Object {
+	b.View.SetEnabled(enabled)
+	b.bounds.SetEnabled(enabled)
+
+	b.stateMutex.Lock()
+	if enabled {
+		b.fill.SetColor(b.originalFillColor)
+		b.border.SetColor(b.originalBorderColor)
+		b.text.SetColor(b.originalTextColor)
+	} else {
+		if b.disabledFillColorSet.Load() {
+			b.fill.SetColor(b.disabledFillColor)
+		}
+		if b.disabledBorderColorSet.Load() {
+			b.border.SetColor(b.disabledBorderColor)
+		}
+		if b.disabledTextColorSet.Load() {
+			b.text.SetColor(b.disabledTextColor)
+		}
+	}
+	b.stateMutex.Unlock()
+
+	return b
 }
 
 /******************************************************************************
@@ -155,15 +186,9 @@ func (b *Button) onMouseEnter(_ WindowObject, _ *MouseState) {
 }
 
 func (b *Button) onMouseLeave(_ WindowObject, _ *MouseState) {
-	if b.mouseEnterFillColorSet.Load() {
-		b.fill.SetColor(b.originalFillColor)
-	}
-	if b.mouseEnterBorderColorSet.Load() {
-		b.border.SetColor(b.originalBorderColor)
-	}
-	if b.mouseEnterTextColorSet.Load() {
-		b.text.SetColor(b.originalTextColor)
-	}
+	b.fill.SetColor(b.originalFillColor)
+	b.border.SetColor(b.originalBorderColor)
+	b.text.SetColor(b.originalTextColor)
 }
 
 func (b *Button) onMouseDown(_ WindowObject, _ *MouseState) {
@@ -179,15 +204,9 @@ func (b *Button) onMouseDown(_ WindowObject, _ *MouseState) {
 }
 
 func (b *Button) onMouseUp(_ WindowObject, _ *MouseState) {
-	if b.mouseDownFillColorSet.Load() {
-		b.fill.SetColor(b.originalFillColor)
-	}
-	if b.mouseDownBorderColorSet.Load() {
-		b.border.SetColor(b.originalBorderColor)
-	}
-	if b.mouseDownTextColorSet.Load() {
-		b.text.SetColor(b.originalTextColor)
-	}
+	b.fill.SetColor(b.originalFillColor)
+	b.border.SetColor(b.originalBorderColor)
+	b.text.SetColor(b.originalTextColor)
 }
 
 func (b *Button) OnDepressed(handler func(sender WindowObject, mouseState *MouseState)) *Button {
@@ -232,6 +251,50 @@ func (b *Button) SetMouseDownBorderColor(rgba color.RGBA) *Button {
 	return b
 }
 
+func (b *Button) SetMouseEnterTextColor(rgba color.RGBA) *Button {
+	b.mouseEnterTextColorSet.Store(true)
+	b.stateMutex.Lock()
+	b.mouseEnterTextColor = rgba
+	b.stateMutex.Unlock()
+	return b
+}
+
+func (b *Button) SetMouseDownTextColor(rgba color.RGBA) *Button {
+	b.mouseDownTextColorSet.Store(true)
+	b.stateMutex.Lock()
+	b.mouseDownTextColor = rgba
+	b.stateMutex.Unlock()
+	return b
+}
+
+func (b *Button) SetDisabledFillColor(rgba color.RGBA) *Button {
+	b.disabledFillColorSet.Store(true)
+	b.stateMutex.Lock()
+	b.disabledFillColor = rgba
+	b.stateMutex.Unlock()
+	return b
+}
+
+func (b *Button) SetDisabledBorderColor(rgba color.RGBA) *Button {
+	b.disabledBorderColorSet.Store(true)
+	b.stateMutex.Lock()
+	b.disabledBorderColor = rgba
+	b.stateMutex.Unlock()
+	return b
+}
+
+func (b *Button) SetDisabledTextColor(rgba color.RGBA) *Button {
+	b.disabledTextColorSet.Store(true)
+	b.stateMutex.Lock()
+	b.disabledTextColor = rgba
+	b.stateMutex.Unlock()
+	return b
+}
+
+func (b *Button) SetMouseSurface(surface MouseSurface) {
+	b.bounds.SetMouseSurface(surface)
+}
+
 func (b *Button) Text() string {
 	return b.text.Text()
 }
@@ -246,24 +309,8 @@ func (b *Button) SetTextColor(rgba color.RGBA) *Button {
 	return b
 }
 
-func (b *Button) SetMouseEnterTextColor(rgba color.RGBA) *Button {
-	b.mouseEnterTextColorSet.Store(true)
-	b.stateMutex.Lock()
-	b.mouseEnterTextColor = rgba
-	b.stateMutex.Unlock()
-	return b
-}
-
 func (b *Button) SetFontSize(size float32) *Button {
 	b.text.SetFontSize(size)
-	return b
-}
-
-func (b *Button) SetMouseDownTextColor(rgba color.RGBA) *Button {
-	b.mouseDownTextColorSet.Store(true)
-	b.stateMutex.Lock()
-	b.mouseDownTextColor = rgba
-	b.stateMutex.Unlock()
 	return b
 }
 
@@ -277,7 +324,7 @@ func (b *Button) Label() *Label {
 
 func NewButton(circular ...bool) *Button {
 	b := &Button{}
-	b.View.WindowObjectBase = *NewWindowObject(nil)
+	b.View.WindowObjectBase = *NewWindowObject()
 	b.text = NewLabel()
 
 	if len(circular) > 0 && circular[0] {

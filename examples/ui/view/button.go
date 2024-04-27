@@ -159,7 +159,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetFontSize(.05).
 		SetPositionY(-.1)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.AddChild(button1)
 	container.AddChild(button2)
 	container.AddChild(button3)

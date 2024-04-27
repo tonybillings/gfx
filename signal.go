@@ -1215,7 +1215,7 @@ func NewSignalInspector[T SignalControl](parent T) *SignalInspector {
 	}
 
 	si := &SignalInspector{
-		WindowObjectBase: *NewWindowObject(nil),
+		WindowObjectBase: *NewWindowObject(),
 		bounds:           NewBoundingBox(),
 		panel:            NewView(),
 		minValue:         NewLabel(),

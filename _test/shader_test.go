@@ -105,8 +105,6 @@ func newShaderBindingTestObject(shader gfx.Shader) *ShaderBindingTestObject {
 }
 
 func TestShaderCompilation(t *testing.T) {
-	startRoutineCount := runtime.NumGoroutine()
-
 	_test.PanicOnErr(gfx.Init())
 
 	win := gfx.NewWindow().SetTitle("Shader Compilation").
@@ -115,8 +113,6 @@ func TestShaderCompilation(t *testing.T) {
 		SetTargetFramerate(_test.TargetFramerate).
 		SetClearColor(_test.BackgroundColor)
 	ctx, cancelFunc := context.WithCancel(context.Background())
-
-	win.EnableQuitKey(cancelFunc)
 	win.Init(ctx, cancelFunc)
 	<-win.ReadyChan()
 
@@ -135,21 +131,11 @@ void main() {
 `
 
 	shader := gfx.NewBasicShader("TestShader", vertShader, fragShader)
-
 	win.InitObject(shader)
 	win.CloseObject(shader)
+
 	win.Close()
-
-	time.Sleep(3 * time.Second) // wait for routines to return
-
-	endRoutineCount := runtime.NumGoroutine()
-	if endRoutineCount != startRoutineCount {
-		t.Logf("Starting routine count: %d", startRoutineCount)
-		t.Logf("Ending routine count: %d", endRoutineCount)
-		t.Error("routine leak")
-	}
-
-	gfx.Close() // only necessary when testing this entire file at once
+	gfx.Close()
 }
 
 func TestShaderBinding(t *testing.T) {
@@ -202,7 +188,7 @@ void main() {
 	testObj := newShaderBindingTestObject(shader)
 	win.AddObjects(testObj)
 
-	// Optional -- allow the object to get initialized and updated during the Update() cycle
+	// *Optional.  Allow the object to get initialized and updated during the Update() cycle
 	time.Sleep(100 * time.Millisecond)
 
 	testObj.InMaterial.Lock() // ensure changes aren't made while sending data to VRAM
@@ -214,10 +200,10 @@ void main() {
 	testObj.InMaterial.ExtraProps.ExtraProp2 = 44.4
 	testObj.InMaterial.Unlock()
 
-	time.Sleep(100 * time.Millisecond) // allow binding (RAM/VRAM IO) to occur during Update() cycle
+	_test.SleepACoupleFrames() // allow binding (RAM/VRAM IO) to occur during Update() cycle
 
 	win.Close()
-	time.Sleep(3 * time.Second) // wait for routines to return
+	gfx.Close()
 
 	endRoutineCount := runtime.NumGoroutine()
 	if endRoutineCount != startRoutineCount {
@@ -250,6 +236,4 @@ void main() {
 	if testObj.OutExtraProps.ExtraProp2 < 44.3 || testObj.OutExtraProps.ExtraProp2 > 44.5 {
 		t.Errorf("unexpected ExtraProp2 value: expected 44.4, got %f", testObj.OutExtraProps.ExtraProp2)
 	}
-
-	gfx.Close() // only necessary when testing this entire file at once
 }

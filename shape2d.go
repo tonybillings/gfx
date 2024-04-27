@@ -106,6 +106,7 @@ func (s *Shape2D) Update(deltaTime int64) (ok bool) {
 func (s *Shape2D) Close() {
 	s.closeShapeVao()
 	s.closeBlurVao()
+	s.WindowObjectBase.Close()
 }
 
 /******************************************************************************
@@ -754,9 +755,11 @@ func (s *Shape2D) init() {
 func (s *Shape2D) closeShapeVao() {
 	gl.BindVertexArray(0)
 	gl.DeleteVertexArrays(1, &s.vao)
+	s.vao = 0
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	gl.DeleteBuffers(1, &s.vbo)
+	s.vbo = 0
 }
 
 func (s *Shape2D) closeBlurVao() {
@@ -941,7 +944,7 @@ func newShape(name string) *Shape2D {
 
 func NewShape2D() *Shape2D {
 	p := &Shape2D{
-		WindowObjectBase: *NewWindowObject(nil),
+		WindowObjectBase: *NewWindowObject(),
 		sides:            3,
 		length:           1.0,
 		boundStruct: &shaderTransform{

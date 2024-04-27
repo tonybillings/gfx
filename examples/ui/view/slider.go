@@ -526,7 +526,7 @@ func NewSliderView(ctx context.Context, window *gfx.Window, signalSampleCount in
 	source := signal.NewSource()
 	source.Run(ctx)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.AddChild(newRawSignalView(window, signalSampleCount, source))
 	container.AddChild(newLowPassFilterView(window, signalSampleCount, source))
 	container.AddChild(newHighPassFilterView(window, signalSampleCount, source))

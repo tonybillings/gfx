@@ -113,7 +113,7 @@ func NewCheckBoxView(ctx context.Context, window *gfx.Window, signalSampleCount 
 	source := signal.NewSource()
 	source.Run(ctx)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.AddChild(newCheckBoxView(window, signalSampleCount, source))
 
 	return container

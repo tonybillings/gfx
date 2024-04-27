@@ -115,7 +115,6 @@ func (o *WindowObjectBase) Close() {
 	}
 
 	o.closeChildren()
-
 	o.ObjectBase.Close()
 }
 
@@ -541,7 +540,7 @@ func (o *WindowObjectBase) closeChildren() {
  New WindowObjectBase Function
 ******************************************************************************/
 
-func NewWindowObject(parent WindowObject) *WindowObjectBase {
+func NewWindowObject() *WindowObjectBase {
 	w := &WindowObjectBase{
 		ObjectTransform: ObjectTransform{
 			origin:   [3]float32{0, 0, 0},
@@ -553,11 +552,6 @@ func NewWindowObject(parent WindowObject) *WindowObjectBase {
 		color:               RgbaToFloatArray(White),
 		maintainAspectRatio: true,
 		anchor:              NoAnchor,
-	}
-
-	if parent != nil {
-		w.SetParent(parent)
-		w.SetWindow(parent.Window())
 	}
 
 	w.enabled.Store(true)

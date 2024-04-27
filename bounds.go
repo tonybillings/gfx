@@ -29,6 +29,9 @@ type BoundingObject interface {
 	OnPMouseClick(func(WindowObject, *MouseState))
 	OnSMouseClick(func(WindowObject, *MouseState))
 
+	MouseSurface() MouseSurface
+	SetMouseSurface(MouseSurface)
+
 	LocalMouse() *MouseState
 	MouseOver() bool
 }
@@ -51,6 +54,7 @@ type BoundingObjectBase struct {
 	onPMouseClickHandlers     []func(WindowObject, *MouseState)
 	onSMouseClickHandlers     []func(WindowObject, *MouseState)
 
+	mouseSurface    MouseSurface
 	mouseOver       atomic.Bool
 	mouseState      MouseState
 	winMouseState   *MouseState
@@ -66,7 +70,16 @@ func (o *BoundingObjectBase) Init() bool {
 		return true
 	}
 
-	o.window.EnableMouseTracking()
+	if o.window != nil {
+		o.window.EnableMouseTracking()
+		if o.mouseSurface == nil {
+			o.mouseSurface = o.window
+		}
+	}
+
+	if o.mouseSurface == nil {
+		panic("mouseSurface cannot be nil")
+	}
 
 	return o.WindowObjectBase.Init()
 }
@@ -115,6 +128,19 @@ func (o *BoundingObjectBase) OnSMouseClick(handler func(sender WindowObject, mou
 	o.onSMouseClickHandlers = append(o.onSMouseClickHandlers, handler)
 }
 
+func (o *BoundingObjectBase) MouseSurface() MouseSurface {
+	o.mouseStateMutex.Lock()
+	surface := o.mouseSurface
+	o.mouseStateMutex.Unlock()
+	return surface
+}
+
+func (o *BoundingObjectBase) SetMouseSurface(surface MouseSurface) {
+	o.mouseStateMutex.Lock()
+	o.mouseSurface = surface
+	o.mouseStateMutex.Unlock()
+}
+
 func (o *BoundingObjectBase) LocalMouse() *MouseState {
 	o.mouseStateMutex.Lock()
 	ms := o.mouseState
@@ -131,13 +157,13 @@ func (o *BoundingObjectBase) MouseOver() bool {
 ******************************************************************************/
 
 func (o *BoundingObjectBase) beginUpdate() (*MouseState, mgl32.Vec3, [2]float32) {
-	winMouse := o.window.Mouse()
+	winMouse := o.mouseSurface.Mouse()
 	position := o.WorldPosition()
 	worldScale := o.WorldScale()
 	scale := [2]float32{}
 	if o.maintainAspectRatio {
-		width := float32(o.window.width.Load())
-		height := float32(o.window.height.Load())
+		width := float32(o.mouseSurface.Width())
+		height := float32(o.mouseSurface.Height())
 		switch {
 		case width > height:
 			scale[0] = worldScale[0] * (height / width)
@@ -337,7 +363,7 @@ func (o *BoundingObjectBase) endUpdate(winMouse *MouseState, mouseOver bool, xLo
 
 func NewBoundingObject() *BoundingObjectBase {
 	bo := &BoundingObjectBase{
-		WindowObjectBase: *NewWindowObject(nil),
+		WindowObjectBase: *NewWindowObject(),
 	}
 
 	bo.winMouseState = &bo.mouseState
@@ -353,6 +379,10 @@ type BoundingBox struct {
 }
 
 func (b *BoundingBox) Update(_ int64) bool {
+	if !b.enabled.Load() {
+		return false
+	}
+
 	winMouse, position, scale := b.beginUpdate()
 	if scale[0] == 0 || scale[1] == 0 {
 		return true
@@ -361,14 +391,14 @@ func (b *BoundingBox) Update(_ int64) bool {
 	xScaleHalf := scale[0] * 0.5
 	yScaleHalf := scale[1] * 0.5
 	left := position[0] - xScaleHalf*2.0
-	top := position[1] - yScaleHalf*2.0
+	top := position[1] + yScaleHalf*2.0
 	right := position[0] + xScaleHalf*2.0
-	bottom := position[1] + yScaleHalf*2.0
+	bottom := position[1] - yScaleHalf*2.0
 	width := right - left
 	height := top - bottom
-	mouseOver := winMouse.X >= left && winMouse.X <= right && winMouse.Y >= top && winMouse.Y <= bottom
+	mouseOver := winMouse.X >= left && winMouse.X <= right && winMouse.Y <= top && winMouse.Y >= bottom
 	xLocal := (((winMouse.X - left) / width) * 2.0) - 1.0
-	yLocal := (((winMouse.Y - bottom) / height) * -2.0) + 1.0
+	yLocal := (((winMouse.Y - bottom) / height) * 2.0) - 1.0
 
 	b.endUpdate(winMouse, mouseOver, xLocal, yLocal)
 
@@ -394,6 +424,10 @@ type BoundingRadius struct {
 }
 
 func (r *BoundingRadius) Update(_ int64) bool {
+	if !r.enabled.Load() {
+		return false
+	}
+
 	winMouse, position, scale := r.beginUpdate()
 	if scale[0] == 0 || scale[1] == 0 {
 		return true

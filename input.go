@@ -58,3 +58,13 @@ func (s *MouseState) Update(button glfw.MouseButton, action glfw.Action) {
 		}
 	}
 }
+
+/******************************************************************************
+ MouseSurface
+******************************************************************************/
+
+type MouseSurface interface {
+	Mouse() *MouseState
+	Width() int32
+	Height() int32
+}

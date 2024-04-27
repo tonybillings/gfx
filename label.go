@@ -55,6 +55,26 @@ func (l *Label) Update(deltaTime int64) (ok bool) {
 		return false
 	}
 
+	return l.textView.Update(deltaTime)
+}
+
+func (l *Label) Close() {
+	l.View.Close()
+	l.textView.Close()
+	if l.texture != nil {
+		l.texture.Close()
+	}
+}
+
+/******************************************************************************
+ DrawableObject Implementation
+******************************************************************************/
+
+func (l *Label) Draw(deltaTime int64) (ok bool) {
+	if !l.View.Draw(deltaTime) {
+		return false
+	}
+
 	if l.stateChanged.Load() {
 		l.stateChanged.Store(false)
 		scale := l.WorldScale()
@@ -78,26 +98,6 @@ func (l *Label) Update(deltaTime int64) (ok bool) {
 			l.stateMutex.Unlock()
 			l.textView.SetTexture(l.texture)
 		}
-	}
-
-	return l.textView.Update(deltaTime)
-}
-
-func (l *Label) Close() {
-	l.View.Close()
-	l.textView.Close()
-	if l.texture != nil {
-		l.texture.Close()
-	}
-}
-
-/******************************************************************************
- DrawableObject Implementation
-******************************************************************************/
-
-func (l *Label) Draw(deltaTime int64) (ok bool) {
-	if !l.View.Draw(deltaTime) {
-		return false
 	}
 
 	return l.textView.Draw(deltaTime)

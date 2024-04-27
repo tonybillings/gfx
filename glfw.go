@@ -19,7 +19,6 @@ const (
 var (
 	glfwInitialized atomic.Bool
 	newWindowMutex  sync.Mutex
-	windowCount     atomic.Int32
 )
 
 func enableVsync() {
@@ -62,7 +61,6 @@ func newGlfwWindow(title string, width, height int32) (*glfw.Window, error) {
 	}
 
 	enableVsync()
-	windowCount.Add(1)
 
 	return win, nil
 }
@@ -76,6 +74,8 @@ func Init() error {
 		return fmt.Errorf("error initializing glfw: %w", err)
 	}
 
+	glfwInitialized.Store(true)
+
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, openGlVersionMajor)
 	glfw.WindowHint(glfw.ContextVersionMinor, openGlVersionMinor)
@@ -83,16 +83,14 @@ func Init() error {
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 	glfw.WindowHint(glfw.DoubleBuffer, glfw.True)
 
-	glfwInitialized.Store(true)
 	return nil
 }
 
-// Close Calling this is only necessary if you need to re-initialize,
-// which seems to be the case in a testing context.
 func Close() {
 	if !glfwInitialized.Load() {
 		return
 	}
 
+	glfw.Terminate()
 	glfwInitialized.Store(false)
 }

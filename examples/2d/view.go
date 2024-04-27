@@ -61,7 +61,7 @@ func tab0() gfx.WindowObject {
 func tab1() gfx.WindowObject {
 	triangle := gfx.NewShape2D()
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab1")
 	container.AddChild(triangle)
 	container.AddChild(label("Triangle / White", gfx.Blue))
@@ -72,18 +72,18 @@ func tab2() gfx.WindowObject {
 	triangleLine := gfx.NewTriangle(.2)
 	triangleLine.SetColor(gfx.Green)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab2")
 	container.AddChild(triangleLine)
 	container.AddChild(label("Triangle Line / Green", gfx.Blue))
 	return container
 }
 
-func tab3() gfx.WindowObject {
+func tab3(w *gfx.Window) gfx.WindowObject {
 	quad := gfx.NewQuad()
 	quad.SetTexture(gfx.NewTexture2D(testImage, testImage))
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab3")
 	container.AddChild(quad)
 	container.AddChild(label("Quad / Textured", gfx.Blue))
@@ -94,7 +94,7 @@ func tab4() gfx.WindowObject {
 	square := gfx.NewSquare(.2)
 	square.SetColor(gfx.Red)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab4")
 	container.AddChild(square)
 	container.AddChild(label("Square Line / Red", gfx.Blue))
@@ -105,7 +105,7 @@ func tab5() gfx.WindowObject {
 	dot := gfx.NewDot()
 	dot.SetTexture(gfx.NewTexture2D(testImage, testImage))
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab5")
 	container.AddChild(dot)
 	container.AddChild(label("Dot / Textured", gfx.Blue))
@@ -116,7 +116,7 @@ func tab6() gfx.WindowObject {
 	circle := gfx.NewCircle(.2)
 	circle.SetColor(gfx.Orange)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab6")
 	container.AddChild(circle)
 	container.AddChild(label("Circle Line / Orange", gfx.Blue))
@@ -130,7 +130,7 @@ func tab7() gfx.WindowObject {
 		SetColor(gfx.Yellow).
 		SetRotationZ(mgl32.DegToRad(-30))
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab7")
 	container.AddChild(pacman)
 	container.AddChild(label("Pac-Man", gfx.Blue))
@@ -143,7 +143,7 @@ func tab8() gfx.WindowObject {
 		SetLength(.5).
 		SetColor(gfx.Orange)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab8")
 	container.AddChild(arc)
 	container.AddChild(label("Arc / Orange", gfx.Blue))
@@ -171,7 +171,7 @@ func tab9() gfx.WindowObject {
 	bottomCenter.SetAnchor(gfx.BottomCenter)
 	bottomCenter.SetAlignment(gfx.Centered)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.SetName("tab9")
 	container.AddChildren(carousel, topLeft, bottomCenter)
 	return container
@@ -188,7 +188,7 @@ func New2DView(window *gfx.Window) gfx.WindowObject {
 	tabGroup.AddChild(tab0())
 	tabGroup.AddChild(tab1())
 	tabGroup.AddChild(tab2())
-	tabGroup.AddChild(tab3())
+	tabGroup.AddChild(tab3(window))
 	tabGroup.AddChild(tab4())
 	tabGroup.AddChild(tab5())
 	tabGroup.AddChild(tab6())

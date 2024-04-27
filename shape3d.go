@@ -211,7 +211,7 @@ func (s *Shape3D) Meshes() []*meshInstance {
 
 func NewShape3D() *Shape3D {
 	m := &Shape3D{
-		WindowObjectBase: *NewWindowObject(nil),
+		WindowObjectBase: *NewWindowObject(),
 	}
 
 	m.SetName(defaultShape3DName)

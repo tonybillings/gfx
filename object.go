@@ -62,7 +62,7 @@ func (o *ObjectBase) Init() (ok bool) {
 }
 
 func (o *ObjectBase) Update(_ int64) (ok bool) {
-	return o.enabled.Load()
+	return o.enabled.Load() && o.initialized.Load()
 }
 
 func (o *ObjectBase) Close() {
@@ -130,7 +130,7 @@ type DrawableObjectBase struct {
 ******************************************************************************/
 
 func (o *DrawableObjectBase) Draw(_ int64) (ok bool) {
-	return o.visible.Load()
+	return o.visible.Load() && o.initialized.Load()
 }
 
 func (o *DrawableObjectBase) Visible() bool {

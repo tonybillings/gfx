@@ -250,7 +250,7 @@ func (b *CheckButton) SetMouseDownColor(rgba color.RGBA) *CheckButton {
 
 func newCheckButton(name string, circular ...bool) *CheckButton {
 	b := &CheckButton{}
-	b.View.WindowObjectBase = *NewWindowObject(nil)
+	b.View.WindowObjectBase = *NewWindowObject()
 	b.text = NewLabel()
 
 	if len(circular) > 0 && circular[0] {

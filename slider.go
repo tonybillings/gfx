@@ -163,10 +163,10 @@ func (s *Slider) initLayout() {
 	})
 
 	s.button.OnDepressed(func(_ WindowObject, _ *MouseState) {
-		winMouse := s.Window().Mouse()
+		mouse := s.button.bounds.MouseSurface().Mouse()
 		var value float32
 		if s.orientation == Vertical {
-			y := winMouse.Y - s.WorldPosition().Y()
+			y := mouse.Y - s.WorldPosition().Y()
 			railEnd := s.Window().ScaleY(s.rail.WorldScale().Y())
 
 			if y < -railEnd {
@@ -178,7 +178,7 @@ func (s *Slider) initLayout() {
 			s.button.SetPositionY(y)
 			value = (y + railEnd) / (railEnd * 2.0)
 		} else {
-			x := winMouse.X - s.WorldPosition().X()
+			x := mouse.X - s.WorldPosition().X()
 			railEnd := s.Window().ScaleX(s.rail.WorldScale().X())
 
 			if x < -railEnd {
@@ -266,6 +266,10 @@ func (s *Slider) OnValueChanging(handler func(sender WindowObject, value float32
 func (s *Slider) OnValueChanged(handler func(sender WindowObject, value float32)) *Slider {
 	s.onValueChanged = append(s.onValueChanged, handler)
 	return s
+}
+
+func (s *Slider) SetMouseSurface(surface MouseSurface) {
+	s.button.SetMouseSurface(surface)
 }
 
 /******************************************************************************

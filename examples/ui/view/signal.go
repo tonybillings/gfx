@@ -50,7 +50,7 @@ func NewSignalsView(ctx context.Context, window *gfx.Window, signalSampleCount i
 		SetText("UP/DOWN: change line thickness").
 		SetFontSize(.03)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.AddChild(sg)
 	container.AddChild(thicknessHelp)
 
@@ -217,7 +217,7 @@ func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampl
 		}
 	}(ctx, sg)
 
-	container := gfx.NewWindowObject(nil)
+	container := gfx.NewWindowObject()
 	container.AddChild(inspectorHelp1)
 	container.AddChild(inspectorHelp2)
 	container.AddChild(sig)
