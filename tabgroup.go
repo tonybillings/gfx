@@ -113,6 +113,15 @@ func (g *TabGroup) Draw(deltaTime int64) (ok bool) {
 }
 
 /******************************************************************************
+ WindowObject Implementation
+******************************************************************************/
+
+func (g *TabGroup) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+	g.tranQuad.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	g.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
+}
+
+/******************************************************************************
  TabGroup Functions
 ******************************************************************************/
 
