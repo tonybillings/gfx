@@ -15,11 +15,11 @@ const (
 )
 
 func TestNewViewport(t *testing.T) {
-	windowWidth, windowHeight := int32(1920), int32(1080)
+	windowWidth, windowHeight := 1920, 1080
 	v := gfx.NewViewport(windowWidth, windowHeight)
 
 	expectedX, expectedY := int32(0), int32(0)
-	expectedW, expectedH := windowWidth, windowHeight
+	expectedW, expectedH := int32(windowWidth), int32(windowHeight)
 
 	x, y, w, h := v.Get()
 	if x != expectedX || y != expectedY || w != expectedW || h != expectedH {

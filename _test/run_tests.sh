@@ -20,3 +20,4 @@ for file in *_test.go; do
 done
 
 printf "\nAll tests passed!\n"
+exit 0

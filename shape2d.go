@@ -186,7 +186,7 @@ func (s *Shape2D) Draw(deltaTime int64) (ok bool) {
  Resizer Implementation
 ******************************************************************************/
 
-func (s *Shape2D) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+func (s *Shape2D) Resize(newWidth, newHeight int) {
 	if s.viewport != nil {
 		s.viewport.SetWindowSize(newWidth, newHeight)
 	}
@@ -197,7 +197,7 @@ func (s *Shape2D) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
 		s.initBlurVao()
 		s.stateMutex.Unlock()
 	}
-	s.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	s.WindowObjectBase.Resize(newWidth, newHeight)
 }
 
 /******************************************************************************
@@ -689,7 +689,7 @@ func (s *Shape2D) initBlurVao() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, s.Window().Width(), s.Window().Height(), 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.Window().Width()), int32(s.Window().Height()), 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, s.blurShapeTexture, 0)
 
@@ -699,7 +699,7 @@ func (s *Shape2D) initBlurVao() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, s.Window().Width(), s.Window().Height(), 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.Window().Width()), int32(s.Window().Height()), 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
 	gl.GenTextures(1, &s.blurXYTexture)
 	gl.BindTexture(gl.TEXTURE_2D, s.blurXYTexture)
@@ -707,7 +707,7 @@ func (s *Shape2D) initBlurVao() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, s.Window().Width(), s.Window().Height(), 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.Window().Width()), int32(s.Window().Height()), 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
@@ -821,8 +821,8 @@ func (s *Shape2D) endDraw() {
 
 func (s *Shape2D) getAdjustedScale(worldScale mgl32.Vec3) (scale mgl32.Vec3) {
 	if s.maintainAspectRatio {
-		width := float32(s.window.width.Load())
-		height := float32(s.window.height.Load())
+		width := float32(s.window.Width())
+		height := float32(s.window.Height())
 
 		switch {
 		case width > height:

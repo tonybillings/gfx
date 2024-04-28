@@ -81,12 +81,12 @@ func (s *Shape3D) Draw(deltaTime int64) (ok bool) {
  Resizer Implementation
 ******************************************************************************/
 
-func (s *Shape3D) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+func (s *Shape3D) Resize(newWidth, newHeight int) {
 	if s.viewport != nil {
 		s.viewport.SetWindowSize(newWidth, newHeight)
 	}
 
-	s.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	s.WindowObjectBase.Resize(newWidth, newHeight)
 }
 
 /******************************************************************************

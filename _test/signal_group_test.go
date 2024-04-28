@@ -51,4 +51,6 @@ func BenchmarkSignalGroup(b *testing.B) {
 		b.Logf("Ending routine count: %d", endRoutineCount)
 		b.Error("routine leak")
 	}
+
+	gfx.Close()
 }

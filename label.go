@@ -107,10 +107,10 @@ func (l *Label) Draw(deltaTime int64) (ok bool) {
  Resizer Implementation
 ******************************************************************************/
 
-func (l *Label) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+func (l *Label) Resize(newWidth, newHeight int) {
 	l.stateChanged.Store(true)
-	l.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	l.textView.Resize(oldWidth, oldHeight, newWidth, newHeight)
+	l.View.Resize(newWidth, newHeight)
+	l.textView.Resize(newWidth, newHeight)
 }
 
 /******************************************************************************

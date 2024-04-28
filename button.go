@@ -124,10 +124,10 @@ func (b *Button) Draw(deltaTime int64) (ok bool) {
  Resizer Implementation
 ******************************************************************************/
 
-func (b *Button) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	b.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	b.text.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	b.bounds.Resize(oldWidth, oldHeight, newWidth, newHeight)
+func (b *Button) Resize(newWidth, newHeight int) {
+	b.View.Resize(newWidth, newHeight)
+	b.text.Resize(newWidth, newHeight)
+	b.bounds.Resize(newWidth, newHeight)
 }
 
 /******************************************************************************

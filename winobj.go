@@ -48,7 +48,7 @@ type WindowObject interface {
 	SetMarginBottom(float32) WindowObject
 	SetMarginLeft(float32) WindowObject
 
-	OnResize(func(int32, int32, int32, int32))
+	OnResize(func(int, int))
 	RefreshLayout()
 
 	Parent() WindowObject
@@ -81,7 +81,7 @@ type WindowObjectBase struct {
 	anchor Anchor
 	margin Margin
 
-	onResizeHandlers []func(int32, int32, int32, int32)
+	onResizeHandlers []func(int, int)
 
 	parent   atomic.Pointer[WindowObject]
 	children []WindowObject
@@ -134,7 +134,7 @@ func (o *WindowObjectBase) Draw(deltaTime int64) (ok bool) {
  Resizer Implementation
 ******************************************************************************/
 
-func (o *WindowObjectBase) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
+func (o *WindowObjectBase) Resize(newWidth, newHeight int) {
 	if !o.initialized.Load() {
 		return
 	}
@@ -142,11 +142,11 @@ func (o *WindowObjectBase) Resize(oldWidth, oldHeight, newWidth, newHeight int32
 	o.RefreshLayout()
 
 	for _, c := range o.children {
-		c.Resize(oldWidth, oldHeight, newWidth, newHeight)
+		c.Resize(newWidth, newHeight)
 	}
 
 	for _, f := range o.onResizeHandlers {
-		f(oldWidth, oldHeight, newWidth, newHeight)
+		f(newWidth, newHeight)
 	}
 }
 
@@ -324,7 +324,7 @@ func (o *WindowObjectBase) SetMarginLeft(margin float32) WindowObject {
 	return o
 }
 
-func (o *WindowObjectBase) OnResize(handler func(oldWidth, oldHeight, newWidth, newHeight int32)) {
+func (o *WindowObjectBase) OnResize(handler func(newWidth, newHeight int)) {
 	o.onResizeHandlers = append(o.onResizeHandlers, handler)
 }
 

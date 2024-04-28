@@ -55,5 +55,5 @@ type Margin struct {
 ******************************************************************************/
 
 type Resizer interface {
-	Resize(oldWidth, oldHeight, newWidth, newHeight int32)
+	Resize(newWidth, newHeight int)
 }

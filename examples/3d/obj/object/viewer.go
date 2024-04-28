@@ -75,7 +75,7 @@ func newRotationControl(window *gfx.Window, obj *gfx.Shape3D) *gfx.View {
 	rotSliderXLabel.SetFontSize(.15)
 	rotSliderXLabel.SetPositionY(window.ScaleY(-rotSliderX.WorldScale().Y() + (rotSliderX.WorldScale().Y() * .06)))
 	rotSliderXLabel.SetText("X")
-	rotSliderXLabel.OnResize(func(_, _, _, _ int32) {
+	rotSliderXLabel.OnResize(func(_, _ int) {
 		rotSliderXLabel.SetPositionY(window.ScaleY(-rotSliderX.WorldScale().Y() + (rotSliderX.WorldScale().Y() * .06)))
 	})
 	rotSliderX.AddChild(rotSliderXLabel)
@@ -85,7 +85,7 @@ func newRotationControl(window *gfx.Window, obj *gfx.Shape3D) *gfx.View {
 	rotSliderYLabel.SetFontSize(.15)
 	rotSliderYLabel.SetPositionY(window.ScaleY(-rotSliderY.WorldScale().Y() + (rotSliderY.WorldScale().Y() * .06)))
 	rotSliderYLabel.SetText("Y")
-	rotSliderYLabel.OnResize(func(_, _, _, _ int32) {
+	rotSliderYLabel.OnResize(func(_, _ int) {
 		rotSliderYLabel.SetPositionY(window.ScaleY(-rotSliderY.WorldScale().Y() + (rotSliderY.WorldScale().Y() * .06)))
 	})
 	rotSliderY.AddChild(rotSliderYLabel)
@@ -95,7 +95,7 @@ func newRotationControl(window *gfx.Window, obj *gfx.Shape3D) *gfx.View {
 	rotSliderZLabel.SetFontSize(.15)
 	rotSliderZLabel.SetPositionY(window.ScaleY(-rotSliderZ.WorldScale().Y() + (rotSliderZ.WorldScale().Y() * .06)))
 	rotSliderZLabel.SetText("Z")
-	rotSliderZLabel.OnResize(func(_, _, _, _ int32) {
+	rotSliderZLabel.OnResize(func(_, _ int) {
 		rotSliderZLabel.SetPositionY(window.ScaleY(-rotSliderZ.WorldScale().Y() + (rotSliderZ.WorldScale().Y() * .06)))
 	})
 	rotSliderZ.AddChild(rotSliderZLabel)
@@ -196,7 +196,7 @@ func newLightControl(window *gfx.Window, obj *gfx.Shape3D, lightNumber int, rgba
 	dirSliderXLabel.SetFontSize(.15)
 	dirSliderXLabel.SetPositionY(window.ScaleY(-dirSliderX.WorldScale().Y() + (dirSliderX.WorldScale().Y() * .06)))
 	dirSliderXLabel.SetText("X")
-	dirSliderXLabel.OnResize(func(_, _, _, _ int32) {
+	dirSliderXLabel.OnResize(func(_, _ int) {
 		dirSliderXLabel.SetPositionY(window.ScaleY(-dirSliderX.WorldScale().Y() + (dirSliderX.WorldScale().Y() * .06)))
 	})
 	dirSliderX.AddChild(dirSliderXLabel)
@@ -206,7 +206,7 @@ func newLightControl(window *gfx.Window, obj *gfx.Shape3D, lightNumber int, rgba
 	dirSliderYLabel.SetFontSize(.15)
 	dirSliderYLabel.SetPositionY(window.ScaleY(-dirSliderY.WorldScale().Y() + (dirSliderY.WorldScale().Y() * .06)))
 	dirSliderYLabel.SetText("Y")
-	dirSliderYLabel.OnResize(func(_, _, _, _ int32) {
+	dirSliderYLabel.OnResize(func(_, _ int) {
 		dirSliderYLabel.SetPositionY(window.ScaleY(-dirSliderY.WorldScale().Y() + (dirSliderY.WorldScale().Y() * .06)))
 	})
 	dirSliderY.AddChild(dirSliderYLabel)
@@ -216,7 +216,7 @@ func newLightControl(window *gfx.Window, obj *gfx.Shape3D, lightNumber int, rgba
 	dirSliderZLabel.SetFontSize(.15)
 	dirSliderZLabel.SetPositionY(window.ScaleY(-dirSliderZ.WorldScale().Y() + (dirSliderZ.WorldScale().Y() * .06)))
 	dirSliderZLabel.SetText("Z")
-	dirSliderZLabel.OnResize(func(_, _, _, _ int32) {
+	dirSliderZLabel.OnResize(func(_, _ int) {
 		dirSliderZLabel.SetPositionY(window.ScaleY(-dirSliderZ.WorldScale().Y() + (dirSliderZ.WorldScale().Y() * .06)))
 	})
 	dirSliderZ.AddChild(dirSliderZLabel)

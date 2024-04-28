@@ -105,10 +105,10 @@ func (s *Slider) SetWindow(window *Window) WindowObject {
  Resizer Implementation
 ******************************************************************************/
 
-func (s *Slider) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	s.rail.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	s.button.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	s.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
+func (s *Slider) Resize(newWidth, newHeight int) {
+	s.rail.Resize(newWidth, newHeight)
+	s.button.Resize(newWidth, newHeight)
+	s.View.Resize(newWidth, newHeight)
 	s.SetValue(s.Value())
 }
 

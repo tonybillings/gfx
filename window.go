@@ -24,23 +24,38 @@ import (
 type Window struct {
 	glwin *glfw.Window
 
-	title         atomic.Value
-	width         atomic.Int32
-	height        atomic.Int32
-	lastWidth     atomic.Int32
-	lastHeight    atomic.Int32
-	lastPositionX atomic.Int32
-	lastPositionY atomic.Int32
+	borderless bool
 
-	fullscreen              atomic.Bool
-	fullscreenButtonEnabled atomic.Bool
-	fullscreenRequested     atomic.Bool
-	windowRequested         atomic.Bool
+	title         string
+	width         int
+	height        int
+	lastWidth     int
+	lastHeight    int
+	lastPositionX int
+	lastPositionY int
+	opacity       uint8
 
-	quitButtonEnabled atomic.Bool
+	clearColorRgba color.RGBA
+	clearColorVec  mgl32.Vec4
+
+	fullscreen              bool
+	fullscreenButtonEnabled bool
+	fullscreenRequested     bool
+	windowRequested         bool
 
 	targetFramerate atomic.Uint32
-	clearColor      mgl32.Vec4
+	vSyncEnabled    bool
+
+	quitButtonEnabled bool
+
+	titleChanged        bool
+	sizeChanged         bool
+	opacityChanged      bool
+	vSyncEnabledChanged bool
+	clearColorChanged   bool
+
+	configChanged bool
+	configMutex   sync.Mutex
 
 	objects         []Object
 	drawableObjects []DrawableObject
@@ -64,14 +79,14 @@ type Window struct {
 	mouseState           MouseState
 	mouseStateMutex      sync.Mutex
 
-	initialized atomic.Bool
-	ctx         context.Context
-	cancelFunc  context.CancelFunc
-	doneChan    <-chan struct{}
-	closedChan  chan struct{}
-
-	stateMutex    sync.Mutex
+	initialized   atomic.Bool
+	ctx           context.Context
+	cancelFunc    context.CancelFunc
+	doneChan      <-chan struct{}
+	closedChan    chan struct{}
 	readyChannels []chan bool
+
+	stateMutex sync.Mutex
 }
 
 /******************************************************************************
@@ -79,7 +94,7 @@ type Window struct {
 ******************************************************************************/
 
 func (w *Window) clearScreen() {
-	gl.ClearColor(w.clearColor[0], w.clearColor[1], w.clearColor[2], w.clearColor[3])
+	gl.ClearColor(w.clearColorVec[0], w.clearColorVec[1], w.clearColorVec[2], w.clearColorVec[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
@@ -88,26 +103,26 @@ func (w *Window) enableFullscreenMode() {
 	vidMode := primaryMonitor.GetVideoMode()
 
 	x, y := w.glwin.GetPos()
-	w.lastPositionX.Store(int32(x))
-	w.lastPositionY.Store(int32(y))
-	w.lastWidth.Store(w.width.Load())
-	w.lastHeight.Store(w.height.Load())
-	w.width.Store(int32(vidMode.Width))
-	w.height.Store(int32(vidMode.Height))
+	w.lastPositionX = x
+	w.lastPositionY = y
+	w.lastWidth = w.width
+	w.lastHeight = w.height
+	w.width = vidMode.Width
+	w.height = vidMode.Height
 	w.glwin.SetMonitor(primaryMonitor, 0, 0, vidMode.Width, vidMode.Height, vidMode.RefreshRate)
-	w.fullscreen.Store(true)
+	w.fullscreen = true
 }
 
 func (w *Window) enableWindowedMode() {
 	primaryMonitor := glfw.GetPrimaryMonitor()
 	vidMode := primaryMonitor.GetVideoMode()
 
-	w.glwin.SetMonitor(nil, int(w.lastPositionX.Load()), int(w.lastPositionY.Load()), int(w.lastWidth.Load()), int(w.lastHeight.Load()), vidMode.RefreshRate)
-	w.width.Store(w.lastWidth.Load())
-	w.height.Store(w.lastHeight.Load())
-	w.lastWidth.Store(int32(vidMode.Width))
-	w.lastHeight.Store(int32(vidMode.Height))
-	w.fullscreen.Store(false)
+	w.glwin.SetMonitor(nil, w.lastPositionX, w.lastPositionY, w.lastWidth, w.lastHeight, vidMode.RefreshRate)
+	w.width = w.lastWidth
+	w.height = w.lastHeight
+	w.lastWidth = vidMode.Width
+	w.lastHeight = vidMode.Height
+	w.fullscreen = false
 }
 
 func (w *Window) addAssetLibraryService() {
@@ -192,16 +207,71 @@ func (w *Window) closeServices() {
 	}
 }
 
-func (w *Window) resizeObjects(oldWidth, oldHeight, newWidth, newHeight int32) {
-	for _, o := range w.windowObjects {
-		o.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	}
-
+func (w *Window) resizeObjects(newWidth, newHeight int) {
 	for _, o := range w.objects {
 		if resizer, ok := o.(Resizer); ok {
-			resizer.Resize(oldWidth, oldHeight, newWidth, newHeight)
+			resizer.Resize(newWidth, newHeight)
 		}
 	}
+}
+
+func (w *Window) refreshLayout() {
+	w.configMutex.Lock()
+
+	if w.titleChanged {
+		w.glwin.SetTitle(w.title)
+		w.titleChanged = false
+	}
+
+	if w.opacityChanged {
+		w.glwin.SetOpacity(float32(w.opacity) / 255.0)
+		w.opacityChanged = false
+	}
+
+	if w.vSyncEnabledChanged {
+		if w.vSyncEnabled {
+			glfw.SwapInterval(1)
+		} else {
+			glfw.SwapInterval(0)
+		}
+		w.vSyncEnabledChanged = false
+	}
+
+	if w.clearColorChanged {
+		w.clearColorVec[0] = float32(w.clearColorRgba.R) / 255.0
+		w.clearColorVec[1] = float32(w.clearColorRgba.G) / 255.0
+		w.clearColorVec[2] = float32(w.clearColorRgba.B) / 255.0
+		w.clearColorVec[3] = float32(w.clearColorRgba.A) / 255.0
+		w.clearColorChanged = false
+	}
+
+	if w.fullscreenRequested {
+		w.enableFullscreenMode()
+		width := w.width
+		height := w.height
+		w.fullscreenRequested = false
+		w.configMutex.Unlock()
+		w.resizeObjects(width, height)
+		return
+	} else if w.windowRequested {
+		w.enableWindowedMode()
+		width := w.width
+		height := w.height
+		w.windowRequested = false
+		w.configMutex.Unlock()
+		w.resizeObjects(width, height)
+		return
+	} else if w.sizeChanged {
+		w.glwin.SetSize(w.width, w.height)
+		width := w.width
+		height := w.height
+		w.sizeChanged = false
+		w.configMutex.Unlock()
+		w.resizeObjects(width, height)
+		return
+	}
+
+	w.configMutex.Unlock()
 }
 
 func (w *Window) handlePngRequests() {
@@ -223,17 +293,11 @@ func (w *Window) keyEventCallback(_ *glfw.Window, key glfw.Key, _ int, action gl
 	}
 
 	w.keyEventHandlersMutex.Lock()
-	if w.keyEventHandlers == nil {
-		w.keyEventHandlersMutex.Unlock()
-		return
-	}
-
 	for _, h := range w.keyEventHandlers {
 		if h.Key == key && h.Action == action {
 			h.Callback(w, key, action)
 		}
 	}
-
 	w.keyEventHandlersMutex.Unlock()
 }
 
@@ -265,7 +329,7 @@ func (w *Window) disposeAllServices() {
 func (w *Window) run() {
 	runtime.LockOSThread()
 
-	window, err := newGlfwWindow(w.Title(), w.Width(), w.Height())
+	window, err := newGlfwWindow(w.Title(), w.Width(), w.Height(), w.borderless)
 	if err != nil {
 		panic(err)
 	}
@@ -321,14 +385,9 @@ func (w *Window) run() {
 		w.handlePngRequests()
 		w.stateMutex.Unlock()
 
-		if w.fullscreenRequested.Load() {
-			w.fullscreenRequested.Store(false)
-			w.enableFullscreenMode()
-			w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
-		} else if w.windowRequested.Load() {
-			w.windowRequested.Store(false)
-			w.enableWindowedMode()
-			w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
+		if w.configChanged {
+			w.refreshLayout()
+			w.configChanged = false
 		}
 
 		glfw.PollEvents()
@@ -386,10 +445,6 @@ func (w *Window) Close() {
 
 func (w *Window) AddKeyEventHandler(key glfw.Key, action glfw.Action, callback func(window *Window, key glfw.Key, action glfw.Action)) *KeyEventHandler {
 	w.keyEventHandlersMutex.Lock()
-	if w.keyEventHandlers == nil {
-		w.keyEventHandlers = make([]*KeyEventHandler, 0)
-	}
-
 	handler := &KeyEventHandler{
 		Key:      key,
 		Action:   action,
@@ -402,7 +457,7 @@ func (w *Window) AddKeyEventHandler(key glfw.Key, action glfw.Action, callback f
 }
 
 func (w *Window) RemoveKeyEventHandler(handler *KeyEventHandler) {
-	if w.keyEventHandlers == nil {
+	if len(w.keyEventHandlers) == 0 {
 		return
 	}
 
@@ -426,54 +481,58 @@ func (w *Window) SetInputEnabled(enabled bool) *Window {
 }
 
 func (w *Window) SetFullscreenEnabled(enabled bool) *Window {
+	w.configMutex.Lock()
 	if enabled {
-		w.fullscreenRequested.Store(true)
+		w.fullscreenRequested = true
 	} else {
-		w.windowRequested.Store(true)
+		w.windowRequested = true
 	}
+	w.configChanged = true
+	w.configMutex.Unlock()
 	return w
 }
 
 func (w *Window) EnableFullscreenKey() *Window {
-	if !w.fullscreenButtonEnabled.Load() {
-		w.fullscreenButtonEnabled.Store(true)
-
-		w.AddKeyEventHandler(glfw.KeyF11, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
-			fullscreen := w.glwin.GetMonitor() != nil
-			if fullscreen {
-				w.enableWindowedMode()
-			} else {
-				w.enableFullscreenMode()
-			}
-			w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
+	w.configMutex.Lock()
+	if !w.fullscreenButtonEnabled {
+		w.fullscreenButtonEnabled = true
+		w.AddKeyEventHandler(glfw.KeyF11, glfw.Press, func(win *Window, _ glfw.Key, _ glfw.Action) {
+			win.SetFullscreenEnabled(!win.IsFullscreen())
 		})
 	}
+	w.configMutex.Unlock()
 	return w
 }
 
 func (w *Window) EnableQuitKey(cancelFuncs ...context.CancelFunc) *Window {
-	if !w.quitButtonEnabled.Load() {
-		w.quitButtonEnabled.Store(true)
+	w.configMutex.Lock()
+	if !w.quitButtonEnabled {
+		w.quitButtonEnabled = true
 
 		w.AddKeyEventHandler(glfw.KeyEscape, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 			for _, cancelFunc := range cancelFuncs {
 				cancelFunc()
 			}
-			go w.Close()
+			w.Close()
 		})
 	}
+	w.configMutex.Unlock()
 	return w
 }
 
-func (w *Window) ClearColor() color.RGBA {
-	return FloatArrayToRgba(w.clearColor)
+func (w *Window) ClearColor() (rgba color.RGBA) {
+	w.configMutex.Lock()
+	rgba = w.clearColorRgba
+	w.configMutex.Unlock()
+	return
 }
 
 func (w *Window) SetClearColor(rgba color.RGBA) *Window {
-	w.clearColor[0] = float32(rgba.R) / 255.0
-	w.clearColor[1] = float32(rgba.G) / 255.0
-	w.clearColor[2] = float32(rgba.B) / 255.0
-	w.clearColor[3] = float32(rgba.A) / 255.0
+	w.configMutex.Lock()
+	w.clearColorRgba = rgba
+	w.clearColorChanged = true
+	w.configChanged = true
+	w.configMutex.Unlock()
 	return w
 }
 
@@ -867,155 +926,162 @@ func (w *Window) DisposeAllServicesAsync(ignoreProtection bool) {
 	w.stateMutex.Unlock()
 }
 
-func (w *Window) Title() string {
-	if t, ok := w.title.Load().(string); ok {
-		return t
-	}
-	return NoLabel
+func (w *Window) Title() (title string) {
+	w.configMutex.Lock()
+	title = w.title
+	w.configMutex.Unlock()
+	return
 }
 
 func (w *Window) SetTitle(title string) *Window {
-	w.title.Store(title)
-
-	if w.glwin != nil {
-		w.stateMutex.Lock()
-		w.glwin.SetTitle(w.title.Load().(string))
-		w.stateMutex.Unlock()
-	}
-
+	w.configMutex.Lock()
+	w.title = title
+	w.titleChanged = true
+	w.configChanged = true
+	w.configMutex.Unlock()
 	return w
 }
 
-func (w *Window) Width() int32 {
-	return w.width.Load()
+func (w *Window) Width() (width int) {
+	w.configMutex.Lock()
+	width = w.width
+	w.configMutex.Unlock()
+	return
 }
 
 func (w *Window) SetWidth(width int) *Window {
-	w.width.Store(int32(width))
-	if w.glwin != nil {
-		oldWidth := w.width.Load()
-		oldHeight := w.height.Load()
-		w.stateMutex.Lock()
-		w.glwin.SetSize(width, int(oldHeight))
-		w.resizeObjects(oldWidth, oldHeight, int32(width), oldHeight)
-		w.stateMutex.Unlock()
-	}
+	w.configMutex.Lock()
+	w.width = width
+	w.sizeChanged = true
+	w.configChanged = true
+	w.configMutex.Unlock()
 	return w
 }
 
-func (w *Window) Height() int32 {
-	return w.height.Load()
+func (w *Window) Height() (height int) {
+	w.configMutex.Lock()
+	height = w.height
+	w.configMutex.Unlock()
+	return
 }
 
 func (w *Window) SetHeight(height int) *Window {
-	w.height.Store(int32(height))
-	if w.glwin != nil {
-		oldWidth := w.width.Load()
-		oldHeight := w.height.Load()
-		w.stateMutex.Lock()
-		w.glwin.SetSize(int(oldWidth), height)
-		w.resizeObjects(oldWidth, oldHeight, oldWidth, int32(height))
-		w.stateMutex.Unlock()
-	}
+	w.configMutex.Lock()
+	w.height = height
+	w.sizeChanged = true
+	w.configChanged = true
+	w.configMutex.Unlock()
 	return w
 }
 
-func (w *Window) Size() (width, height int32) {
-	return w.width.Load(), w.height.Load()
+func (w *Window) Size() (width, height int) {
+	w.configMutex.Lock()
+	width = w.width
+	height = w.height
+	w.configMutex.Unlock()
+	return
 }
 
 func (w *Window) SetSize(width, height int) *Window {
-	w.width.Store(int32(width))
-	w.height.Store(int32(height))
-	if w.glwin != nil {
-		oldWidth := w.width.Load()
-		oldHeight := w.height.Load()
-		w.stateMutex.Lock()
-		w.glwin.SetSize(width, height)
-		w.resizeObjects(oldWidth, oldHeight, int32(width), int32(height))
-		w.stateMutex.Unlock()
-	}
+	w.configMutex.Lock()
+	w.width = width
+	w.height = height
+	w.sizeChanged = true
+	w.configChanged = true
+	w.configMutex.Unlock()
 	return w
 }
 
-func (w *Window) AspectRatio() float32 {
-	return float32(w.Width()) / float32(w.Height())
+func (w *Window) Opacity() (alpha uint8) {
+	w.configMutex.Lock()
+	alpha = w.opacity
+	w.configMutex.Unlock()
+	return
 }
 
-func (w *Window) AspectRatioInv() float32 {
-	return float32(w.Height()) / float32(w.Width())
+func (w *Window) SetOpacity(alpha uint8) *Window {
+	w.configMutex.Lock()
+	w.opacity = alpha
+	w.opacityChanged = true
+	w.configChanged = true
+	w.configMutex.Unlock()
+	return w
 }
 
-func (w *Window) AspectRatio2D() mgl32.Vec2 {
-	width := w.Width()
-	height := w.Height()
+func (w *Window) AspectRatio() (ratio float32) {
+	w.configMutex.Lock()
+	ratio = float32(w.width) / float32(w.height)
+	w.configMutex.Unlock()
+	return
+}
+
+func (w *Window) AspectRatioInv() (invRatio float32) {
+	w.configMutex.Lock()
+	invRatio = float32(w.height) / float32(w.width)
+	w.configMutex.Unlock()
+	return
+}
+
+func (w *Window) AspectRatio2D() (ratio2d mgl32.Vec2) {
+	w.configMutex.Lock()
 
 	switch {
-	case width > height:
-		return mgl32.Vec2{1, float32(width) / float32(height)}
-	case height > width:
-		return mgl32.Vec2{float32(height) / float32(width), 1}
+	case w.width > w.height:
+		ratio2d = mgl32.Vec2{1, float32(w.width) / float32(w.height)}
+	case w.height > w.width:
+		ratio2d = mgl32.Vec2{float32(w.height) / float32(w.width), 1}
 	default:
-		return mgl32.Vec2{1, 1}
+		ratio2d = mgl32.Vec2{1, 1}
 	}
+
+	w.configMutex.Unlock()
+	return
 }
 
-func (w *Window) AspectRatio2DInv() mgl32.Vec2 {
-	width := w.Width()
-	height := w.Height()
+func (w *Window) AspectRatio2DInv() (invRatio2d mgl32.Vec2) {
+	w.configMutex.Lock()
 
 	switch {
-	case width > height:
-		return mgl32.Vec2{float32(height) / float32(width), 1}
-	case height > width:
-		return mgl32.Vec2{1, float32(width) / float32(height)}
+	case w.width > w.height:
+		invRatio2d = mgl32.Vec2{float32(w.height) / float32(w.width), 1}
+	case w.height > w.width:
+		invRatio2d = mgl32.Vec2{1, float32(w.width) / float32(w.height)}
 	default:
-		return mgl32.Vec2{1, 1}
+		invRatio2d = mgl32.Vec2{1, 1}
 	}
+
+	w.configMutex.Unlock()
+	return
 }
 
-func (w *Window) ScaleX(x float32) float32 {
-	width := w.Width()
-	height := w.Height()
+func (w *Window) ScaleX(x float32) (scaledX float32) {
+	w.configMutex.Lock()
 
-	if width > height {
-		x *= float32(height) / float32(width)
+	if w.width > w.height {
+		scaledX = x * (float32(w.height) / float32(w.width))
+	} else {
+		scaledX = x
 	}
 
-	return x
+	w.configMutex.Unlock()
+	return
 }
 
-func (w *Window) ScaleY(y float32) float32 {
-	width := w.Width()
-	height := w.Height()
+func (w *Window) ScaleY(y float32) (scaledY float32) {
+	w.configMutex.Lock()
 
-	if height > width {
-		y *= float32(width) / float32(height)
+	if w.height > w.width {
+		scaledY = y * (float32(w.width) / float32(w.height))
+	} else {
+		scaledY = y
 	}
 
-	return y
-}
-
-func (w *Window) ScaleVec(vec mgl32.Vec3) mgl32.Vec3 {
-	width := w.Width()
-	height := w.Height()
-
-	aspectRatio := float32(height) / float32(width)
-	if height > width {
-		aspectRatio = float32(width) / float32(height)
-	}
-
-	if width > height {
-		vec[0] *= aspectRatio
-	} else if height > width {
-		vec[1] *= aspectRatio
-	}
-
-	return vec
+	w.configMutex.Unlock()
+	return
 }
 
 func (w *Window) IsFullscreen() bool {
-	return w.fullscreen.Load()
+	return w.fullscreen
 }
 
 func (w *Window) TargetFramerate() uint32 {
@@ -1024,6 +1090,22 @@ func (w *Window) TargetFramerate() uint32 {
 
 func (w *Window) SetTargetFramerate(framerate int) *Window {
 	w.targetFramerate.Store(uint32(framerate))
+	return w
+}
+
+func (w *Window) VSyncEnabled() bool {
+	w.configMutex.Lock()
+	enabled := w.vSyncEnabled
+	w.configMutex.Unlock()
+	return enabled
+}
+
+func (w *Window) SetVSyncEnabled(enabled bool) *Window {
+	w.configMutex.Lock()
+	w.vSyncEnabled = enabled
+	w.vSyncEnabledChanged = true
+	w.configChanged = true
+	w.configMutex.Unlock()
 	return w
 }
 
@@ -1082,8 +1164,11 @@ func (w *Window) Initialized() bool {
 }
 
 func (w *Window) toPNG() []byte {
-	width := w.width.Load()
-	height := w.height.Load()
+	w.configMutex.Lock()
+	width := int32(w.width)
+	height := int32(w.height)
+	w.configMutex.Unlock()
+
 	pixels := make([]byte, width*height*4)
 	gl.ReadPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pixels))
 
@@ -1120,18 +1205,24 @@ func (w *Window) ToPNG() []byte {
  New Window Function
 ******************************************************************************/
 
-func NewWindow() *Window {
+func NewWindow(borderless ...bool) *Window {
+	winBorderless := false
+	if len(borderless) > 0 {
+		winBorderless = borderless[0]
+	}
+
 	w := &Window{
-		objects:          make([]Object, 0),
-		drawableObjects:  make([]DrawableObject, 0),
-		windowObjects:    make([]WindowObject, 0),
-		services:         make([]Service, 0),
-		keyEventHandlers: make([]*KeyEventHandler, 0),
+		borderless:     winBorderless,
+		clearColorVec:  mgl32.Vec4{0, 0, 0, 1},
+		clearColorRgba: color.RGBA{A: 255},
+		opacity:        255,
 	}
 
 	w.SetWidth(defaultWinWidth)
 	w.SetHeight(defaultWinHeight)
 	w.SetTargetFramerate(defaultTargetFramerate)
+	w.SetVSyncEnabled(true)
 	w.SetInputEnabled(true)
+
 	return w
 }

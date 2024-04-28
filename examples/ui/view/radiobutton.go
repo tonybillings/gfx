@@ -45,7 +45,7 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 	controls.SetScaleX(.3)
 	controls.SetScaleY(.4)
 	controls.SetPositionX(-signalLine.WorldScale().X())
-	controls.OnResize(func(oldWidth, oldHeight, newWidth, newHeight int32) {
+	controls.OnResize(func(_, _ int) {
 		controls.SetPositionX(-signalLine.WorldScale().X())
 	})
 

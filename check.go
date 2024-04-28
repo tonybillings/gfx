@@ -78,10 +78,10 @@ func (b *CheckButton) Draw(deltaTime int64) (ok bool) {
  Resizer Implementation
 ******************************************************************************/
 
-func (b *CheckButton) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	b.Button.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	b.check.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	b.text.Resize(oldWidth, oldHeight, newWidth, newHeight)
+func (b *CheckButton) Resize(newWidth, newHeight int) {
+	b.Button.Resize(newWidth, newHeight)
+	b.check.Resize(newWidth, newHeight)
+	b.text.Resize(newWidth, newHeight)
 }
 
 /******************************************************************************

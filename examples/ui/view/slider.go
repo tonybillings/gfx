@@ -54,7 +54,7 @@ func newRawSignalView(window *gfx.Window, signalSampleCount int, signalSource *s
 	controls.SetScaleY(.2)
 	controls.SetPositionX(-signalLine.WorldScale().X())
 	controls.SetPositionY(1 - controls.WorldScale().Y())
-	controls.OnResize(func(oldWidth, oldHeight, newWidth, newHeight int32) {
+	controls.OnResize(func(_, _ int) {
 		controls.SetPositionX(-signalLine.WorldScale().X())
 	})
 
@@ -178,7 +178,7 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	controls.SetScaleY(.2)
 	controls.SetPositionX(-signalLine.WorldScale().X())
 	controls.SetPositionY(1 - controls.WorldScale().Y())
-	controls.OnResize(func(oldWidth, oldHeight, newWidth, newHeight int32) {
+	controls.OnResize(func(_, _ int) {
 		controls.SetPositionX(-signalLine.WorldScale().X())
 	})
 
@@ -302,7 +302,7 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	controls.SetScaleY(.2)
 	controls.SetPositionX(-signalLine.WorldScale().X())
 	controls.SetPositionY(1 - controls.WorldScale().Y())
-	controls.OnResize(func(oldWidth, oldHeight, newWidth, newHeight int32) {
+	controls.OnResize(func(_, _ int) {
 		controls.SetPositionX(-signalLine.WorldScale().X())
 	})
 
@@ -427,7 +427,7 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	controls.SetScaleY(.2)
 	controls.SetPositionX(-signalLine.WorldScale().X() - window.ScaleX(.1))
 	controls.SetPositionY(1 - controls.WorldScale().Y())
-	controls.OnResize(func(oldWidth, oldHeight, newWidth, newHeight int32) {
+	controls.OnResize(func(_, _ int) {
 		controls.SetPositionX(-signalLine.WorldScale().X() - window.ScaleX(.1))
 	})
 

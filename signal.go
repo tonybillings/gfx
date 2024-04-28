@@ -334,7 +334,7 @@ func (l *SignalLine) Draw(deltaTime int64) (ok bool) {
 	gl.BindVertexArray(l.vao)
 	gl.BindBuffer(gl.ARRAY_BUFFER, l.vbo)
 
-	gl.Viewport(0, 0, l.window.Width(), l.window.Height())
+	gl.Viewport(0, 0, int32(l.window.Width()), int32(l.window.Height()))
 
 	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(l.vertices)*sizeOfFloat32, gl.Ptr(l.vertices))
 
@@ -375,10 +375,10 @@ func (i *SignalInspector) Draw(deltaTime int64) (ok bool) {
  Resizer Implementation
 ******************************************************************************/
 
-func (l *SignalLine) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	l.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	l.label.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	l.inspector.Resize(oldWidth, oldHeight, newWidth, newHeight)
+func (l *SignalLine) Resize(newWidth, newHeight int) {
+	l.View.Resize(newWidth, newHeight)
+	l.label.Resize(newWidth, newHeight)
+	l.inspector.Resize(newWidth, newHeight)
 	l.initVertices()
 }
 
@@ -386,18 +386,18 @@ func (l *SignalLine) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
  Resizer Implementation
 ******************************************************************************/
 
-func (g *SignalGroup) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	g.inspector.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	g.View.Resize(oldWidth, oldHeight, newWidth, newHeight)
+func (g *SignalGroup) Resize(newWidth, newHeight int) {
+	g.inspector.Resize(newWidth, newHeight)
+	g.View.Resize(newWidth, newHeight)
 }
 
 /******************************************************************************
  Resizer Implementation
 ******************************************************************************/
 
-func (i *SignalInspector) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	i.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	i.panel.Resize(oldWidth, oldHeight, newWidth, newHeight)
+func (i *SignalInspector) Resize(newWidth, newHeight int) {
+	i.WindowObjectBase.Resize(newWidth, newHeight)
+	i.panel.Resize(newWidth, newHeight)
 	i.stateChanged.Store(true)
 }
 

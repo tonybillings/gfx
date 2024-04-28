@@ -21,8 +21,8 @@ func TestAspectRatio(t *testing.T) {
 func TestSetSize(t *testing.T) {
 	w := gfx.NewWindow()
 	w.SetSize(1024, 768)
-	assert.Equal(t, int32(1024), w.Width(), "expected Width 1024, got %d", w.Width())
-	assert.Equal(t, int32(768), w.Height(), "expected height 768, got %d", w.Height())
+	assert.Equal(t, 1024, w.Width(), "expected Width 1024, got %d", w.Width())
+	assert.Equal(t, 768, w.Height(), "expected height 768, got %d", w.Height())
 }
 
 func TestScaleX1(t *testing.T) {
@@ -64,13 +64,13 @@ func TestScaleY3(t *testing.T) {
 func TestWidthAndSetWidth(t *testing.T) {
 	w := gfx.NewWindow()
 	w.SetWidth(800)
-	assert.Equal(t, int32(800), w.Width(), fmt.Sprintf("expected Width 800, got %d", w.Width()))
+	assert.Equal(t, 800, w.Width(), fmt.Sprintf("expected Width 800, got %d", w.Width()))
 }
 
 func TestHeightAndSetHeight(t *testing.T) {
 	w := gfx.NewWindow()
 	w.SetHeight(600)
-	assert.Equal(t, int32(600), w.Height(), fmt.Sprintf("expected Height 600, got %d", w.Height()))
+	assert.Equal(t, 600, w.Height(), fmt.Sprintf("expected Height 600, got %d", w.Height()))
 }
 
 func TestClearColorAndSetClearColor(t *testing.T) {

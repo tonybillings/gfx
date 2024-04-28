@@ -88,31 +88,31 @@ func TestShape2DAnchoring(t *testing.T) {
 	<-win.ReadyChan()
 	_test.SleepAFewFrames()
 
-	time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the size change
+	time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the initial size
 
-	win.SetSize(winWidth1, winHeight1)
-	_test.SleepAFewFrames()
+	win.SetSize(winWidth1, winHeight1) // the actual resizing of the window happens asynchronously...
+	_test.SleepNFrames(10)             // ...so we wait a bit for that to happen before validating the scene
 	_test.ValidateScene(t, validator)
 
 	time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the size change
 
 	win.SetSize(winWidth2, winHeight2)
-	_test.SleepAFewFrames()
+	_test.SleepNFrames(10)
 	_test.ValidateScene(t, validator)
 
-	time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the size change
+	time.Sleep(200 * time.Millisecond)
 
 	win.SetSize(winWidth3, winHeight3)
-	_test.SleepAFewFrames()
+	_test.SleepNFrames(10)
 	_test.ValidateScene(t, validator)
 
-	time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the size change
+	time.Sleep(200 * time.Millisecond)
 
 	win.SetSize(winWidth4, winHeight4)
-	_test.SleepAFewFrames()
+	_test.SleepNFrames(10)
 	_test.ValidateScene(t, validator)
 
-	time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the size change
+	time.Sleep(200 * time.Millisecond)
 
 	win.Close()
 	gfx.Close()

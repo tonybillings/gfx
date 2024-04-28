@@ -73,10 +73,10 @@ func (v *View) Draw(deltaTime int64) (ok bool) {
  Resizer Implementation
 ******************************************************************************/
 
-func (v *View) Resize(oldWidth, oldHeight, newWidth, newHeight int32) {
-	v.WindowObjectBase.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	v.fill.Resize(oldWidth, oldHeight, newWidth, newHeight)
-	v.border.Resize(oldWidth, oldHeight, newWidth, newHeight)
+func (v *View) Resize(newWidth, newHeight int) {
+	v.WindowObjectBase.Resize(newWidth, newHeight)
+	v.fill.Resize(newWidth, newHeight)
+	v.border.Resize(newWidth, newHeight)
 }
 
 /******************************************************************************

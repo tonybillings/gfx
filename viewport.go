@@ -10,10 +10,10 @@ type Viewport struct {
 	xNorm, yNorm float32
 	wNorm, hNorm float32
 
-	x, y int32
-	w, h int32
+	x, y int
+	w, h int
 
-	winW, winH int32
+	winW, winH int
 
 	stateMutex sync.Mutex
 }
@@ -23,10 +23,10 @@ type Viewport struct {
 ******************************************************************************/
 
 func (v *Viewport) update() {
-	v.x = int32(v.xNorm * float32(v.winW))
-	v.y = int32(v.yNorm * float32(v.winH))
-	v.w = int32(v.wNorm * float32(v.winW))
-	v.h = int32(v.hNorm * float32(v.winH))
+	v.x = int(v.xNorm * float32(v.winW))
+	v.y = int(v.yNorm * float32(v.winH))
+	v.w = int(v.wNorm * float32(v.winW))
+	v.h = int(v.hNorm * float32(v.winH))
 }
 
 func (v *Viewport) Set(x, y, width, height float32) *Viewport {
@@ -40,7 +40,7 @@ func (v *Viewport) Set(x, y, width, height float32) *Viewport {
 	return v
 }
 
-func (v *Viewport) SetWindowSize(width, height int32) *Viewport {
+func (v *Viewport) SetWindowSize(width, height int) *Viewport {
 	v.stateMutex.Lock()
 	v.winW = width
 	v.winH = height
@@ -51,10 +51,10 @@ func (v *Viewport) SetWindowSize(width, height int32) *Viewport {
 
 func (v *Viewport) Get() (x, y, width, height int32) {
 	v.stateMutex.Lock()
-	x = v.x
-	y = v.y
-	width = v.w
-	height = v.h
+	x = int32(v.x)
+	y = int32(v.y)
+	width = int32(v.w)
+	height = int32(v.h)
 	v.stateMutex.Unlock()
 	return
 }
@@ -63,7 +63,7 @@ func (v *Viewport) Get() (x, y, width, height int32) {
  New Viewport Function
 ******************************************************************************/
 
-func NewViewport(windowWidth, windowHeight int32) *Viewport {
+func NewViewport(windowWidth, windowHeight int) *Viewport {
 	v := &Viewport{
 		xNorm: 0.0,
 		yNorm: 0.0,

@@ -22,11 +22,7 @@ var (
 	newWindowMutex  sync.Mutex
 )
 
-func enableVsync() {
-	glfw.SwapInterval(1)
-}
-
-func newGlfwWindow(title string, width, height int32) (*glfw.Window, error) {
+func newGlfwWindow(title string, width, height int, borderless bool) (*glfw.Window, error) {
 	newWindowMutex.Lock()
 	defer newWindowMutex.Unlock()
 
@@ -37,10 +33,16 @@ func newGlfwWindow(title string, width, height int32) (*glfw.Window, error) {
 	w := defaultWinWidth
 	h := defaultWinHeight
 	if width != 0 {
-		w = int(width)
+		w = width
 	}
 	if height != 0 {
-		h = int(height)
+		h = height
+	}
+
+	if borderless {
+		glfw.WindowHint(glfw.Decorated, glfw.False)
+	} else {
+		glfw.WindowHint(glfw.Decorated, glfw.True)
 	}
 
 	win, err := glfw.CreateWindow(w, h, title, nil, nil)
@@ -59,8 +61,6 @@ func newGlfwWindow(title string, width, height int32) (*glfw.Window, error) {
 		win.Destroy()
 		return nil, fmt.Errorf("error initializing gl: %w", err)
 	}
-
-	enableVsync()
 
 	return win, nil
 }
