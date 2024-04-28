@@ -110,9 +110,7 @@ func (w *Window) enableWindowedMode() {
 	w.fullscreen.Store(false)
 }
 
-func (w *Window) initAssets() {
-	Assets.SetName("_assets")
-	Assets.SetWindow(w)
+func (w *Window) addAssetLibraryService() {
 	w.AddService(Assets)
 }
 
@@ -219,20 +217,6 @@ func (w *Window) handlePngRequests() {
 	w.pngExportRequest = nil
 }
 
-func (w *Window) tick(deltaTime int64) {
-	w.initServices()
-	w.closeServices()
-	w.updateServices(deltaTime)
-
-	w.initObjects()
-	w.closeObjects()
-
-	w.updateObjects(deltaTime)
-	w.drawObjects(deltaTime)
-
-	w.handlePngRequests()
-}
-
 func (w *Window) keyEventCallback(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
 	if !w.inputEnabled.Load() {
 		return
@@ -255,47 +239,125 @@ func (w *Window) keyEventCallback(_ *glfw.Window, key glfw.Key, _ int, action gl
 
 func (w *Window) disposeAllObjects() {
 	for _, obj := range w.objects {
-		closeInv := newAsyncVoidInvocation(obj.Close)
-		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+		obj.Close()
 	}
 	for _, obj := range w.drawableObjects {
-		closeInv := newAsyncVoidInvocation(obj.Close)
-		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+		obj.Close()
 	}
 	for _, obj := range w.windowObjects {
-		closeInv := newAsyncVoidInvocation(obj.Close)
-		w.objectCloseQueue = append(w.objectCloseQueue, closeInv)
+		obj.Close()
 	}
-	w.closeObjects()
 	w.objects = make([]Object, 0)
 	w.drawableObjects = make([]DrawableObject, 0)
 	w.windowObjects = make([]WindowObject, 0)
 }
 
-func (w *Window) disposeAllServices(ignoreProtection bool) {
+func (w *Window) disposeAllServices() {
 	for _, svc := range w.services {
-		if ignoreProtection {
-			svc.SetProtected(false)
-		}
-		if svc.Protected() {
-			continue
-		}
-		closeInv := newAsyncVoidInvocation(svc.Close)
-		w.serviceCloseQueue = append(w.serviceCloseQueue, closeInv)
+		svc.SetProtected(false)
+		svc.Close()
 	}
-	w.closeServices()
 	w.services = make([]Service, 0)
+	w.serviceCloseQueue = make([]*asyncVoidInvocation, 0)
+	w.serviceInitQueue = make([]*asyncBoolInvocation, 0)
+}
+
+func (w *Window) run() {
+	runtime.LockOSThread()
+
+	window, err := newGlfwWindow(w.Title(), w.Width(), w.Height())
+	if err != nil {
+		panic(err)
+	}
+
+	w.addAssetLibraryService()
+
+	w.stateMutex.Lock()
+	w.glwin = window
+	w.glwin.SetKeyCallback(w.keyEventCallback)
+	w.initServices()
+	w.initObjects()
+	w.clearScreen()
+	w.glwin.SwapBuffers()
+	w.stateMutex.Unlock()
+
+	w.initialized.Store(true)
+
+	for _, c := range w.readyChannels {
+		close(c)
+	}
+
+	now := time.Now().UnixMicro()
+	lastTick := now
+	deltaTime := now
+	drawInterval := int64(1000000 / w.targetFramerate.Load())
+
+	for {
+		w.stateMutex.Lock()
+
+		if w.glwin.ShouldClose() || !w.initialized.Load() {
+			w.close()
+			return
+		}
+
+		select {
+		case <-w.doneChan:
+			w.close()
+			return
+		default:
+		}
+
+		now = time.Now().UnixMicro()
+		deltaTime = now - lastTick
+		if deltaTime < drawInterval {
+			time.Sleep(time.Microsecond * time.Duration(drawInterval-deltaTime))
+		}
+		deltaTime = time.Now().UnixMicro() - lastTick
+		lastTick = time.Now().UnixMicro()
+
+		w.clearScreen()
+		w.tick(deltaTime)
+		w.glwin.SwapBuffers()
+		w.handlePngRequests()
+		w.stateMutex.Unlock()
+
+		if w.fullscreenRequested.Load() {
+			w.fullscreenRequested.Store(false)
+			w.enableFullscreenMode()
+			w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
+		} else if w.windowRequested.Load() {
+			w.windowRequested.Store(false)
+			w.enableWindowedMode()
+			w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
+		}
+
+		glfw.PollEvents()
+	}
+}
+
+func (w *Window) tick(deltaTime int64) {
+	w.initServices()
+	w.closeServices()
+	w.updateServices(deltaTime)
+
+	w.initObjects()
+	w.closeObjects()
+
+	w.updateObjects(deltaTime)
+	w.drawObjects(deltaTime)
 }
 
 func (w *Window) close() {
-	w.stateMutex.Unlock()
 	w.disposeAllObjects()
-	w.disposeAllServices(true)
+	w.disposeAllServices()
+	ClearLabelTextureCache()
 	w.glwin.SetKeyCallback(nil)
-	glfw.DetachCurrentContext()
+	glfw.PollEvents()
 	w.glwin.Destroy()
-	close(w.closedChan)
 	runtime.UnlockOSThread()
+	w.cancelFunc()
+	w.stateMutex.Unlock()
+	close(w.closedChan)
 }
 
 func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
@@ -308,82 +370,14 @@ func (w *Window) Init(ctx context.Context, cancelFunc context.CancelFunc) {
 	w.doneChan = w.ctx.Done()
 	w.closedChan = make(chan struct{})
 
-	go func() {
-		runtime.LockOSThread()
-
-		window, err := newGlfwWindow(w.Title(), w.Width(), w.Height())
-		if err != nil {
-			panic(err)
-		}
-
-		w.initAssets()
-
-		w.stateMutex.Lock()
-		w.glwin = window
-		w.glwin.SetKeyCallback(w.keyEventCallback)
-		w.initServices()
-		w.initObjects()
-		w.clearScreen()
-		w.glwin.SwapBuffers()
-		w.stateMutex.Unlock()
-
-		for _, c := range w.readyChannels {
-			close(c)
-		}
-
-		now := time.Now().UnixMicro()
-		lastTick := now
-		deltaTime := now
-		drawInterval := int64(1000000 / w.targetFramerate.Load())
-
-		w.initialized.Store(true)
-
-		for {
-			w.stateMutex.Lock()
-
-			if w.glwin.ShouldClose() {
-				w.cancelFunc()
-			}
-
-			select {
-			case <-w.doneChan:
-				w.close()
-				return
-			default:
-			}
-
-			now = time.Now().UnixMicro()
-			deltaTime = now - lastTick
-			if deltaTime < drawInterval {
-				time.Sleep(time.Microsecond * time.Duration(drawInterval-deltaTime))
-			}
-			deltaTime = time.Now().UnixMicro() - lastTick
-			lastTick = time.Now().UnixMicro()
-
-			w.clearScreen()
-			w.tick(deltaTime)
-			w.glwin.SwapBuffers()
-			w.stateMutex.Unlock()
-
-			if w.fullscreenRequested.Load() {
-				w.fullscreenRequested.Store(false)
-				w.enableFullscreenMode()
-				w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
-			} else if w.windowRequested.Load() {
-				w.windowRequested.Store(false)
-				w.enableWindowedMode()
-				w.resizeObjects(w.lastWidth.Load(), w.lastHeight.Load(), w.width.Load(), w.height.Load())
-			}
-
-			glfw.PollEvents()
-		}
-	}()
+	go w.run()
 }
 
 func (w *Window) Close() {
 	if w.initialized.Load() {
 		w.stateMutex.Lock()
 		w.glwin.SetShouldClose(true)
+		w.cancelFunc()
 		w.initialized.Store(false)
 		w.stateMutex.Unlock()
 		<-w.closedChan
@@ -767,6 +761,7 @@ func (w *Window) GetService(name string) Service {
 }
 
 func (w *Window) AddService(service Service) {
+	service.SetWindow(w)
 	w.stateMutex.Lock()
 	w.services = append(w.services, service)
 	w.serviceInitQueue = append(w.serviceInitQueue, newAsyncBoolInvocation(service.Init))

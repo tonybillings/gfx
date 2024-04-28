@@ -131,7 +131,7 @@ func newDefaultFont(assetName string, filename string) *TrueTypeFont {
 	}
 }
 
-func initDefaultFonts(lib *AssetLibrary) {
+func addDefaultFonts(lib *AssetLibrary) {
 	lib.Add(newDefaultFont(DefaultFont, "default"))
 	lib.Add(newDefaultFont(SquareFont, "square"))
 	lib.Add(newDefaultFont(AnitaFont, "anita"))

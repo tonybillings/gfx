@@ -127,7 +127,7 @@ func TestInitAndCloseObjectAsync(t *testing.T) {
 	assert.True(t, obj.Initialized(), "expected object to be initialized")
 
 	w.CloseObjectAsync(obj)
-	_test.SleepNFrames(10)
+	_test.SleepNFrames(10) // allow the asynchronous action to complete
 	assert.False(t, obj.Initialized(), "expected object to not be initialized")
 
 	w.Close()
@@ -147,9 +147,10 @@ func TestRemoveObject(t *testing.T) {
 	_test.SleepAFewFrames()
 
 	w.RemoveObject(obj.Name())
-	_test.SleepAFewFrames()
-
 	assert.Nil(t, w.GetObject(obj.Name()), "expected GetObject to return nil")
+
+	w.Close()
+	gfx.Close()
 }
 
 func TestDisposeAllObjects(t *testing.T) {
@@ -166,12 +167,11 @@ func TestDisposeAllObjects(t *testing.T) {
 	<-w.ReadyChan()
 
 	_test.SleepAFewFrames()
-	w.DisposeAllObjects()
-	_test.SleepAFewFrames()
 
-	assert.Nil(t, w.GetObject("obj1"), "expected nil, got an Object")
-	assert.Nil(t, w.GetObject("obj2"), "expected nil, got an Object")
-	assert.Nil(t, w.GetObject("obj3"), "expected nil, got an Object")
+	w.DisposeAllObjects()
+	assert.Nil(t, w.GetObject("obj1"), "expected nil, got an object")
+	assert.Nil(t, w.GetObject("obj2"), "expected nil, got an object")
+	assert.Nil(t, w.GetObject("obj3"), "expected nil, got an object")
 
 	w.Close()
 	gfx.Close()
@@ -193,9 +193,7 @@ func TestInitAndDisposeProtectedServiceAsync(t *testing.T) {
 	_test.PanicOnErr(gfx.Init())
 
 	w := gfx.NewWindow()
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	w.Init(ctx, cancelFunc)
+	w.Init(context.WithCancel(context.Background()))
 	<-w.ReadyChan()
 
 	_test.SleepAFewFrames()
@@ -204,7 +202,7 @@ func TestInitAndDisposeProtectedServiceAsync(t *testing.T) {
 	service.SetProtected(true)
 
 	w.InitServiceAsync(service)
-	_test.SleepNFrames(10)
+	_test.SleepNFrames(10) // allow the asynchronous action to complete
 	assert.True(t, service.Initialized(), "expected service to be initialized")
 
 	w.DisposeServiceAsync(service)
@@ -237,7 +235,7 @@ func TestDisposeAllServicesAsync(t *testing.T) {
 
 	_test.SleepAFewFrames()
 	w.DisposeAllServicesAsync(true)
-	_test.SleepNFrames(10)
+	_test.SleepNFrames(10) // allow the asynchronous action to complete
 
 	for _, svc := range services {
 		assert.False(t, svc.Initialized(), "expected all services to not be initialized")

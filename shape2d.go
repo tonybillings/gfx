@@ -105,7 +105,13 @@ func (s *Shape2D) Update(deltaTime int64) (ok bool) {
 
 func (s *Shape2D) Close() {
 	s.closeShapeVao()
-	s.closeBlurVao()
+
+	if s.blurEnabled {
+		s.closeBlurVao()
+	}
+
+	s.closeBindings()
+
 	s.WindowObjectBase.Close()
 }
 

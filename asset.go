@@ -175,6 +175,10 @@ func (l *AssetLibrary) Init() bool {
 }
 
 func (l *AssetLibrary) Update(_ int64) bool {
+	if !l.initialized.Load() {
+		return false
+	}
+
 	if l.stateChanged.Load() {
 		l.stateMutex.Lock()
 		l.initAssets()
@@ -192,7 +196,7 @@ func (l *AssetLibrary) Close() {
 	}
 
 	l.stateMutex.Lock()
-	l.closeAssets()
+	l.closeAllAssets()
 	l.stateMutex.Unlock()
 
 	l.ServiceBase.Close()
@@ -213,6 +217,13 @@ func (l *AssetLibrary) closeAssets() {
 	for i := len(l.closeQueue) - 1; i >= 0; i-- {
 		l.closeQueue[i].Close()
 		l.closeQueue = l.closeQueue[:i]
+	}
+}
+
+func (l *AssetLibrary) closeAllAssets() {
+	for _, asset := range l.assets {
+		asset.SetProtected(false)
+		asset.Close()
 	}
 }
 
@@ -378,7 +389,9 @@ func NewAssetLibrary() *AssetLibrary {
 
 func defaultAssetLibrary() *AssetLibrary {
 	lib := NewAssetLibrary()
-	initDefaultShaders(lib)
-	initDefaultFonts(lib)
+	lib.SetName("_assets")
+	lib.SetProtected(true)
+	addDefaultShaders(lib)
+	addDefaultFonts(lib)
 	return lib
 }

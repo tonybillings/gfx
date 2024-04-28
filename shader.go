@@ -256,7 +256,7 @@ func newDefaultShader(assetName string, filenames ...string) *BasicShader {
 	return shader
 }
 
-func initDefaultShaders(lib *AssetLibrary) {
+func addDefaultShaders(lib *AssetLibrary) {
 	lib.Add(newDefaultShader(SignalShader, "signal"))
 	lib.Add(newDefaultShader(Shape2DShader, "shape2d"))
 	lib.Add(newDefaultShader(TexturedShape2DShader, "shape2d_textured"))

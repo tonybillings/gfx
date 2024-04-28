@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"runtime"
 	"sync"
 	"sync/atomic"
 )
@@ -46,6 +47,7 @@ func newGlfwWindow(title string, width, height int32) (*glfw.Window, error) {
 	if err != nil {
 		return nil, err
 	}
+	win.MakeContextCurrent()
 
 	monitor := glfw.GetPrimaryMonitor()
 	monMode := monitor.GetVideoMode()
@@ -53,10 +55,8 @@ func newGlfwWindow(title string, width, height int32) (*glfw.Window, error) {
 	yPos := (monMode.Height - h) / 2
 	win.SetPos(xPos, yPos)
 
-	win.MakeContextCurrent()
-
 	if err = gl.Init(); err != nil {
-		win.SetShouldClose(true)
+		win.Destroy()
 		return nil, fmt.Errorf("error initializing gl: %w", err)
 	}
 
@@ -70,11 +70,15 @@ func Init() error {
 		return nil
 	}
 
+	runtime.LockOSThread()
+
 	if err := glfw.Init(); err != nil {
 		return fmt.Errorf("error initializing glfw: %w", err)
 	}
 
-	glfwInitialized.Store(true)
+	if Assets == nil {
+		Assets = defaultAssetLibrary()
+	}
 
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, openGlVersionMajor)
@@ -82,6 +86,10 @@ func Init() error {
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 	glfw.WindowHint(glfw.DoubleBuffer, glfw.True)
+
+	runtime.UnlockOSThread()
+
+	glfwInitialized.Store(true)
 
 	return nil
 }
@@ -91,6 +99,15 @@ func Close() {
 		return
 	}
 
+	if Assets != nil {
+		Assets.SetProtected(false)
+		Assets.Close()
+		Assets = nil
+	}
+
+	runtime.LockOSThread()
 	glfw.Terminate()
+	runtime.UnlockOSThread()
+
 	glfwInitialized.Store(false)
 }
