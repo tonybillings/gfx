@@ -91,7 +91,7 @@ func main() {
 	btn2.SetBorderThickness(0.02)
 	btn2.OnClick(func(sender gfx.WindowObject, mouseState *gfx.MouseState) {
 		newWin := gfx.NewWindow().
-			SetTitle("I am a primary window!"). // ...but closing this one will close the app!
+			SetTitle("I am a primary window!").
 			SetWidth(windowWidth).
 			SetHeight(windowHeight).
 			SetClearColor(gfx.Orange)
