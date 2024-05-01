@@ -105,16 +105,17 @@ func newShaderBindingTestObject(shader gfx.Shader) *ShaderBindingTestObject {
 }
 
 func TestShaderCompilation(t *testing.T) {
-	_test.PanicOnErr(gfx.Init())
+	_test.Begin()
+	defer _test.End()
 
-	win := gfx.NewWindow().SetTitle("Shader Compilation").
-		SetWidth(_test.WindowWidth).
-		SetHeight(_test.WindowHeight).
-		SetTargetFramerate(_test.TargetFramerate).
-		SetClearColor(_test.BackgroundColor)
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	win.Init(ctx, cancelFunc)
-	<-win.ReadyChan()
+
+	win := gfx.NewWindow().
+		SetTitle("Shader Compilation").
+		SetWidth(_test.WindowWidth).
+		SetHeight(_test.WindowHeight)
+
+	gfx.InitWindowAsync(win)
 
 	vertShader := `#version 410 core
 in vec3 a_Position;
@@ -130,29 +131,23 @@ void main() {
 }
 `
 
-	shader := gfx.NewBasicShader("TestShader", vertShader, fragShader)
-	win.InitObject(shader)
-	win.CloseObject(shader)
+	go func() {
+		<-win.ReadyChan()
+		shader := gfx.NewBasicShader("TestShader", vertShader, fragShader)
+		win.InitObject(shader)
+		win.CloseObject(shader)
+		cancelFunc()
+	}()
 
-	win.Close()
-	gfx.Close()
+	gfx.Run(ctx, cancelFunc)
 }
 
 func TestShaderBinding(t *testing.T) {
 	startRoutineCount := runtime.NumGoroutine()
 
-	_test.PanicOnErr(gfx.Init())
+	_test.Begin()
 
-	win := gfx.NewWindow().SetTitle("Shader Compilation").
-		SetWidth(_test.WindowWidth).
-		SetHeight(_test.WindowHeight).
-		SetTargetFramerate(_test.TargetFramerate).
-		SetClearColor(_test.BackgroundColor)
 	ctx, cancelFunc := context.WithCancel(context.Background())
-
-	win.EnableQuitKey(cancelFunc)
-	win.Init(ctx, cancelFunc)
-	<-win.ReadyChan()
 
 	vertShader := `#version 410 core
 in vec3 a_Position;
@@ -183,27 +178,39 @@ void main() {
 `
 
 	shader := gfx.NewBasicShader("TestShader", vertShader, fragShader)
-	win.InitObject(shader)
-
 	testObj := newShaderBindingTestObject(shader)
-	win.AddObjects(testObj)
 
-	// *Optional.  Allow the object to get initialized and updated during the Update() cycle
-	time.Sleep(100 * time.Millisecond)
+	go func() {
+		win := gfx.NewWindow().
+			SetTitle("Shader Compilation").
+			SetWidth(_test.WindowWidth).
+			SetHeight(_test.WindowHeight)
 
-	testObj.InMaterial.Lock() // ensure changes aren't made while sending data to VRAM
-	testObj.InMaterial.Ambient = mgl32.Vec4{1, 2, 3, 4}
-	testObj.InMaterial.Diffuse = [4]float32{5, 6, 7, 8}
-	testObj.InMaterial.SpecPow = 32.5
-	testObj.InMaterial.LightCount = 3
-	testObj.InMaterial.ExtraProps.ExtraProp1 = mgl32.Vec3{11, 22, 33}
-	testObj.InMaterial.ExtraProps.ExtraProp2 = 44.4
-	testObj.InMaterial.Unlock()
+		gfx.InitWindowAsync(win)
+		<-win.ReadyChan()
 
-	_test.SleepACoupleFrames() // allow binding (RAM/VRAM IO) to occur during Update() cycle
+		win.InitObject(shader)
+		win.AddObjects(testObj)
 
-	win.Close()
-	gfx.Close()
+		// *Optional.  Allow the object to get initialized and updated during the Update() cycle
+		time.Sleep(100 * time.Millisecond)
+
+		testObj.InMaterial.Lock() // ensure changes aren't made while sending data to VRAM
+		testObj.InMaterial.Ambient = mgl32.Vec4{1, 2, 3, 4}
+		testObj.InMaterial.Diffuse = [4]float32{5, 6, 7, 8}
+		testObj.InMaterial.SpecPow = 32.5
+		testObj.InMaterial.LightCount = 3
+		testObj.InMaterial.ExtraProps.ExtraProp1 = mgl32.Vec3{11, 22, 33}
+		testObj.InMaterial.ExtraProps.ExtraProp2 = 44.4
+		testObj.InMaterial.Unlock()
+
+		_test.SleepACoupleFrames() // allow binding (RAM/VRAM IO) to occur during Update() cycle
+
+		cancelFunc()
+	}()
+
+	gfx.Run(ctx, cancelFunc)
+	_test.End()
 
 	endRoutineCount := runtime.NumGoroutine()
 	if endRoutineCount != startRoutineCount {

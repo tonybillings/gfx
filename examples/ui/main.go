@@ -9,13 +9,17 @@ import (
 	"tonysoft.com/gfx/examples/ui/view"
 )
 
-var (
+const (
 	windowTitle       = "UI Test"
 	windowWidth       = 1900 // try changing the width/height!
 	windowHeight      = 1000
 	targetFramerate   = 60 // decrease to assign more CPU time to sample acquisition efforts
-	backgroundColor   = gfx.Black
+	vSyncEnabled      = true
 	signalSampleCount = 2000 // number of samples considered when calculating min/max/avg/std, etc
+)
+
+var (
+	backgroundColor = gfx.Black
 )
 
 func panicOnErr(err error) {
@@ -39,13 +43,16 @@ func waitForInterruptSignal(ctx context.Context, cancelFunc context.CancelFunc) 
 
 func main() {
 	panicOnErr(gfx.Init())
+	defer gfx.Close()
 
-	win := gfx.NewWindow().SetTitle(windowTitle).
+	gfx.SetTargetFramerate(targetFramerate)
+	gfx.SetVSyncEnabled(vSyncEnabled)
+
+	win := gfx.NewWindow().
+		SetTitle(windowTitle).
 		SetWidth(windowWidth).
 		SetHeight(windowHeight).
-		SetTargetFramerate(targetFramerate).
 		SetClearColor(backgroundColor)
-	defer win.Close()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -57,11 +64,11 @@ func main() {
 		view.NewCheckBoxView(ctx, win, signalSampleCount),
 		view.NewButtonView(win)))
 
-	win.EnableQuitKey(cancelFunc)
+	win.EnableQuitKey()
 	win.EnableFullscreenKey()
 
-	go waitForInterruptSignal(ctx, cancelFunc)
-	win.Init(ctx, cancelFunc)
+	gfx.InitWindowAsync(win)
 
-	<-ctx.Done()
+	go waitForInterruptSignal(ctx, cancelFunc)
+	gfx.Run(ctx, cancelFunc)
 }

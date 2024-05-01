@@ -4,6 +4,7 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"image/color"
+	"sync"
 )
 
 const (
@@ -25,9 +26,13 @@ type Slider struct {
 
 	value float32
 
-	valueChanging   bool
-	onValueChanging []func(WindowObject, float32)
-	onValueChanged  []func(WindowObject, float32)
+	valueChanging bool
+
+	valueChangedDispatcher  chan float32
+	valueChangingDispatcher chan float32
+	onValueChangingHandlers []func(WindowObject, float32)
+	onValueChangedHandlers  []func(WindowObject, float32)
+	eventHandlersMutex      sync.Mutex
 }
 
 /******************************************************************************
@@ -47,6 +52,7 @@ func (s *Slider) Init() (ok bool) {
 	}
 
 	s.initLayout()
+	s.initDispatchers()
 
 	if ok = s.View.Init(); !ok {
 		return
@@ -196,8 +202,9 @@ func (s *Slider) initLayout() {
 		s.valueChanging = true
 		s.stateMutex.Unlock()
 
-		for _, f := range s.onValueChanging {
-			f(s, value)
+		select {
+		case s.valueChangingDispatcher <- value:
+		default:
 		}
 	})
 
@@ -208,13 +215,55 @@ func (s *Slider) initLayout() {
 			value := s.value
 			s.stateMutex.Unlock()
 
-			for _, f := range s.onValueChanged {
-				f(s, value)
+			select {
+			case s.valueChangedDispatcher <- value:
+			default:
 			}
 		} else {
 			s.stateMutex.Unlock()
 		}
 	})
+}
+
+func (s *Slider) initDispatchers() {
+	s.valueChangingDispatcher = make(chan float32, 1024)
+	s.valueChangedDispatcher = make(chan float32, 64)
+	go s.handleValueChanging()
+	go s.handleValueChanged()
+}
+
+func (s *Slider) handleValueChanging() {
+	for {
+		select {
+		case value, ok := <-s.valueChangingDispatcher:
+			if !ok {
+				return
+			}
+
+			s.eventHandlersMutex.Lock()
+			for _, handler := range s.onValueChangingHandlers {
+				handler(s, value)
+			}
+			s.eventHandlersMutex.Unlock()
+		}
+	}
+}
+
+func (s *Slider) handleValueChanged() {
+	for {
+		select {
+		case value, ok := <-s.valueChangedDispatcher:
+			if !ok {
+				return
+			}
+
+			s.eventHandlersMutex.Lock()
+			for _, handler := range s.onValueChangedHandlers {
+				handler(s, value)
+			}
+			s.eventHandlersMutex.Unlock()
+		}
+	}
 }
 
 func (s *Slider) Value() float32 {
@@ -259,12 +308,16 @@ func (s *Slider) Rail() *Shape2D {
 }
 
 func (s *Slider) OnValueChanging(handler func(sender WindowObject, value float32)) *Slider {
-	s.onValueChanging = append(s.onValueChanging, handler)
+	s.eventHandlersMutex.Lock()
+	s.onValueChangingHandlers = append(s.onValueChangingHandlers, handler)
+	s.eventHandlersMutex.Unlock()
 	return s
 }
 
 func (s *Slider) OnValueChanged(handler func(sender WindowObject, value float32)) *Slider {
-	s.onValueChanged = append(s.onValueChanged, handler)
+	s.eventHandlersMutex.Lock()
+	s.onValueChangedHandlers = append(s.onValueChangedHandlers, handler)
+	s.eventHandlersMutex.Unlock()
 	return s
 }
 

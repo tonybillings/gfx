@@ -8,7 +8,6 @@ import (
 
 const (
 	defaultLabelName = "Label"
-	NoLabel          = ""
 )
 
 /******************************************************************************
@@ -23,6 +22,7 @@ type Label struct {
 	ttf       *truetype.Font
 	alignment Alignment
 
+	cache        map[string]*Texture2D
 	cacheEnabled bool
 
 	texture  *Texture2D
@@ -46,6 +46,7 @@ func (l *Label) Init() (ok bool) {
 	}
 
 	l.initFont()
+	l.initCache()
 
 	return l.View.Init()
 }
@@ -89,11 +90,12 @@ func (l *Label) Draw(deltaTime int64) (ok bool) {
 				l.ttf,
 				l.alignment,
 				FloatArrayToRgba(l.color),
-				int(l.window.Width()), int(l.window.Height()),
+				l.window.Width(), l.window.Height(),
 				scale.X(),
 				scale.Y(),
 				l.maintainAspectRatio,
-				l.cacheEnabled)
+				l.cacheEnabled,
+				l.cache)
 			l.texture.Init()
 			l.stateMutex.Unlock()
 			l.textView.SetTexture(l.texture)
@@ -155,8 +157,16 @@ func (l *Label) defaultLayout() {
 
 func (l *Label) initFont() {
 	if l.font == nil {
-		l.font = getFontOrDefault(DefaultFont)
+		l.font = l.window.getFontOrDefault(DefaultFont)
 		l.ttf = l.font.TTF()
+	}
+}
+
+func (l *Label) initCache() {
+	if l.cacheEnabled {
+		l.cache = l.Window().labelCache
+	} else {
+		l.cache = nil
 	}
 }
 
@@ -222,8 +232,12 @@ func (l *Label) CacheEnabled() bool {
 
 func (l *Label) SetCacheEnabled(enabled bool) *Label {
 	l.stateMutex.Lock()
+	if enabled {
+		l.cache = l.Window().labelCache
+	} else {
+		l.cache = nil
+	}
 	l.cacheEnabled = enabled
-	l.stateChanged.Store(true)
 	l.stateMutex.Unlock()
 	return l
 }
@@ -267,9 +281,8 @@ func (l *Label) SetFillColor(rgba color.RGBA) *Label {
 
 func NewLabel() *Label {
 	l := &Label{
-		View:         *NewView(),
-		cacheEnabled: true,
-		textView:     NewView(),
+		View:     *NewView(),
+		textView: NewView(),
 	}
 
 	l.SetName(defaultLabelName)

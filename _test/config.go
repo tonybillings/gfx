@@ -2,13 +2,16 @@ package _test
 
 import "tonysoft.com/gfx"
 
+const (
+	WindowTitle     = "Test"
+	WindowWidth     = 1900
+	WindowHeight    = 1000
+	TargetFramerate = 200 // recommend a refresh rate of 120Hz with this value; *see note...
+	VSyncEnabled    = true
+)
+
 var (
-	WindowTitle       = "Test"
-	WindowWidth       = 1900
-	WindowHeight      = 1000
-	TargetFramerate   = 200 // recommend a refresh rate of 120Hz with this value; *see note...
-	BackgroundColor   = gfx.Black
-	SignalSampleCount = 2000
+	BackgroundColor = gfx.Black
 )
 
 // *Some tests will begin to fail once the target framerate is too

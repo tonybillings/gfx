@@ -11,8 +11,8 @@ import (
 
 func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// Make the Model/Texture source available to other Assets
-	gfx.Assets.AddEmbeddedFiles(models.Assets)
-	gfx.Assets.AddEmbeddedFiles(textures.Assets)
+	window.Assets().AddEmbeddedFiles(models.Assets)
+	window.Assets().AddEmbeddedFiles(textures.Assets)
 
 	// Use the obj package to import Wavefront .OBJ files.  Since
 	// the OBJ source file was just added as an Asset, the Model
@@ -22,8 +22,14 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// Unlike with the "in_mem" example, this Model asset needs to
 	// participate in the Init()/Close() life-cycle.  Like all
 	// Assets, it's best to manage them via an AssetLibrary anyway,
-	// so we'll add to gfx.Assets.
-	gfx.Assets.Add(model)
+	// so we'll add it to the Window's asset library.  If we didn't
+	// use an asset library then the file references in the OBJ/MTL
+	// files would either need to be full, absolute paths or as
+	// relative paths they must work by assuming the correct working
+	// directory of the application; with an asset library, the
+	// references can simply be the names given to them as Assets
+	// when added to the library.
+	window.Assets().Add(model)
 
 	// Optionally, if you plan to use a normal map and the model
 	// doesn't come with tangent/bitangent vectors, you can have it
@@ -34,7 +40,7 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// That shader fully supports obj.BasicMaterial, except for
 	// sampling normal and specular maps. For that, we need to
 	// provide a capable shader such as this one:
-	model.SetDefaultShader(gfx.Assets.Get(gfx.Shape3DBumpedSpecularShader).(gfx.Shader))
+	model.SetDefaultShader(window.Assets().Get(gfx.Shape3DBumpedSpecularShader).(gfx.Shader))
 	// That will set the default shader assigned to materials,
 	// though you can always load the model now and change the
 	// shader for any given material and each face can be rendered
@@ -75,7 +81,7 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// since you provided the texture (it wasn't loaded by the material library
 	// as per the materials defined therein), you're responsible for its life-cycle.
 	// Adding it to an AssetLibrary ensures the life-cycle is properly handled:
-	// gfx.Assets.Add(material.DiffuseMap)
+	// window.Assets().Add(material.DiffuseMap)
 
 	// You could also change the transforms for individual meshes, where
 	// the transform for the Shape3D object becomes their parent transform:
@@ -89,7 +95,7 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 
 	cube := gfx.NewShape3D()
 	cube.
-		SetModel(gfx.Assets.Get("cube").(gfx.Model)).
+		SetModel(window.Assets().Get("cube").(gfx.Model)).
 		SetCamera(camera).
 		SetLighting(lighting).
 		SetName("TestCube")

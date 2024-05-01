@@ -81,7 +81,7 @@ func TestAssetLibraryGetReader(t *testing.T) {
 	asset := gfx.NewAssetBase("test_asset", data)
 	lib.Add(asset)
 
-	reader, closeFunc := lib.GetReader("test_asset")
+	reader, closeFunc := lib.GetFileReader("test_asset")
 	if reader == nil {
 		t.Error("expected a reader for 'test_asset', got nil")
 	}
@@ -103,7 +103,7 @@ func TestAssetLibraryGetReader(t *testing.T) {
 
 func TestAssetLibraryGetReaderNonExistent(t *testing.T) {
 	lib := gfx.NewAssetLibrary()
-	reader, closeFunc := lib.GetReader("non_existent")
+	reader, closeFunc := lib.GetFileReader("non_existent")
 
 	if reader != nil {
 		t.Error("expected nil reader for non-existent asset")

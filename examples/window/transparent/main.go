@@ -8,16 +8,9 @@ import (
 	"tonysoft.com/gfx"
 )
 
-const (
-	windowTitle     = "2D Test"
-	windowWidth     = 1900
-	windowHeight    = 1000
-	targetFramerate = 60
-	vSyncEnabled    = true
-)
-
 var (
-	backgroundColor = gfx.Black
+	windowWidth  = 1000
+	windowHeight = 1000
 )
 
 func panicOnErr(err error) {
@@ -43,21 +36,29 @@ func main() {
 	panicOnErr(gfx.Init())
 	defer gfx.Close()
 
-	gfx.SetTargetFramerate(targetFramerate)
-	gfx.SetVSyncEnabled(vSyncEnabled)
-
 	win := gfx.NewWindow().
-		SetTitle(windowTitle).
+		SetTitle("You should see what is behind me!").
 		SetWidth(windowWidth).
 		SetHeight(windowHeight).
-		SetClearColor(backgroundColor)
-
-	win.AddObjects(New2DView(win))
-
-	win.EnableQuitKey()
-	win.EnableFullscreenKey()
+		SetClearColor(gfx.Black).
+		SetOpacity(64). // this is how we make the window transparent
+		EnableQuitKey()
 
 	gfx.InitWindowAsync(win)
+
+	// Since we're not using embedded files or absolute paths,
+	// you must execute this program using the run.sh script so
+	// that the relative path to the texture is correct.  Running
+	// within an IDE like GoLand can also work but only if the
+	// working directory is set to this location and not the
+	// root directory of the project/module.
+	texture := gfx.NewTexture2D("emoji.png", "emoji.png")
+	win.Assets().Add(texture)
+
+	quad := gfx.NewQuad()
+	quad.SetTexture(texture)
+
+	win.AddObjects(quad)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go waitForInterruptSignal(ctx, cancelFunc)

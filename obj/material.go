@@ -138,7 +138,7 @@ func (l *MaterialLibrary) loadFromSlice(slice []byte) {
 }
 
 func (l *MaterialLibrary) loadFromFile(name string) (ok bool) {
-	reader, closeFunc := gfx.Assets.GetReader(name)
+	reader, closeFunc := getSourceReader(l, name)
 	defer closeFunc()
 
 	if reader == nil {
@@ -157,6 +157,7 @@ func (l *MaterialLibrary) loadFromString(mtl string) {
 func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 	lineNumber := 0
 	currentMat := NewMaterial()
+	currentMat.SetSourceLibrary(l.SourceLibrary())
 
 	for {
 		lineNumber++
@@ -178,6 +179,7 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 			if currentMat.name != "" {
 				l.materials[currentMat.name] = currentMat
 				currentMat = NewMaterial()
+				currentMat.SetSourceLibrary(l.SourceLibrary())
 			}
 
 			if name, err := parseString(fields[1:]); err != nil {
@@ -227,6 +229,7 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 			} else {
 				currentMat.mapKd = value
 				currentMat.DiffuseMap = gfx.NewTexture2D(value, value)
+				currentMat.DiffuseMap.SetSourceLibrary(l.SourceLibrary())
 				currentMat.textures = append(currentMat.textures, currentMat.DiffuseMap)
 			}
 		case "map_Ks":
@@ -235,6 +238,7 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 			} else {
 				currentMat.mapKs = value
 				currentMat.SpecularMap = gfx.NewTexture2D(value, value)
+				currentMat.SpecularMap.SetSourceLibrary(l.SourceLibrary())
 				currentMat.textures = append(currentMat.textures, currentMat.SpecularMap)
 			}
 		case "norm", "map_Kn":
@@ -243,6 +247,7 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 			} else {
 				currentMat.mapNorm = value
 				currentMat.NormalMap = gfx.NewTexture2D(value, value)
+				currentMat.NormalMap.SetSourceLibrary(l.SourceLibrary())
 				currentMat.textures = append(currentMat.textures, currentMat.NormalMap)
 			}
 		}
@@ -253,16 +258,19 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 	for _, mat := range l.materials {
 		if mat.DiffuseMap == nil {
 			mat.DiffuseMap = gfx.NewTexture2D("", gfx.White)
+			mat.DiffuseMap.SetSourceLibrary(l.SourceLibrary())
 			mat.textures = append(mat.textures, mat.DiffuseMap)
 		}
 
 		if mat.NormalMap == nil {
 			mat.NormalMap = gfx.NewTexture2D("", gfx.White)
+			mat.NormalMap.SetSourceLibrary(l.SourceLibrary())
 			mat.textures = append(mat.textures, mat.NormalMap)
 		}
 
 		if mat.SpecularMap == nil {
 			mat.SpecularMap = gfx.NewTexture2D("", gfx.White)
+			mat.SpecularMap.SetSourceLibrary(l.SourceLibrary())
 			mat.textures = append(mat.textures, mat.SpecularMap)
 		}
 	}

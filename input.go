@@ -8,6 +8,11 @@ import (
  Keyboard
 ******************************************************************************/
 
+type KeyEvent struct {
+	Key    glfw.Key
+	Action glfw.Action
+}
+
 type KeyEventHandler struct {
 	Key      glfw.Key
 	Action   glfw.Action

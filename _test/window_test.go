@@ -94,87 +94,112 @@ func TestAddAndGetObject(t *testing.T) {
 }
 
 func TestInitAndDisposeObject(t *testing.T) {
-	_test.PanicOnErr(gfx.Init())
-
-	w := gfx.NewWindow()
-	obj := gfx.NewWindowObject().SetName("Test Object")
+	_test.Begin()
+	defer _test.End()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	w.Init(ctx, cancelFunc)
-	<-w.ReadyChan()
 
-	_test.SleepAFewFrames()
+	go func() {
+		win := gfx.NewWindow()
+		obj := gfx.NewWindowObject().SetName("Test Object")
 
-	assert.NotPanics(t, func() { w.InitObject(obj) }, "expected InitObject to not panic")
-	assert.NotPanics(t, func() { w.DisposeObject("Test Object") }, "expected DisposeObject to not panic")
+		gfx.InitWindowAsync(win)
+		<-win.ReadyChan()
 
-	w.Close()
-	gfx.Close()
+		_test.SleepAFewFrames()
+
+		assert.NotPanics(t, func() { win.InitObject(obj) }, "expected InitObject to not panic")
+		assert.NotPanics(t, func() { win.DisposeObject("Test Object") }, "expected DisposeObject to not panic")
+
+		cancelFunc()
+	}()
+
+	gfx.Run(ctx, cancelFunc)
 }
 
 func TestInitAndCloseObjectAsync(t *testing.T) {
-	_test.PanicOnErr(gfx.Init())
-
-	w := gfx.NewWindow()
-	obj := gfx.NewWindowObject()
-	w.AddObject(obj)
+	_test.Begin()
+	defer _test.End()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	w.Init(ctx, cancelFunc)
-	<-w.ReadyChan()
-	_test.SleepAFewFrames()
 
-	assert.True(t, obj.Initialized(), "expected object to be initialized")
+	go func() {
+		win := gfx.NewWindow()
+		obj := gfx.NewWindowObject()
+		win.AddObject(obj)
 
-	w.CloseObjectAsync(obj)
-	_test.SleepNFrames(10) // allow the asynchronous action to complete
-	assert.False(t, obj.Initialized(), "expected object to not be initialized")
+		gfx.InitWindowAsync(win)
+		<-win.ReadyChan()
 
-	w.Close()
-	gfx.Close()
+		_test.SleepAFewFrames()
+
+		assert.True(t, obj.Initialized(), "expected object to be initialized")
+
+		win.CloseObjectAsync(obj)
+		_test.SleepNFrames(10) // allow the asynchronous action to complete
+		assert.False(t, obj.Initialized(), "expected object to not be initialized")
+
+		cancelFunc()
+	}()
+
+	gfx.Run(ctx, cancelFunc)
 }
 
 func TestRemoveObject(t *testing.T) {
-	_test.PanicOnErr(gfx.Init())
-
-	w := gfx.NewWindow()
-	obj := gfx.NewWindowObject().SetName("Test Object")
-	w.AddObject(obj)
+	_test.Begin()
+	defer _test.End()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	w.Init(ctx, cancelFunc)
-	<-w.ReadyChan()
-	_test.SleepAFewFrames()
 
-	w.RemoveObject(obj.Name())
-	assert.Nil(t, w.GetObject(obj.Name()), "expected GetObject to return nil")
+	go func() {
+		win := gfx.NewWindow()
+		obj := gfx.NewWindowObject().SetName("Test Object")
+		win.AddObject(obj)
 
-	w.Close()
-	gfx.Close()
+		gfx.InitWindowAsync(win)
+		<-win.ReadyChan()
+
+		_test.SleepAFewFrames()
+
+		win.RemoveObject(obj.Name())
+		assert.Nil(t, win.GetObject(obj.Name()), "expected GetObject to return nil")
+
+		win.CloseObject(obj) // since we removed, not disposed, the object must be manually closed
+
+		cancelFunc()
+	}()
+
+	gfx.Run(ctx, cancelFunc)
 }
 
 func TestDisposeAllObjects(t *testing.T) {
-	_test.PanicOnErr(gfx.Init())
-
-	w := gfx.NewWindow()
-	obj1 := gfx.NewWindowObject().SetName("obj1")
-	obj2 := gfx.NewWindowObject().SetName("obj2")
-	obj3 := gfx.NewWindowObject().SetName("obj3")
-	w.AddObjects(obj1, obj2, obj3)
+	_test.Begin()
+	defer _test.End()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	w.Init(ctx, cancelFunc)
-	<-w.ReadyChan()
 
-	_test.SleepAFewFrames()
+	go func() {
+		win := gfx.NewWindow()
 
-	w.DisposeAllObjects()
-	assert.Nil(t, w.GetObject("obj1"), "expected nil, got an object")
-	assert.Nil(t, w.GetObject("obj2"), "expected nil, got an object")
-	assert.Nil(t, w.GetObject("obj3"), "expected nil, got an object")
+		obj1 := gfx.NewWindowObject().SetName("obj1")
+		obj2 := gfx.NewWindowObject().SetName("obj2")
+		obj3 := gfx.NewWindowObject().SetName("obj3")
+		win.AddObjects(obj1, obj2, obj3)
 
-	w.Close()
-	gfx.Close()
+		gfx.InitWindowAsync(win)
+		<-win.ReadyChan()
+
+		_test.SleepAFewFrames()
+
+		win.DisposeAllObjects()
+		assert.Nil(t, win.GetObject("obj1"), "expected nil, got an object")
+		assert.Nil(t, win.GetObject("obj2"), "expected nil, got an object")
+		assert.Nil(t, win.GetObject("obj3"), "expected nil, got an object")
+
+		cancelFunc()
+	}()
+
+	gfx.Run(ctx, cancelFunc)
 }
 
 func TestAddAndRemoveService(t *testing.T) {
@@ -190,57 +215,67 @@ func TestAddAndRemoveService(t *testing.T) {
 }
 
 func TestInitAndDisposeProtectedServiceAsync(t *testing.T) {
-	_test.PanicOnErr(gfx.Init())
+	_test.Begin()
+	defer _test.End()
 
-	w := gfx.NewWindow()
-	w.Init(context.WithCancel(context.Background()))
-	<-w.ReadyChan()
+	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	_test.SleepAFewFrames()
+	go func() {
+		win := gfx.NewWindow()
 
-	service := gfx.NewAssetLibrary()
-	service.SetProtected(true)
+		gfx.InitWindowAsync(win)
+		<-win.ReadyChan()
 
-	w.InitServiceAsync(service)
-	_test.SleepNFrames(10) // allow the asynchronous action to complete
-	assert.True(t, service.Initialized(), "expected service to be initialized")
+		service := gfx.NewAssetLibrary()
+		service.SetProtected(true)
 
-	w.DisposeServiceAsync(service)
-	_test.SleepNFrames(10)
-	assert.True(t, service.Initialized(), "expected service to still be initialized (protected=true)")
+		win.InitServiceAsync(service)
+		_test.SleepNFrames(10) // allow the asynchronous action to complete
+		assert.True(t, service.Initialized(), "expected service to be initialized")
 
-	service.SetProtected(false)
-	w.DisposeServiceAsync(service)
-	_test.SleepNFrames(10)
-	assert.False(t, service.Initialized(), "expected service to no longer be initialized (protected=false)")
+		win.DisposeServiceAsync(service)
+		_test.SleepNFrames(10)
+		assert.True(t, service.Initialized(), "expected service to still be initialized (protected=true)")
 
-	w.Close()
-	gfx.Close()
+		service.SetProtected(false)
+		win.DisposeServiceAsync(service)
+		_test.SleepNFrames(10)
+		assert.False(t, service.Initialized(), "expected service to no longer be initialized (protected=false)")
+
+		cancelFunc()
+	}()
+
+	gfx.Run(ctx, cancelFunc)
 }
 
 func TestDisposeAllServicesAsync(t *testing.T) {
-	_test.PanicOnErr(gfx.Init())
-
-	w := gfx.NewWindow()
-
-	services := []gfx.Service{gfx.NewAssetLibrary(), gfx.NewAssetLibrary()}
-	for _, svc := range services {
-		w.AddService(svc)
-	}
-	services[0].SetProtected(true)
+	_test.Begin()
+	defer _test.End()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	w.Init(ctx, cancelFunc)
-	<-w.ReadyChan()
 
-	_test.SleepAFewFrames()
-	w.DisposeAllServicesAsync(true)
-	_test.SleepNFrames(10) // allow the asynchronous action to complete
+	go func() {
+		win := gfx.NewWindow()
 
-	for _, svc := range services {
-		assert.False(t, svc.Initialized(), "expected all services to not be initialized")
-	}
+		services := []gfx.Service{gfx.NewAssetLibrary(), gfx.NewAssetLibrary()}
+		for _, svc := range services {
+			win.AddService(svc)
+		}
+		services[0].SetProtected(true)
 
-	w.Close()
-	gfx.Close()
+		gfx.InitWindowAsync(win)
+		<-win.ReadyChan()
+
+		_test.SleepAFewFrames()
+		win.DisposeAllServicesAsync(true)
+		_test.SleepNFrames(10) // allow the asynchronous action to complete
+
+		for _, svc := range services {
+			assert.False(t, svc.Initialized(), "expected all services to not be initialized")
+		}
+
+		cancelFunc()
+	}()
+
+	gfx.Run(ctx, cancelFunc)
 }

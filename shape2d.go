@@ -611,11 +611,12 @@ func (s *Shape2D) initBlurTextureVertices() {
 }
 
 func (s *Shape2D) initShaders() {
-	s.shapeShader = Assets.Get(Shape2DShader).(Shader)
-	s.texShapeShader = Assets.Get(TexturedShape2DShader).(Shader)
-	s.blurXShader = Assets.Get(BlurXShader).(Shader)
-	s.blurYShader = Assets.Get(BlurYShader).(Shader)
-	s.textureShader = Assets.Get(TextureShader).(Shader)
+	assets := s.Window().Assets()
+	s.shapeShader = assets.Get(Shape2DShader).(Shader)
+	s.texShapeShader = assets.Get(TexturedShape2DShader).(Shader)
+	s.blurXShader = assets.Get(BlurXShader).(Shader)
+	s.blurYShader = assets.Get(BlurYShader).(Shader)
+	s.textureShader = assets.Get(TextureShader).(Shader)
 
 	s.posAttribLoc = s.shapeShader.GetAttribLocation("a_Position")
 	s.posTexShapeAttribLoc = s.texShapeShader.GetAttribLocation("a_Position")

@@ -111,7 +111,7 @@ func (m *Model) loadFromSlice(slice []byte) {
 }
 
 func (m *Model) loadFromFile(name string) (ok bool) {
-	reader, closeFunc := gfx.Assets.GetReader(name)
+	reader, closeFunc := getSourceReader(m, name)
 	defer closeFunc()
 
 	if reader == nil {
@@ -212,15 +212,18 @@ func (m *Model) computeTangents() {
 func (m *Model) loadMaterialLibraries() {
 	for _, mtllib := range m.mtllibs {
 		mtl := NewMaterialLibrary(mtllib, mtllib)
+		mtl.SetSourceLibrary(m.SourceLibrary())
 		mtl.Load()
 		m.materialLibs = append(m.materialLibs, mtl)
 	}
 
 	if m.defaultShader == nil {
-		defaultShader := gfx.Assets.Get(gfx.Shape3DShader)
-		if defaultShader != nil {
-			if shader, ok := defaultShader.(gfx.Shader); ok {
-				m.defaultShader = shader
+		srcLib := m.SourceLibrary()
+		if srcLib != nil {
+			if defaultShader := srcLib.Get(gfx.Shape3DShader); defaultShader != nil {
+				if shader, ok := defaultShader.(gfx.Shader); ok {
+					m.defaultShader = shader
+				}
 			}
 		}
 	}

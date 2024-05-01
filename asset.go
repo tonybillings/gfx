@@ -18,14 +18,6 @@ const (
 )
 
 /******************************************************************************
- Assets Service
-******************************************************************************/
-
-var (
-	Assets = defaultAssetLibrary()
-)
-
-/******************************************************************************
  Asset
 ******************************************************************************/
 
@@ -36,6 +28,8 @@ type Asset interface {
 	Initialized() bool
 	Name() string
 	Source() any
+	SourceLibrary() *AssetLibrary
+	SetSourceLibrary(*AssetLibrary) Asset
 
 	Protected() bool
 	SetProtected(bool) Asset
@@ -47,6 +41,7 @@ type Asset interface {
 
 type AssetBase struct {
 	initialized atomic.Bool
+	srcLibrary  *AssetLibrary
 	name        string
 	source      any
 	protected   atomic.Bool
@@ -77,6 +72,15 @@ func (a *AssetBase) Source() any {
 	return a.source
 }
 
+func (a *AssetBase) SourceLibrary() *AssetLibrary {
+	return a.srcLibrary
+}
+
+func (a *AssetBase) SetSourceLibrary(library *AssetLibrary) Asset {
+	a.srcLibrary = library
+	return a
+}
+
 func (a *AssetBase) Protected() bool {
 	return a.protected.Load()
 }
@@ -84,6 +88,33 @@ func (a *AssetBase) Protected() bool {
 func (a *AssetBase) SetProtected(protected bool) Asset {
 	a.protected.Store(protected)
 	return a
+}
+
+/******************************************************************************
+ AssetBase Functions
+******************************************************************************/
+
+func (a *AssetBase) getSourceReader(name string) (reader *bufio.Reader, closeFunc func()) {
+	closeFunc = func() {}
+	if srcLib := a.SourceLibrary(); srcLib == nil {
+		if len(name) > 200 {
+			return
+		}
+		if _, err := os.Stat(name); err != nil && os.IsNotExist(err) {
+			return
+		}
+		if file, err := os.Open(name); err != nil {
+			panic(fmt.Errorf("open file error: %w", err))
+		} else {
+			reader = bufio.NewReader(file)
+			closeFunc = func() {
+				_ = file.Close()
+			}
+			return
+		}
+	} else {
+		return srcLib.GetFileReader(name)
+	}
 }
 
 func NewAssetBase(name string, source any) *AssetBase {
@@ -163,19 +194,22 @@ type AssetLibrary struct {
 ******************************************************************************/
 
 func (l *AssetLibrary) Init() bool {
+	l.stateMutex.Lock()
+
 	if l.Initialized() {
+		l.stateMutex.Unlock()
 		return true
 	}
 
-	l.stateMutex.Lock()
 	l.initAssets()
+	l.ServiceBase.Init()
 	l.stateMutex.Unlock()
 
-	return l.ServiceBase.Init()
+	return true
 }
 
 func (l *AssetLibrary) Update(_ int64) bool {
-	if !l.initialized.Load() {
+	if !l.Initialized() {
 		return false
 	}
 
@@ -197,9 +231,8 @@ func (l *AssetLibrary) Close() {
 
 	l.stateMutex.Lock()
 	l.closeAllAssets()
-	l.stateMutex.Unlock()
-
 	l.ServiceBase.Close()
+	l.stateMutex.Unlock()
 }
 
 /******************************************************************************
@@ -227,12 +260,19 @@ func (l *AssetLibrary) closeAllAssets() {
 	}
 }
 
+func (l *AssetLibrary) setSourceLibrary(asset Asset) {
+	if lib := asset.SourceLibrary(); lib == nil {
+		asset.SetSourceLibrary(l)
+	}
+}
+
 func (l *AssetLibrary) Get(name string) Asset {
 	return l.assets[name]
 }
 
 func (l *AssetLibrary) Add(asset Asset) *AssetLibrary {
 	l.stateMutex.Lock()
+	l.setSourceLibrary(asset)
 	if existing, ok := l.assets[asset.Name()]; ok {
 		if existing.Protected() {
 			l.stateMutex.Unlock()
@@ -259,7 +299,9 @@ func (l *AssetLibrary) AddEmbeddedFile(name string, fs embed.FS) *AssetLibrary {
 			}
 			l.closeQueue = append(l.closeQueue, existing)
 		}
-		l.assets[name] = NewBinaryAsset(name, asset)
+		fileAsset := NewBinaryAsset(name, asset)
+		fileAsset.SetSourceLibrary(l)
+		l.assets[name] = fileAsset
 		l.initQueue = append(l.initQueue, l.assets[name])
 		l.stateMutex.Unlock()
 		l.stateChanged.Store(true)
@@ -342,7 +384,7 @@ func (l *AssetLibrary) DisposeAll() *AssetLibrary {
 	return l
 }
 
-func (l *AssetLibrary) GetReader(name string) (reader *bufio.Reader, closeFunc func()) {
+func (l *AssetLibrary) GetFileReader(name string) (reader *bufio.Reader, closeFunc func()) {
 	closeFunc = func() {}
 	asset := l.Get(name)
 	if asset != nil {
@@ -387,7 +429,7 @@ func NewAssetLibrary() *AssetLibrary {
  Default AssetLibrary
 ******************************************************************************/
 
-func defaultAssetLibrary() *AssetLibrary {
+func DefaultAssetLibrary() *AssetLibrary {
 	lib := NewAssetLibrary()
 	lib.SetName("_assets")
 	lib.SetProtected(true)

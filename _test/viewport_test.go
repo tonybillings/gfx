@@ -67,51 +67,51 @@ func TestViewportGet(t *testing.T) {
 }
 
 func TestViewportRendering(t *testing.T) {
-	_test.PanicOnErr(gfx.Init())
+	_test.Begin()
+	defer _test.End()
 
-	win := gfx.NewWindow().SetTitle(_test.WindowTitle).
-		SetWidth(winWidth1).
-		SetHeight(winHeight1).
-		SetTargetFramerate(_test.TargetFramerate).
-		SetClearColor(_test.BackgroundColor)
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	win.EnableQuitKey(cancelFunc)
-	win.EnableFullscreenKey()
+	go func() { // worker thread...
+		win := gfx.NewWindow().
+			SetTitle(_test.WindowTitle).
+			SetWidth(winWidth1).
+			SetHeight(winHeight1)
 
-	quad := gfx.NewQuad()
-	quad.SetColor(gfx.Magenta)
-	quad.SetScale(mgl32.Vec3{.5, .5})
-	quad.SetAnchor(gfx.TopRight)
+		quad := gfx.NewQuad()
+		quad.SetColor(gfx.Magenta)
+		quad.SetScale(mgl32.Vec3{.5, .5})
+		quad.SetAnchor(gfx.TopRight)
 
-	validator := _test.NewSceneValidator(win)
-	validator.AddPixelSampler(func() (x, y float32) { return -.5, -.5 }, _test.BackgroundColor, "lower-left quadrant")
+		validator := _test.NewSceneValidator(win)
+		validator.AddPixelSampler(func() (x, y float32) { return -.5, -.5 }, _test.BackgroundColor, "lower-left quadrant")
 
-	win.AddObjects(quad, validator)
-	win.Init(ctx, cancelFunc)
-	<-win.ReadyChan()
-	_test.SleepAFewFrames()
+		win.AddObjects(quad, validator)
+		gfx.InitWindowAsync(win)
+		<-win.ReadyChan()
 
-	_test.ValidateScene(t, validator)
+		_test.ValidateScene(t, validator)
 
-	time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
+		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
-	vp := gfx.NewViewport(winWidth1, winHeight1)
-	vp.Set(-1, -1, 2, 2)
-	quad.SetViewport(vp)
+		vp := gfx.NewViewport(winWidth1, winHeight1)
+		vp.Set(-1, -1, 2, 2)
+		quad.SetViewport(vp)
 
-	validator.Samplers[0].ExpectedColor = gfx.Magenta
-	_test.ValidateScene(t, validator)
+		validator.Samplers[0].ExpectedColor = gfx.Magenta
+		_test.ValidateScene(t, validator)
 
-	time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
+		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
-	vp.Set(0, 0, 1, 1)
+		vp.Set(0, 0, 1, 1)
 
-	validator.Samplers[0].ExpectedColor = _test.BackgroundColor
-	_test.ValidateScene(t, validator)
+		validator.Samplers[0].ExpectedColor = _test.BackgroundColor
+		_test.ValidateScene(t, validator)
 
-	time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
+		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
-	win.Close()
-	gfx.Close()
+		cancelFunc()
+	}()
+
+	gfx.Run(ctx, cancelFunc)
 }

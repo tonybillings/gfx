@@ -9,7 +9,6 @@ import (
 	"golang.org/x/image/math/fixed"
 	"image"
 	"image/color"
-	"sync"
 	"tonysoft.com/gfx/fonts"
 )
 
@@ -17,11 +16,6 @@ const (
 	DefaultFont = "_font_default"
 	SquareFont  = "_font_square"
 	AnitaFont   = "_font_anita"
-)
-
-var (
-	labelTextureCache = make(map[string]*Texture2D)
-	labelTextureMutex sync.Mutex
 )
 
 /******************************************************************************
@@ -86,8 +80,12 @@ func (f *TrueTypeFont) loadFromSlice(slice []byte) {
 }
 
 func (f *TrueTypeFont) loadFromFile(name string) {
-	reader, closeFunc := Assets.GetReader(name)
+	reader, closeFunc := f.getSourceReader(name)
 	defer closeFunc()
+
+	if reader == nil {
+		panic("font file not found")
+	}
 
 	fontBytes := make([]byte, reader.Size())
 	n, _ := reader.Read(fontBytes)
@@ -137,39 +135,12 @@ func addDefaultFonts(lib *AssetLibrary) {
 	lib.Add(newDefaultFont(AnitaFont, "anita"))
 }
 
-func getFontOrDefault(fontName string) Font {
-	asset := Assets.Get(fontName)
-	if asset != nil {
-		if fontAsset, ok := asset.(Font); ok {
-			return fontAsset
-		}
-	}
-
-	asset = Assets.Get(DefaultFont)
-	if asset != nil {
-		if fontAsset, ok := asset.(Font); ok {
-			return fontAsset
-		}
-	}
-
-	return nil
-}
-
 /******************************************************************************
  Rasterization Functions
 ******************************************************************************/
 
 func textToTexture(text string, ttf *truetype.Font, alignment Alignment, rgba color.RGBA,
-	windowWidth, windowHeight int, scaleX, scaleY float32, maintainAspectRatio, useCache bool) *Texture2D {
-
-	id := fmt.Sprintf("%s%v%v%v%d%d%f%f%v", text, ttf, alignment, rgba, windowWidth, windowHeight, scaleX, scaleY, maintainAspectRatio)
-
-	if useCache {
-		cached := getLabelTextureFromCache(id)
-		if cached != nil {
-			return cached
-		}
-	}
+	windowWidth, windowHeight int, scaleX, scaleY float32, maintainAspectRatio, cacheEnabled bool, cache map[string]*Texture2D) *Texture2D {
 
 	scale := [2]float32{}
 	if maintainAspectRatio {
@@ -187,6 +158,14 @@ func textToTexture(text string, ttf *truetype.Font, alignment Alignment, rgba co
 	} else {
 		scale[0] = scaleX
 		scale[1] = scaleY
+	}
+
+	id := fmt.Sprintf("%s%v%v%v%f%f", text, ttf, alignment, rgba, scale[0], scale[1])
+
+	if cacheEnabled {
+		if cached := cache[id]; cached != nil {
+			return cached
+		}
 	}
 
 	absFontSize := float64(scale[1] * float32(windowHeight))
@@ -222,8 +201,8 @@ func textToTexture(text string, ttf *truetype.Font, alignment Alignment, rgba co
 	_, _ = ctx.DrawString(text, pt)
 
 	texture := NewTexture2D(id, img)
-	if useCache {
-		addLabelTextureToCache(id, texture)
+	if cacheEnabled {
+		cache[id] = texture
 	}
 
 	return texture
@@ -261,30 +240,4 @@ func measureTextHeight(f *truetype.Font, text string, scale fixed.Int26_6) float
 	} else {
 		return float32(maxTop - minBottom*2)
 	}
-}
-
-/******************************************************************************
- Caching
-******************************************************************************/
-
-func getLabelTextureFromCache(id string) *Texture2D {
-	labelTextureMutex.Lock()
-	t := labelTextureCache[id]
-	labelTextureMutex.Unlock()
-	return t
-}
-
-func addLabelTextureToCache(id string, texture *Texture2D) {
-	labelTextureMutex.Lock()
-	labelTextureCache[id] = texture
-	labelTextureMutex.Unlock()
-}
-
-func ClearLabelTextureCache() {
-	labelTextureMutex.Lock()
-	for _, t := range labelTextureCache {
-		t.Close()
-	}
-	labelTextureCache = make(map[string]*Texture2D)
-	labelTextureMutex.Unlock()
 }

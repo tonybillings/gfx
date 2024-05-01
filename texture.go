@@ -90,7 +90,7 @@ func (t *Texture2D) createFromSlice(slice []byte) {
 }
 
 func (t *Texture2D) createFromFile(name string) {
-	reader, closeFunc := Assets.GetReader(name)
+	reader, closeFunc := t.getSourceReader(name)
 	defer closeFunc()
 	t.createFromReader(reader)
 }

@@ -7,10 +7,6 @@ import (
 	"tonysoft.com/gfx/examples/ui/textures"
 )
 
-const (
-	buttonImage = "button.png"
-)
-
 func onClick(button gfx.WindowObject, _ *gfx.MouseState) {
 	clickCount := 0
 	if count, ok := button.Tag().(int); ok { // use a map[string]any to store multiple values
@@ -33,7 +29,11 @@ func onDepressed(button gfx.WindowObject, _ *gfx.MouseState) {
 // NewButtonView In this example, the buttons are anchored to the
 // corners, regardless of their size (scale) or the size/ratio of the window.
 func NewButtonView(window *gfx.Window) gfx.WindowObject {
-	gfx.Assets.AddEmbeddedFile(buttonImage, textures.Assets)
+	const buttonFile = "button.png"
+	const buttonTexture = "button.t2d"
+
+	window.Assets().AddEmbeddedFile(buttonFile, textures.Assets)
+	window.Assets().Add(gfx.NewTexture2D(buttonTexture, buttonFile))
 
 	btnWidth := float32(.25) // try changing the width/height!
 	btnHeight := float32(.25)
@@ -54,7 +54,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetTextColor(gfx.Red).
 		OnClick(onClick).
 		SetMaintainAspectRatio(false).(*gfx.Button). // *see note...
-		SetTexture(gfx.NewTexture2D(buttonImage, buttonImage)).
+		SetTexture(window.Assets().Get(buttonTexture).(*gfx.Texture2D)).
 		SetBorderColor(gfx.Magenta).
 		SetBorderThickness(.1).
 		SetFillColor(gfx.Blue).
@@ -107,7 +107,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetFontSize(textSize).
 		SetTextColor(gfx.Red).
 		OnClick(onClick).
-		SetTexture(gfx.NewTexture2D(buttonImage, buttonImage)).
+		SetTexture(window.Assets().Get(buttonTexture).(*gfx.Texture2D)).
 		SetBorderThickness(.1).
 		SetBorderColor(gfx.Magenta).
 		SetFillColor(gfx.Blue).

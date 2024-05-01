@@ -2,6 +2,7 @@ package gfx
 
 import (
 	"image/color"
+	"sync"
 	"sync/atomic"
 )
 
@@ -42,6 +43,12 @@ type Button struct {
 	originalFillColor   color.RGBA
 	originalBorderColor color.RGBA
 	originalTextColor   color.RGBA
+
+	clickDispatcher          chan *MouseState
+	depressedDispatcher      chan *MouseState
+	onMouseClickHandlers     []func(WindowObject, *MouseState)
+	onMouseDepressedHandlers []func(WindowObject, *MouseState)
+	eventHandlersMutex       sync.Mutex
 }
 
 /******************************************************************************
@@ -62,6 +69,7 @@ func (b *Button) Init() (ok bool) {
 
 	b.initLayout()
 	b.RefreshLayout()
+	b.initDispatchers()
 
 	return b.View.Init()
 }
@@ -173,6 +181,59 @@ func (b *Button) initLayout() {
 	b.originalTextColor = b.text.Color()
 }
 
+func (b *Button) initDispatchers() {
+	b.clickDispatcher = make(chan *MouseState, 64)
+	b.depressedDispatcher = make(chan *MouseState, 1024)
+	b.bounds.OnPMouseClick(func(_ WindowObject, ms *MouseState) {
+		select {
+		case b.clickDispatcher <- ms:
+		default:
+		}
+	})
+	b.bounds.OnPMouseDepressed(func(_ WindowObject, ms *MouseState) {
+		select {
+		case b.depressedDispatcher <- ms:
+		default:
+		}
+	})
+	go b.handleClick()
+	go b.handleDepressed()
+}
+
+func (b *Button) handleClick() {
+	for {
+		select {
+		case ms, ok := <-b.clickDispatcher:
+			if !ok {
+				return
+			}
+
+			b.eventHandlersMutex.Lock()
+			for _, handler := range b.onMouseClickHandlers {
+				handler(b, ms)
+			}
+			b.eventHandlersMutex.Unlock()
+		}
+	}
+}
+
+func (b *Button) handleDepressed() {
+	for {
+		select {
+		case ms, ok := <-b.depressedDispatcher:
+			if !ok {
+				return
+			}
+
+			b.eventHandlersMutex.Lock()
+			for _, handler := range b.onMouseDepressedHandlers {
+				handler(b, ms)
+			}
+			b.eventHandlersMutex.Unlock()
+		}
+	}
+}
+
 func (b *Button) onMouseEnter(_ WindowObject, _ *MouseState) {
 	if b.mouseEnterFillColorSet.Load() {
 		b.fill.SetColor(b.mouseEnterFillColor)
@@ -210,12 +271,16 @@ func (b *Button) onMouseUp(_ WindowObject, _ *MouseState) {
 }
 
 func (b *Button) OnDepressed(handler func(sender WindowObject, mouseState *MouseState)) *Button {
-	b.bounds.OnPMouseDepressed(handler)
+	b.eventHandlersMutex.Lock()
+	b.onMouseDepressedHandlers = append(b.onMouseDepressedHandlers, handler)
+	b.eventHandlersMutex.Unlock()
 	return b
 }
 
 func (b *Button) OnClick(handler func(sender WindowObject, mouseState *MouseState)) *Button {
-	b.bounds.OnPMouseClick(handler)
+	b.eventHandlersMutex.Lock()
+	b.onMouseClickHandlers = append(b.onMouseClickHandlers, handler)
+	b.eventHandlersMutex.Unlock()
 	return b
 }
 

@@ -158,7 +158,7 @@ func (f *Face) AttachedMaterial() gfx.Material {
 func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// Create the Shader asset and add to AssetLibrary for life-cycle management
 	shader := gfx.NewBasicShader("my_shader", vertShader, fragShader)
-	gfx.Assets.Add(shader)
+	window.Assets().Add(shader)
 
 	// Create the texture from an on-disk PNG (this part is not very
 	// "in mem[ory]" but textures can also be created from solid colors,
@@ -166,10 +166,10 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// a proper texture must be handled gracefully/seamlessly, but here
 	// we'll go for something more interesting to see).  First, we
 	// load the PNG's raw binary data into RAM and store as an Asset:
-	gfx.Assets.AddEmbeddedFiles(textures.Assets)
+	window.Assets().AddEmbeddedFiles(textures.Assets)
 	// Next, we create a Texture asset using the filename of the PNG
-	// asset as the source.  Because it exists in gfx.Assets, it will
-	// be loaded from there (RAM); if it doesn't exist in gfx.Assets,
+	// asset as the source.  Because it exists in Window.Assets(), it
+	// will be loaded from there (RAM); if it doesn't exist there,
 	// then it will look for the PNG on the local file system (disk).
 	// Texture assets, once initialized, are references to texture
 	// data stored in graphics card memory (VRAM).
@@ -177,7 +177,7 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// Finally, because Texture assets require participation in the
 	// Init()/Close() life-cycle, they should be managed by an
 	// AssetLibrary, so here we'll just add to the default one:
-	gfx.Assets.Add(emojiTexture)
+	window.Assets().Add(emojiTexture)
 	// Alternatively, you could manually initialize/close the texture
 	// using the related InitObject()/CloseObject() functions the
 	// Window struct provides (unless the object does nothing OpenGL-
@@ -189,7 +189,7 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// in any life-cycle routine, as they are just data containers at
 	// the very least (but "smart/dynamic" Materials could be imagined
 	// that could require such participation).  So no need to add to
-	// gfx.Assets...
+	// the Window's asset library...
 	material := &BasicMaterial{
 		Properties: &MaterialProperties{
 			Ambient: mgl32.Vec4{.1, .1, .1, 1},
@@ -217,9 +217,10 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	}
 
 	// Instantiate the Model.  Models are also Assets, but in this case
-	// there is no need to add to gfx.Assets as there's nothing to
-	// "initialize"	or "update", though you could of course use gfx.Assets
-	// simply to make the Asset available throughout the application.
+	// there is no need to add to the Window's asset library as there's
+	// nothing to "initialize"	or "update", though you could of course
+	// use that library simply to make the Asset available throughout the
+	// application (but only for objects rendered on that Window instance).
 	model := &Model{ // here we store the data referenced by the faces
 		vertices: []float32{
 			0, 0, 0,

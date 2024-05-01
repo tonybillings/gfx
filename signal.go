@@ -759,7 +759,7 @@ func (l *SignalLine) updateVertices() {
 }
 
 func (l *SignalLine) initVertexVao() {
-	l.shader = Assets.Get(SignalShader).(Shader)
+	l.shader = l.Window().Assets().Get(SignalShader).(Shader)
 
 	l.thicknessUniformLoc = l.shader.GetUniformLocation("u_Thickness")
 	l.colorUniformLoc = l.shader.GetUniformLocation("u_Color")

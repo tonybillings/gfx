@@ -6,11 +6,29 @@ import (
 	"github.com/google/uuid"
 	"image/color"
 	"math/rand"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
 	"tonysoft.com/gfx"
 )
+
+func Begin() {
+	// Outside of testing, don't explicitly do this;
+	// rely on gfx.init() (the unexported init func)
+	// to be called by the Go runtime for you and to
+	// successfully lock to the main thread.
+	runtime.LockOSThread()
+
+	PanicOnErr(gfx.Init())
+
+	gfx.SetTargetFramerate(TargetFramerate)
+	gfx.SetVSyncEnabled(VSyncEnabled)
+}
+
+func End() {
+	gfx.Close()
+}
 
 type SceneValidator struct {
 	gfx.DrawableObjectBase
@@ -159,7 +177,7 @@ func SimulateMouseClickAndDrag(window *gfx.Window, startX, startY, endX, endY, s
 
 	ms.PrimaryDown = false
 	window.OverrideMouseState(&ms)
-	SleepACoupleFrames()
+	SleepAFewFrames()
 }
 
 type OddValueFilter struct {

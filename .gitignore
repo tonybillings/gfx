@@ -7,3 +7,9 @@ examples/3d/obj/obj
 examples/3d/obj/test
 examples/ui/ui
 examples/ui/test
+examples/window/hints/hints
+examples/window/hints/test
+examples/window/multiple/multiple
+examples/window/multiple/test
+examples/window/transparent/transparent
+examples/window/transparent/test

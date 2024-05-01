@@ -179,7 +179,7 @@ func tab9() gfx.WindowObject {
 
 func New2DView(window *gfx.Window) gfx.WindowObject {
 	if imgBytes, err := os.ReadFile("test.png"); err == nil {
-		gfx.Assets.Add(gfx.NewTexture2D(testImage, imgBytes))
+		window.Assets().Add(gfx.NewTexture2D(testImage, imgBytes))
 	} else {
 		panic(err)
 	}
@@ -214,7 +214,7 @@ func New2DView(window *gfx.Window) gfx.WindowObject {
 			if homeDir, err := os.UserHomeDir(); err != nil {
 				panic(fmt.Errorf("could not determine your home directory: %w", err))
 			} else {
-				if err = os.WriteFile(path.Join(homeDir, fmt.Sprintf("gfx_window_%d.png", time.Now().UnixMilli())), pngBytes, 0664); err != nil {
+				if err = os.WriteFile(path.Join(homeDir, fmt.Sprintf("%s %d.png", window.Title(), time.Now().UnixMilli())), pngBytes, 0664); err != nil {
 					panic(fmt.Errorf("failed to save PNG to storage: %w", err))
 				}
 			}

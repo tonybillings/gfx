@@ -147,7 +147,7 @@ func (s *BasicShader) loadShaderFromSlice(shaderType uint32, slice []byte) uint3
 }
 
 func (s *BasicShader) loadShaderFromFile(shaderType uint32, name string) uint32 {
-	reader, closeFunc := Assets.GetReader(name)
+	reader, closeFunc := s.getSourceReader(name)
 	defer closeFunc()
 	if reader == nil {
 		return 0

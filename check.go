@@ -3,6 +3,7 @@ package gfx
 import (
 	"github.com/go-gl/mathgl/mgl32"
 	"image/color"
+	"sync"
 	"sync/atomic"
 )
 
@@ -23,7 +24,11 @@ type CheckButton struct {
 	check   *Shape2D
 	checked atomic.Bool
 
-	onCheckedChangedHandlers []func(sender WindowObject, checked bool)
+	clickDispatcher          chan *MouseState
+	checkChangedDispatcher   chan bool
+	onMouseClickHandlers     []func(WindowObject, *MouseState)
+	onCheckedChangedHandlers []func(WindowObject, bool)
+	eventHandlersMutex       sync.Mutex
 }
 
 /******************************************************************************
@@ -45,6 +50,7 @@ func (b *CheckButton) Init() (ok bool) {
 
 	b.initLayout()
 	b.RefreshLayout()
+	b.initDispatchers()
 
 	return b.View.Init()
 }
@@ -140,7 +146,54 @@ func (b *CheckButton) initLayout() {
 	b.originalTextColor = b.text.Color()
 }
 
-func (b *CheckButton) onClick(sender WindowObject, _ *MouseState) {
+func (b *CheckButton) initDispatchers() {
+	b.clickDispatcher = make(chan *MouseState, 64)
+	b.checkChangedDispatcher = make(chan bool, 64)
+	b.bounds.OnPMouseClick(func(_ WindowObject, ms *MouseState) {
+		select {
+		case b.clickDispatcher <- ms:
+		default:
+		}
+	})
+	go b.handleClick()
+	go b.handleCheckChanged()
+}
+
+func (b *CheckButton) handleClick() {
+	for {
+		select {
+		case ms, ok := <-b.clickDispatcher:
+			if !ok {
+				return
+			}
+
+			b.eventHandlersMutex.Lock()
+			for _, handler := range b.onMouseClickHandlers {
+				handler(b, ms)
+			}
+			b.eventHandlersMutex.Unlock()
+		}
+	}
+}
+
+func (b *CheckButton) handleCheckChanged() {
+	for {
+		select {
+		case checked, ok := <-b.checkChangedDispatcher:
+			if !ok {
+				return
+			}
+
+			b.eventHandlersMutex.Lock()
+			for _, handler := range b.onCheckedChangedHandlers {
+				handler(b, checked)
+			}
+			b.eventHandlersMutex.Unlock()
+		}
+	}
+}
+
+func (b *CheckButton) onClick(_ WindowObject, _ *MouseState) {
 	prevState := b.checked.Load()
 
 	if b.circular {
@@ -153,8 +206,9 @@ func (b *CheckButton) onClick(sender WindowObject, _ *MouseState) {
 	b.check.SetVisibility(newState)
 
 	if newState != prevState {
-		for _, f := range b.onCheckedChangedHandlers {
-			f(sender, newState)
+		select {
+		case b.checkChangedDispatcher <- newState:
+		default:
 		}
 	}
 }
@@ -212,12 +266,16 @@ func (b *CheckButton) onMouseUp(_ WindowObject, _ *MouseState) {
 }
 
 func (b *CheckButton) OnClick(handler func(sender WindowObject, mouseState *MouseState)) *CheckButton {
-	b.bounds.OnPMouseClick(handler)
+	b.eventHandlersMutex.Lock()
+	b.onMouseClickHandlers = append(b.onMouseClickHandlers, handler)
+	b.eventHandlersMutex.Unlock()
 	return b
 }
 
 func (b *CheckButton) OnCheckedChanged(handler func(sender WindowObject, checked bool)) *CheckButton {
+	b.eventHandlersMutex.Lock()
 	b.onCheckedChangedHandlers = append(b.onCheckedChangedHandlers, handler)
+	b.eventHandlersMutex.Unlock()
 	return b
 }
 

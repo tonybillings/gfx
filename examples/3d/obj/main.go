@@ -9,11 +9,15 @@ import (
 	"tonysoft.com/gfx/examples/3d/obj/view"
 )
 
+const (
+	windowTitle     = "3D Test (OBJ/MTL)"
+	windowWidth     = 1900
+	windowHeight    = 1000
+	targetFramerate = 60
+	vSyncEnabled    = true
+)
+
 var (
-	windowTitle     = "3D Test"
-	windowWidth     = 3000
-	windowHeight    = 2000
-	targetFramerate = 120
 	backgroundColor = gfx.Black
 )
 
@@ -38,23 +42,24 @@ func waitForInterruptSignal(ctx context.Context, cancelFunc context.CancelFunc) 
 
 func main() {
 	panicOnErr(gfx.Init())
+	defer gfx.Close()
+
+	gfx.SetTargetFramerate(targetFramerate)
+	gfx.SetVSyncEnabled(vSyncEnabled)
 
 	win := gfx.NewWindow().SetTitle(windowTitle).
 		SetWidth(windowWidth).
 		SetHeight(windowHeight).
-		SetTargetFramerate(targetFramerate).
 		SetClearColor(backgroundColor)
-	defer win.Close()
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	win.AddObjects(view.NewCubeView(win))
 
-	win.EnableQuitKey(cancelFunc)
+	win.EnableQuitKey()
 	win.EnableFullscreenKey()
 
-	go waitForInterruptSignal(ctx, cancelFunc)
-	win.Init(ctx, cancelFunc)
+	gfx.InitWindowAsync(win)
 
-	<-ctx.Done()
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	go waitForInterruptSignal(ctx, cancelFunc)
+	gfx.Run(ctx, cancelFunc)
 }
