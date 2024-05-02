@@ -1241,16 +1241,18 @@ func (w *Window) HasFocus() (focused bool) {
 	return
 }
 
-func (w *Window) DisableOnBlur(disableOnBlur bool) {
+func (w *Window) DisableOnBlur(disableOnBlur bool) *Window {
 	w.stateMutex.Lock()
 	w.disableOnBlur = disableOnBlur
 	w.stateMutex.Unlock()
+	return w
 }
 
-func (w *Window) SwapMouseButtons(swapped bool) {
+func (w *Window) SwapMouseButtons(swapped bool) *Window {
 	w.mouseStateMutex.Lock()
 	w.mouseState.ButtonsSwapped = swapped
 	w.mouseStateMutex.Unlock()
+	return w
 }
 
 func (w *Window) Mouse() *MouseState {

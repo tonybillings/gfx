@@ -13,3 +13,5 @@ examples/window/multiple/multiple
 examples/window/multiple/test
 examples/window/transparent/transparent
 examples/window/transparent/test
+examples/window/focus/focus
+examples/window/focus/test
