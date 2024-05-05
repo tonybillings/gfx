@@ -46,30 +46,34 @@ func TestCheckBoxClickAndAnchoring(t *testing.T) {
 		posX := (1.0 - chk.Margin().Right) - chk.Width()*0.5
 		posY := (1.0 - chk.Margin().Top) - chk.Height()*0.5
 
-		validator := _test.NewSceneValidator(win)
+		validator := _test.NewSceneValidator(t, win)
 		validator.AddPixelSampler(func() (x, y float32) { return 0, 0 }, _test.BackgroundColor, "center screen")
 		validator.AddPixelSampler(func() (x, y float32) { return posX, posY }, _test.BackgroundColor, "inside the checkbox")
 
 		win.AddObjects(chk, validator)
 
+		mockMouse := _test.NewMockMouse(mockWin)
+
 		gfx.InitWindowAsync(win)
 		<-win.ReadyChan()
 
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
-		_test.SimulateMouseClick(mockWin, posX, posY) // check the checkbox
+		mockMouse.Click(posX, posY) // check the checkbox
 		validator.Samplers[0].ExpectedColor = gfx.Blue
 		validator.Samplers[1].ExpectedColor = gfx.Magenta // the "checkmark" should be visible
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
 
-		_test.SimulateMouseClick(mockWin, posX, posY) // uncheck the checkbox
+		mockMouse.Click(posX, posY) // uncheck the checkbox
 		validator.Samplers[0].ExpectedColor = gfx.Green
 		validator.Samplers[1].ExpectedColor = _test.BackgroundColor // "checkmark" should be invisible again
-		_test.ValidateScene(t, validator)
+		validator.Validate()
+
+		time.Sleep(400 * time.Millisecond)
 
 		cancelFunc()
 	}()

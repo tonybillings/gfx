@@ -67,7 +67,7 @@ func TestShape2DAnchoring(t *testing.T) {
 		dot2Label.SetColor(gfx.Blue)
 		dot2.AddChildren(dot2Label)
 
-		validator := _test.NewSceneValidator(win)
+		validator := _test.NewSceneValidator(t, win)
 		validator.AddPixelSampler(func() (x, y float32) { return 0, 0 }, _test.BackgroundColor, "center screen")
 		validator.AddPixelSampler(func() (x, y float32) { return -.49, 0 }, gfx.Yellow, "circle in the center, left side") // no scaling because MAR=false
 		validator.AddPixelSampler(func() (x, y float32) { return .49, 0 }, gfx.Yellow, "circle in the center, right side")
@@ -91,25 +91,25 @@ func TestShape2DAnchoring(t *testing.T) {
 
 		win.SetSize(winWidth1, winHeight1) // the actual resizing of the window happens asynchronously...
 		_test.SleepNFrames(10)             // ...so we wait a bit for that to happen before validating the scene
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the size change
 
 		win.SetSize(winWidth2, winHeight2)
 		_test.SleepNFrames(10)
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(200 * time.Millisecond)
 
 		win.SetSize(winWidth3, winHeight3)
 		_test.SleepNFrames(10)
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(200 * time.Millisecond)
 
 		win.SetSize(winWidth4, winHeight4)
 		_test.SleepNFrames(10)
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(200 * time.Millisecond)
 
@@ -142,7 +142,7 @@ func TestShape2DBlending(t *testing.T) {
 		quad2.SetColor(gfx.Blue)
 		quad2.SetOpacity(128)
 
-		validator := _test.NewSceneValidator(win)
+		validator := _test.NewSceneValidator(t, win)
 		validator.AddPixelSampler(func() (x, y float32) { return -.99, .99 }, _test.BackgroundColor, "upper-left corner")
 		validator.AddPixelSampler(func() (x, y float32) { return -.2, 0 }, gfx.Red, "left quad")
 		validator.AddPixelSampler(func() (x, y float32) { return .2, 0 }, color.RGBA{R: 0, G: 0, B: 128, A: 191}, "right quad")
@@ -153,7 +153,7 @@ func TestShape2DBlending(t *testing.T) {
 		gfx.InitWindowAsync(win)
 		<-win.ReadyChan()
 
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the rendering
 
@@ -175,12 +175,12 @@ func TestShape3DManualAssetMgmt(t *testing.T) {
 			SetWidth(_test.WindowWidth).
 			SetHeight(_test.WindowHeight)
 
-		shader := gfx.NewBasicShader("test_shader", _test.VertShader, _test.FragShader)
+		shader := gfx.NewBasicShader("test_shader", _test.TextureVertShader, _test.TextureFragShader)
 		texture := gfx.NewTexture2D("purple_texture", gfx.Purple)
 
-		model := _test.NewTestModel()
+		model := _test.NewTexturedQuad()
 		model.Meshes()[0].Faces()[0].AttachedMaterial().AttachShader(shader)
-		model.Meshes()[0].Faces()[0].AttachedMaterial().(*_test.TestMaterial).DiffuseMap = texture
+		model.Meshes()[0].Faces()[0].AttachedMaterial().(*_test.Material).DiffuseMap = texture
 
 		quad := gfx.NewShape3D()
 		quad.SetModel(model)
@@ -189,7 +189,7 @@ func TestShape3DManualAssetMgmt(t *testing.T) {
 		vp.Set(-.5, 0, 1, 1) // move left by half the window width
 		quad.SetViewport(vp)
 
-		validator := _test.NewSceneValidator(win)
+		validator := _test.NewSceneValidator(t, win)
 		validator.AddPixelSampler(func() (x, y float32) { return .5, -.5 }, _test.BackgroundColor, "lower-right quadrant")
 
 		// Because objects are initialized in the reverse order in which they're
@@ -213,14 +213,14 @@ func TestShape3DManualAssetMgmt(t *testing.T) {
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		vp.Set(0, -.5, 1, 1) // move down by half the window height
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
 		validator.Samplers[0].ExpectedColor = gfx.Purple
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
@@ -249,20 +249,20 @@ func TestShape3DWithAssetLibrary(t *testing.T) {
 			SetWidth(_test.WindowWidth).
 			SetHeight(_test.WindowHeight)
 
-		shader := gfx.NewBasicShader("test_shader", _test.VertShader, _test.FragShader)
+		shader := gfx.NewBasicShader("test_shader", _test.TextureVertShader, _test.TextureFragShader)
 		win.Assets().Add(shader)
 
 		texture := gfx.NewTexture2D("orange_texture", gfx.Orange)
 		win.Assets().Add(texture)
 
-		model := _test.NewTestModel()
+		model := _test.NewTexturedQuad()
 		model.Meshes()[0].Faces()[0].AttachedMaterial().AttachShader(shader)
-		model.Meshes()[0].Faces()[0].AttachedMaterial().(*_test.TestMaterial).DiffuseMap = texture
+		model.Meshes()[0].Faces()[0].AttachedMaterial().(*_test.Material).DiffuseMap = texture
 
 		quad := gfx.NewShape3D()
 		quad.SetModel(model)
 
-		validator := _test.NewSceneValidator(win)
+		validator := _test.NewSceneValidator(t, win)
 		validator.AddPixelSampler(func() (x, y float32) { return -.5, -.5 }, _test.BackgroundColor, "lower-left quadrant")
 
 		win.AddObjects(quad, validator)
@@ -271,7 +271,7 @@ func TestShape3DWithAssetLibrary(t *testing.T) {
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		vp := gfx.NewViewport(win.Width(), win.Height())
 		vp.Set(-.5, -.5, 1, 1) // move left/down by half the window width/height (respectively)
@@ -281,7 +281,7 @@ func TestShape3DWithAssetLibrary(t *testing.T) {
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
 		validator.Samplers[0].ExpectedColor = gfx.Orange
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		cancelFunc()
 	}()

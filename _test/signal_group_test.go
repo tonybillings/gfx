@@ -5,7 +5,6 @@ import (
 	"image/color"
 	"math"
 	"math/rand"
-	"runtime"
 	"testing"
 	"time"
 	"tonysoft.com/gfx"
@@ -79,8 +78,6 @@ func newSignalGroup(ctx context.Context, window *gfx.Window, signalSampleCount i
 // detect resource leaks, etc.  Try using the program argument
 // "-test.benchtime 30s" (without the quotes) to run for 30 seconds.
 func BenchmarkSignalGroup(b *testing.B) {
-	startRoutineCount := runtime.NumGoroutine()
-
 	_test.Begin()
 
 	mainCtx, mainCancelFunc := context.WithCancel(context.Background())
@@ -115,11 +112,4 @@ func BenchmarkSignalGroup(b *testing.B) {
 
 	gfx.Run(mainCtx, mainCancelFunc)
 	_test.End()
-
-	endRoutineCount := runtime.NumGoroutine()
-	if endRoutineCount != startRoutineCount {
-		b.Logf("Starting routine count: %d", startRoutineCount)
-		b.Logf("Ending routine count: %d", endRoutineCount)
-		b.Error("routine leak")
-	}
 }

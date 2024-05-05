@@ -1,7 +1,6 @@
 #version 410 core
 
 in vec3 a_Position;
-in vec3 a_Normal;
 in vec2 a_UV;
 
 out vec2 UV;

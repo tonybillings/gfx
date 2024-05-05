@@ -83,14 +83,14 @@ func TestViewportRendering(t *testing.T) {
 		quad.SetScale(mgl32.Vec3{.5, .5})
 		quad.SetAnchor(gfx.TopRight)
 
-		validator := _test.NewSceneValidator(win)
+		validator := _test.NewSceneValidator(t, win)
 		validator.AddPixelSampler(func() (x, y float32) { return -.5, -.5 }, _test.BackgroundColor, "lower-left quadrant")
 
 		win.AddObjects(quad, validator)
 		gfx.InitWindowAsync(win)
 		<-win.ReadyChan()
 
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
@@ -99,14 +99,14 @@ func TestViewportRendering(t *testing.T) {
 		quad.SetViewport(vp)
 
 		validator.Samplers[0].ExpectedColor = gfx.Magenta
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
 		vp.Set(0, 0, 1, 1)
 
 		validator.Samplers[0].ExpectedColor = _test.BackgroundColor
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 

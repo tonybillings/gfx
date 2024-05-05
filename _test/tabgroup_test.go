@@ -39,7 +39,7 @@ func TestTabGroup(t *testing.T) {
 
 		tg := gfx.NewTabGroup(quad1, quad2, quad3)
 
-		validator := _test.NewSceneValidator(win)
+		validator := _test.NewSceneValidator(t, win)
 		validator.AddPixelSampler(func() (x, y float32) { return 0, 0 }, gfx.Red, "center screen")
 
 		win.AddObjects(tg, validator)
@@ -48,37 +48,37 @@ func TestTabGroup(t *testing.T) {
 
 		time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the initial tab
 
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		tg.Next()
 		time.Sleep(200 * time.Millisecond) // *optional; give us some time to see the active tab change
 		validator.Samplers[0].ExpectedColor = gfx.Green
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		tg.Next()
 		time.Sleep(200 * time.Millisecond)
 		validator.Samplers[0].ExpectedColor = gfx.Blue
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		tg.Previous()
 		time.Sleep(200 * time.Millisecond)
 		validator.Samplers[0].ExpectedColor = gfx.Green
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		tg.Previous()
 		time.Sleep(200 * time.Millisecond)
 		validator.Samplers[0].ExpectedColor = gfx.Red
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		tg.Activate(1)
 		time.Sleep(200 * time.Millisecond)
 		validator.Samplers[0].ExpectedColor = gfx.Green
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		tg.Activate(2)
 		time.Sleep(200 * time.Millisecond)
 		validator.Samplers[0].ExpectedColor = gfx.Blue
-		_test.ValidateScene(t, validator)
+		validator.Validate()
 
 		cancelFunc()
 	}()

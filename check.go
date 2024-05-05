@@ -64,6 +64,18 @@ func (b *CheckButton) Update(deltaTime int64) (ok bool) {
 }
 
 func (b *CheckButton) Close() {
+	if !b.Initialized() {
+		return
+	}
+
+	if b.clickDispatcher != nil {
+		close(b.clickDispatcher)
+	}
+
+	if b.checkChangedDispatcher != nil {
+		close(b.checkChangedDispatcher)
+	}
+
 	b.check.Close()
 	b.Button.Close()
 }
@@ -155,6 +167,7 @@ func (b *CheckButton) initDispatchers() {
 		default:
 		}
 	})
+
 	go b.handleClick()
 	go b.handleCheckChanged()
 }

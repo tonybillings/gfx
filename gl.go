@@ -10,13 +10,21 @@ const (
 
 type VertexAttributeLayout int
 
-// Expected names for the vertex attributes defined in the shaders noted below:
 const (
-	PositionOnlyVaoLayout             VertexAttributeLayout = iota // a_Position
-	PositionColorVaoLayout                                         // a_Position, a_Color
-	PositionUvVaoLayout                                            // a_Position, a_UV
-	PositionNormalUvVaoLayout                                      // a_Position, a_Normal, a_UV
-	PositionNormalUvTangentsVaoLayout                              // a_Position, a_Normal, a_UV, a_Tangent, a_Bitangent
+	// PositionOnlyVaoLayout Expected vertex shader attributes: a_Position
+	PositionOnlyVaoLayout VertexAttributeLayout = iota
+
+	// PositionColorVaoLayout Expected vertex shader attributes: a_Position, a_Color
+	PositionColorVaoLayout
+
+	// PositionUvVaoLayout Expected vertex shader attributes: a_Position, a_UV
+	PositionUvVaoLayout
+
+	// PositionNormalUvVaoLayout Expected vertex shader attributes: a_Position, a_Normal, a_UV
+	PositionNormalUvVaoLayout
+
+	// PositionNormalUvTangentsVaoLayout Expected vertex shader attributes: a_Position, a_Normal, a_UV, a_Tangent, a_Bitangent
+	PositionNormalUvTangentsVaoLayout
 )
 
 func newVertexArrayObject(layout VertexAttributeLayout, shader Shader, vertices []float32) (glName uint32, closeFunc func()) {

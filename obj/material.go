@@ -263,13 +263,13 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 		}
 
 		if mat.NormalMap == nil {
-			mat.NormalMap = gfx.NewTexture2D("", gfx.White)
+			mat.NormalMap = gfx.NewTexture2D("", gfx.DefaultNormalMapColor)
 			mat.NormalMap.SetSourceLibrary(l.SourceLibrary())
 			mat.textures = append(mat.textures, mat.NormalMap)
 		}
 
 		if mat.SpecularMap == nil {
-			mat.SpecularMap = gfx.NewTexture2D("", gfx.White)
+			mat.SpecularMap = gfx.NewTexture2D("", gfx.DefaultSpecularMapColor)
 			mat.SpecularMap.SetSourceLibrary(l.SourceLibrary())
 			mat.textures = append(mat.textures, mat.SpecularMap)
 		}

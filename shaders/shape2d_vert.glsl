@@ -1,6 +1,9 @@
 #version 410 core
 
 in vec2 a_Position;
+in vec2 a_UV;
+
+out vec2 UV;
 
 layout (std140) uniform Transform {
     vec4 Origin;
@@ -18,5 +21,6 @@ void main()
     vec2 scaledPos = rotatedPos * u_Transform.Scale.xy;
     vec2 finalPos = scaledPos + u_Transform.Position.xy;
 
+    UV = a_UV;
     gl_Position = vec4(finalPos, u_Transform.Position.z, 1.0);
 }

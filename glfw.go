@@ -79,9 +79,8 @@ var (
 	gfxInitialized bool
 	gfxRunning     bool
 
-	gfxWindow       GlfwWindow
-	gfxWindows      []GlfwWindow
-	gfxSingleWinApp bool
+	gfxWindow  GlfwWindow
+	gfxWindows []GlfwWindow
 
 	gfxWindowInitQueue  []GlfwWindow
 	gfxWindowCloseQueue []GlfwWindow
@@ -247,8 +246,6 @@ func InitWindowAsync(window GlfwWindow) {
 	gfxStateMutex.Lock()
 	gfxWindowInitQueue = append(gfxWindowInitQueue, window)
 	gfxWindows = append(gfxWindows, window)
-	gfxSingleWinApp = len(gfxWindows) == 1
-	gfxWindow = gfxWindows[0]
 	gfxStateMutex.Unlock()
 }
 
@@ -274,15 +271,8 @@ func CloseWindowAsync(window GlfwWindow) {
 		return
 	}
 
-	gfxSingleWinApp = len(gfxWindows) == 1
-	if gfxSingleWinApp {
-		gfxWindow = gfxWindows[0]
-		if glwin := gfxWindow.GLFW(); glwin != nil {
-			glwin.MakeContextCurrent()
-		}
-	}
-
 	gfxWindowCloseQueue = append(gfxWindowCloseQueue, window)
+
 	if !window.IsSecondary() {
 		gfxCancelFunc()
 	}
@@ -348,14 +338,13 @@ func Run(ctx context.Context, cancelFunc context.CancelFunc) {
 
 		glfw.PollEvents()
 
-		// This is done to avoid unnecessarily (re)setting the current
-		// context when there's only one window to update.
-		if gfxSingleWinApp {
-			gfxWindow.Update(deltaTime)
-		} else {
-			for _, win := range gfxWindows {
-				win.GLFW().MakeContextCurrent()
-				win.Update(deltaTime)
+		for _, win := range gfxWindows {
+			if win != gfxWindow {
+				gfxWindow = win
+				gfxWindow.GLFW().MakeContextCurrent()
+				gfxWindow.Update(deltaTime)
+			} else {
+				gfxWindow.Update(deltaTime)
 			}
 		}
 

@@ -16,15 +16,48 @@ import (
 )
 
 const (
-	SignalShader                = "_shader_signal"
-	Shape2DShader               = "_shader_shape2d"
-	TexturedShape2DShader       = "_shader_shape2d_textured"
-	BlurXShader                 = "_shader_blur_x"
-	BlurYShader                 = "_shader_blur_y"
-	TextureShader               = "_shader_texture"
-	Shape3DShader               = "_shader_shape3d"
-	Shape3DNoLightingShader     = "_shader_shape3d_no_lighting"
-	Shape3DBumpedSpecularShader = "_shader_shape3d_bump_spec"
+	// SignalShader Used by SignalLine to render the line itself, incorporating
+	// a geometry shader for line thickness.
+	SignalShader = "_shader_signal"
+
+	// BlurXShader Used by Shape2D when blur is enabled to render the horizontally
+	// blurred shape.
+	BlurXShader = "_shader_blur_x"
+
+	// BlurYShader Used by Shape2D when blur is enabled to render the vertically
+	// blurred shape.
+	BlurYShader = "_shader_blur_y"
+
+	// TextureShader Used by Shape2D when blur is enabled to render the final,
+	// horizontally/vertically blurred shape, but can also be used to render any
+	// texture using normalized device/screen coordinates for the vertex data.
+	TextureShader = "_shader_texture"
+
+	// Shape2DShader Used by Shape2D to render a textured, two-dimensional
+	// shape.
+	Shape2DShader = "_shader_shape2d"
+
+	// Shape2DNoTextureShader Used by Shape2D to render a single-colored,
+	// two-dimensional shape.
+	Shape2DNoTextureShader = "_shader_shape2d_no_texture"
+
+	// Shape3DShader Can be used by Shape3D to render a textured Model with
+	// support for: ambient/diffuse/specular/emissive/transparent lighting,
+	// directional lights, and diffuse/normal/specular maps.  Expects the Model
+	// vertex buffer to have the PositionNormalUvTangentsVaoLayout.
+	Shape3DShader = "_shader_shape3d"
+
+	// Shape3DNoNormalSpecularMapsShader Can be used by Shape3D to render a
+	// textured Model with support for: ambient/diffuse/specular/emissive/transparent
+	// lighting, directional lights, and diffuse maps.  Expects the Model vertex
+	// buffer to have the PositionNormalUvVaoLayout.
+	Shape3DNoNormalSpecularMapsShader = "_shader_shape3d_no_norm_spec"
+
+	// Shape3DNoLightsShader Can be used by Shape3D to render a
+	// textured Model with support for: ambient/diffuse/emissive/transparent
+	// lighting and diffuse maps.  Expects the Model vertex buffer to have
+	// the PositionUvVaoLayout.
+	Shape3DNoLightsShader = "_shader_shape3d_no_lights"
 )
 
 /******************************************************************************
@@ -257,15 +290,18 @@ func newDefaultShader(assetName string, filenames ...string) *BasicShader {
 }
 
 func addDefaultShaders(lib *AssetLibrary) {
-	lib.Add(newDefaultShader(SignalShader, "signal"))
-	lib.Add(newDefaultShader(Shape2DShader, "shape2d"))
-	lib.Add(newDefaultShader(TexturedShape2DShader, "shape2d_textured"))
-	lib.Add(newDefaultShader(TextureShader, "texture"))
-	lib.Add(newDefaultShader(BlurXShader, "texture", "blur_x"))
-	lib.Add(newDefaultShader(BlurYShader, "texture", "blur_y"))
-	lib.Add(newDefaultShader(Shape3DShader, "shape3d"))
-	lib.Add(newDefaultShader(Shape3DNoLightingShader, "shape3d_no_lighting"))
-	lib.Add(newDefaultShader(Shape3DBumpedSpecularShader, "shape3d_bump_spec"))
+	const prefix = "_shader_"
+	const pfxLen = len(prefix)
+
+	lib.Add(newDefaultShader(SignalShader, SignalShader[pfxLen:]))
+	lib.Add(newDefaultShader(BlurXShader, TextureShader[pfxLen:], BlurXShader[pfxLen:]))
+	lib.Add(newDefaultShader(BlurYShader, TextureShader[pfxLen:], BlurYShader[pfxLen:]))
+	lib.Add(newDefaultShader(TextureShader, TextureShader[pfxLen:]))
+	lib.Add(newDefaultShader(Shape2DShader, Shape2DShader[pfxLen:]))
+	lib.Add(newDefaultShader(Shape2DNoTextureShader, Shape2DNoTextureShader[pfxLen:]))
+	lib.Add(newDefaultShader(Shape3DShader, Shape3DShader[pfxLen:]))
+	lib.Add(newDefaultShader(Shape3DNoNormalSpecularMapsShader, Shape3DNoNormalSpecularMapsShader[pfxLen:]))
+	lib.Add(newDefaultShader(Shape3DNoLightsShader, Shape3DNoLightsShader[pfxLen:]))
 }
 
 /******************************************************************************

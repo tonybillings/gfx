@@ -17,6 +17,6 @@ layout (std140) uniform BasicMaterial {
 
 void main() {
     vec4 mapDiffuse = texture(u_DiffuseMap, UV).rgba;
-    vec4 litDiffuse = (u_Material.Ambient + u_Material.Diffuse) * mapDiffuse;
-    FragColor = vec4(litDiffuse.rgb, 1.0 - u_Material.Transparency);
+    vec4 result = (u_Material.Diffuse * mapDiffuse) + u_Material.Emissive;
+    FragColor = vec4(result.rgb, 1.0 - u_Material.Transparency);
 }

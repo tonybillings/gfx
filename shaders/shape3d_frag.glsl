@@ -3,13 +3,15 @@
 const int MAX_LIGHT_COUNT = 4;
 
 in vec3 FragPos;
-in vec3 Normal;
+in mat3 TBN;
 in vec2 UV;
 in vec3 CameraPos;
 
 out vec4 FragColor;
 
 uniform sampler2D u_DiffuseMap;
+uniform sampler2D u_NormalMap;
+uniform sampler2D u_SpecularMap;
 
 layout (std140) uniform BasicMaterial {
     vec4    Ambient;
@@ -28,10 +30,14 @@ uniform int     u_LightCount;
 uniform Light   u_Lights[MAX_LIGHT_COUNT];
 
 void main() {
-    vec3 norm = normalize(Normal);
+    vec3 normalFromMap = texture(u_NormalMap, UV).rgb;
+    normalFromMap = normalFromMap * 2.0 - 1.0;
+    vec3 norm = normalize(TBN * normalFromMap);
+
     vec3 viewDir = normalize(CameraPos - FragPos);
     vec3 mapDiffuse = texture(u_DiffuseMap, UV).rgb;
     vec3 tintDiffuse = u_Material.Diffuse.rgb * mapDiffuse;
+    vec3 specMap = texture(u_SpecularMap, UV).rgb;
 
     vec3 result = u_Material.Ambient.rgb * tintDiffuse + u_Material.Emissive.rgb;
     for(int i = 0; i < u_LightCount; i++) {
@@ -40,7 +46,7 @@ void main() {
         vec3 litDiffuse = tintDiffuse * u_Lights[i].Color * diffPower;
         vec3 reflectDir = reflect(-lightDir, norm);
         float specPower = pow(max(dot(viewDir, reflectDir), 0.0), u_Material.Shininess);
-        vec3 litSpecular = u_Material.Specular.rgb * specPower * u_Lights[i].Color;
+        vec3 litSpecular = u_Material.Specular.rgb * specMap * specPower * u_Lights[i].Color;
         result += litDiffuse + litSpecular;
     }
 

@@ -86,6 +86,18 @@ func (b *Button) Update(deltaTime int64) (ok bool) {
 }
 
 func (b *Button) Close() {
+	if !b.Initialized() {
+		return
+	}
+
+	if b.clickDispatcher != nil {
+		close(b.clickDispatcher)
+	}
+
+	if b.depressedDispatcher != nil {
+		close(b.depressedDispatcher)
+	}
+
 	b.text.Close()
 	b.bounds.Close()
 	b.View.Close()
@@ -196,6 +208,7 @@ func (b *Button) initDispatchers() {
 		default:
 		}
 	})
+
 	go b.handleClick()
 	go b.handleDepressed()
 }

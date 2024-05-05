@@ -75,6 +75,18 @@ func (s *Slider) Update(deltaTime int64) (ok bool) {
 }
 
 func (s *Slider) Close() {
+	if !s.Initialized() {
+		return
+	}
+
+	if s.valueChangingDispatcher != nil {
+		close(s.valueChangingDispatcher)
+	}
+
+	if s.valueChangedDispatcher != nil {
+		close(s.valueChangedDispatcher)
+	}
+
 	s.rail.Close()
 	s.button.Close()
 	s.View.Close()
@@ -228,6 +240,7 @@ func (s *Slider) initLayout() {
 func (s *Slider) initDispatchers() {
 	s.valueChangingDispatcher = make(chan float32, 1024)
 	s.valueChangedDispatcher = make(chan float32, 64)
+
 	go s.handleValueChanging()
 	go s.handleValueChanged()
 }

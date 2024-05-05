@@ -102,6 +102,14 @@ func (s *Shape3D) initViewport() {
 func (s *Shape3D) initModel() {
 	s.modelInstance = newModelInstance(s.modelAsset, s)
 	s.modelRenderer = newModelRenderer(s.modelInstance)
+
+	if s.camera != nil {
+		s.modelRenderer.setCamera(s.camera)
+	}
+
+	if s.lighting != nil {
+		s.modelRenderer.setLighting(s.lighting)
+	}
 }
 
 func (s *Shape3D) beginDraw() {

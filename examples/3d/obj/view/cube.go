@@ -37,10 +37,8 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	model.ComputeTangents(true)
 
 	// The default shader that the obj package uses is gfx.Shape3DShader.
-	// That shader fully supports obj.BasicMaterial, except for
-	// sampling normal and specular maps. For that, we need to
-	// provide a capable shader such as this one:
-	model.SetDefaultShader(window.Assets().Get(gfx.Shape3DBumpedSpecularShader).(gfx.Shader))
+	// That shader fully supports obj.BasicMaterial.
+	model.SetDefaultShader(window.Assets().Get(gfx.Shape3DShader).(gfx.Shader))
 	// That will set the default shader assigned to materials,
 	// though you can always load the model now and change the
 	// shader for any given material and each face can be rendered
@@ -69,7 +67,7 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	lighting.Unlock()
 
 	// If you need to change the material at runtime...
-	// model.Load() // since it hasn't been initialized yet (by the Window), we need to pre-load
+	// model.Load() // since it hasn't been initialized yet (by the Window), we need to preload
 	// material := model.Meshes()[0].Faces()[0].AttachedMaterial().(*obj.BasicMaterial)
 	// material.Lock()                       // again, not needed now
 	// material.Properties.Transparency = .5 // make it transparent!

@@ -30,26 +30,26 @@ type Shape2D struct {
 	vao uint32
 	vbo uint32
 
-	shapeShader    Shader
-	texShapeShader Shader
-	blurXShader    Shader
-	blurYShader    Shader
-	textureShader  Shader
+	colorShapeShader Shader
+	texShapeShader   Shader
+	blurXShader      Shader
+	blurYShader      Shader
+	textureShader    Shader
 
-	shapeShaderBinding    *ShaderBinding
-	texShapeShaderBinding *ShaderBinding
-	boundStruct           *shaderTransform
+	colorShapeShaderBinding *ShaderBinding
+	texShapeShaderBinding   *ShaderBinding
+	boundStruct             *shaderTransform
 
-	posAttribLoc         int32
-	posTexShapeAttribLoc int32
-	uvTexShapeAttribLoc  int32
+	posColorShapeAttribLoc int32
+	posTexShapeAttribLoc   int32
+	uvTexShapeAttribLoc    int32
 
-	shapeColorUniformLoc    int32
-	texShapeColorUniformLoc int32
-	shapeTexUniformLoc      int32
-	blurAmountUniformLoc    int32
-	blurTex1UniformLoc      int32
-	blurTex2UniformLoc      int32
+	colorShapeColorUniformLoc int32
+	texShapeColorUniformLoc   int32
+	texShapeTextureUniformLoc int32
+	blurAmountUniformLoc      int32
+	blurTex1UniformLoc        int32
+	blurTex2UniformLoc        int32
 
 	texture Texture
 
@@ -132,16 +132,16 @@ func (s *Shape2D) Draw(deltaTime int64) (ok bool) {
 	s.beginDraw()
 
 	if s.texture == nil {
-		s.shapeShader.Activate()
+		s.colorShapeShader.Activate()
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, 0)
-		gl.Uniform4fv(s.shapeColorUniformLoc, 1, &s.color[0])
-		s.shapeShaderBinding.Update(deltaTime)
+		gl.Uniform4fv(s.colorShapeColorUniformLoc, 1, &s.color[0])
+		s.colorShapeShaderBinding.Update(deltaTime)
 	} else {
 		s.texShapeShader.Activate()
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, s.texture.GlName())
-		gl.Uniform1i(s.shapeTexUniformLoc, 0)
+		gl.Uniform1i(s.texShapeTextureUniformLoc, 0)
 		gl.Uniform4fv(s.texShapeColorUniformLoc, 1, &s.color[0])
 		s.texShapeShaderBinding.Update(deltaTime)
 	}
@@ -612,25 +612,26 @@ func (s *Shape2D) initBlurTextureVertices() {
 
 func (s *Shape2D) initShaders() {
 	assets := s.Window().Assets()
-	s.shapeShader = assets.Get(Shape2DShader).(Shader)
-	s.texShapeShader = assets.Get(TexturedShape2DShader).(Shader)
+
+	s.colorShapeShader = assets.Get(Shape2DNoTextureShader).(Shader)
+	s.texShapeShader = assets.Get(Shape2DShader).(Shader)
 	s.blurXShader = assets.Get(BlurXShader).(Shader)
 	s.blurYShader = assets.Get(BlurYShader).(Shader)
 	s.textureShader = assets.Get(TextureShader).(Shader)
 
-	s.posAttribLoc = s.shapeShader.GetAttribLocation("a_Position")
+	s.posColorShapeAttribLoc = s.colorShapeShader.GetAttribLocation("a_Position")
 	s.posTexShapeAttribLoc = s.texShapeShader.GetAttribLocation("a_Position")
 	s.uvTexShapeAttribLoc = s.texShapeShader.GetAttribLocation("a_UV")
 
-	s.shapeColorUniformLoc = s.shapeShader.GetUniformLocation("u_Color")
+	s.colorShapeColorUniformLoc = s.colorShapeShader.GetUniformLocation("u_Color")
 	s.texShapeColorUniformLoc = s.texShapeShader.GetUniformLocation("u_Color")
-	s.shapeTexUniformLoc = s.texShapeShader.GetUniformLocation("u_DiffuseMap")
+	s.texShapeTextureUniformLoc = s.texShapeShader.GetUniformLocation("u_DiffuseMap")
 	s.blurAmountUniformLoc = s.blurXShader.GetUniformLocation("u_BlurAmount")
 	s.blurTex1UniformLoc = s.blurXShader.GetUniformLocation("u_TextureMap")
 	s.blurTex2UniformLoc = s.textureShader.GetUniformLocation("u_TextureMap")
 
-	s.shapeShaderBinding = NewShaderBinding(s.shapeShader, s.boundStruct, nil)
-	s.shapeShaderBinding.Init()
+	s.colorShapeShaderBinding = NewShaderBinding(s.colorShapeShader, s.boundStruct, nil)
+	s.colorShapeShaderBinding.Init()
 
 	s.texShapeShaderBinding = NewShaderBinding(s.texShapeShader, s.boundStruct, nil)
 	s.texShapeShaderBinding.Init()
@@ -647,7 +648,7 @@ func (s *Shape2D) initShapeVao() {
 
 	if s.texture == nil {
 		gl.EnableVertexAttribArray(0)
-		gl.VertexAttribPointerWithOffset(uint32(s.posAttribLoc), 2, gl.FLOAT, false, stride, 0)
+		gl.VertexAttribPointerWithOffset(uint32(s.posColorShapeAttribLoc), 2, gl.FLOAT, false, stride, 0)
 	} else {
 		stride = 16
 		gl.EnableVertexAttribArray(0)
@@ -784,8 +785,8 @@ func (s *Shape2D) closeBlurVao() {
 }
 
 func (s *Shape2D) closeBindings() {
-	if s.shapeShaderBinding != nil {
-		s.shapeShaderBinding.Close()
+	if s.colorShapeShaderBinding != nil {
+		s.colorShapeShaderBinding.Close()
 	}
 
 	if s.texShapeShaderBinding != nil {
