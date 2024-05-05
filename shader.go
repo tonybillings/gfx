@@ -54,7 +54,7 @@ const (
 	Shape3DNoNormalSpecularMapsShader = "_shader_shape3d_no_norm_spec"
 
 	// Shape3DNoLightsShader Can be used by Shape3D to render a
-	// textured Model with support for: ambient/diffuse/emissive/transparent
+	// textured Model with support for: diffuse/emissive/transparent
 	// lighting and diffuse maps.  Expects the Model vertex buffer to have
 	// the PositionUvVaoLayout.
 	Shape3DNoLightsShader = "_shader_shape3d_no_lights"
