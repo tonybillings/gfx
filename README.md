@@ -80,4 +80,4 @@ Most, if not all, of the features are flexed in the example code.
 
 ![cube](img/cube.png)  
 
-![stone](img/stone.png)  
+![shading](img/shading.png)  
