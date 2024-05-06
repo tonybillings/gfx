@@ -106,6 +106,7 @@ type GlfwWindow interface {
 	Height() int
 	Borderless() bool
 	Resizable() bool
+	MultiSamplingEnabled() bool
 	IsSecondary() bool
 
 	Init(*glfw.Window, context.Context)
@@ -117,7 +118,7 @@ type GlfwWindow interface {
  gfx Functions
 ******************************************************************************/
 
-func gfxNewWindow(title string, width, height int, borderless, resizable bool) (*glfw.Window, error) {
+func gfxNewWindow(title string, width, height int, borderless, resizable, multisampling bool) (*glfw.Window, error) {
 	if !gfxInitialized {
 		return nil, fmt.Errorf("GLFW not initialized: must call gfx.Init() from the main thread first")
 	}
@@ -141,6 +142,12 @@ func gfxNewWindow(title string, width, height int, borderless, resizable bool) (
 		glfw.WindowHint(glfw.Resizable, glfw.True)
 	} else {
 		glfw.WindowHint(glfw.Resizable, glfw.False)
+	}
+
+	if multisampling {
+		glfw.WindowHint(glfw.Samples, 4)
+	} else {
+		glfw.WindowHint(glfw.Samples, 0)
 	}
 
 	win, err := glfw.CreateWindow(w, h, title, nil, nil)
@@ -172,7 +179,11 @@ func gfxNewWindow(title string, width, height int, borderless, resizable bool) (
 func gfxProcessInitQueue() {
 	for i := len(gfxWindowInitQueue) - 1; i >= 0; i-- {
 		win := gfxWindowInitQueue[i]
-		if glwin, err := gfxNewWindow(win.Title(), win.Width(), win.Height(), win.Borderless(), win.Resizable()); err != nil {
+		if glwin, err := gfxNewWindow(
+			win.Title(),
+			win.Width(), win.Height(),
+			win.Borderless(), win.Resizable(),
+			win.MultiSamplingEnabled()); err != nil {
 			panic(err)
 		} else {
 			win.Init(glwin, gfxContext)

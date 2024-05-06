@@ -36,13 +36,19 @@ func main() {
 	panicOnErr(gfx.Init())
 	defer gfx.Close()
 
-	// The first hint hides the window border / title bar...
-	win := gfx.NewWindow(gfx.NewWindowHints(true, false)). // ...while the second allows the window to be maximized/resized
-								SetTitle("You should not see this text!").
-								SetWidth(windowWidth).
-								SetHeight(windowHeight).
-								SetClearColor(gfx.Black).
-								EnableQuitKey() // the quit key is ESC (escape)
+	// The first hint hides the window border / title bar; the second
+	// allows the window to be maximized/resized; the third enables/disables
+	// multisampling (4xMSAA).
+	hints := gfx.NewWindowHints(true, false, false)
+
+	// If no hints are provided, the default result is a decorated (not
+	// borderless), fixed-sized window with MSAA disabled.
+	win := gfx.NewWindow(hints).
+		SetTitle("You should not see this text!").
+		SetWidth(windowWidth).
+		SetHeight(windowHeight).
+		SetClearColor(gfx.Black).
+		EnableQuitKey() // the quit key is ESC (escape)
 
 	// Regardless of hints, you can set the window to run in fullscreen mode at any time via:
 	// win.SetFullscreenEnabled(true)

@@ -22,10 +22,11 @@ import (
 type Window struct {
 	glwin *glfw.Window
 
-	title      string
-	borderless bool
-	resizable  bool
-	secondary  bool
+	title         string
+	borderless    bool
+	resizable     bool
+	multisampling bool
+	secondary     bool
 
 	width      int
 	height     int
@@ -96,14 +97,16 @@ type Window struct {
 ******************************************************************************/
 
 type WindowHints struct {
-	Borderless bool
-	Resizable  bool
+	Borderless    bool
+	Resizable     bool
+	MultiSampling bool
 }
 
-func NewWindowHints(borderless, resizable bool) *WindowHints {
+func NewWindowHints(borderless, resizable, multisampling bool) *WindowHints {
 	return &WindowHints{
-		Borderless: borderless,
-		Resizable:  resizable,
+		Borderless:    borderless,
+		Resizable:     resizable,
+		MultiSampling: multisampling,
 	}
 }
 
@@ -149,6 +152,13 @@ func (w *Window) Borderless() (borderless bool) {
 func (w *Window) Resizable() (resizable bool) {
 	w.configMutex.Lock()
 	resizable = w.resizable
+	w.configMutex.Unlock()
+	return
+}
+
+func (w *Window) MultiSamplingEnabled() (enabled bool) {
+	w.configMutex.Lock()
+	enabled = w.multisampling
 	w.configMutex.Unlock()
 	return
 }
@@ -1370,13 +1380,13 @@ func (w *Window) Assets() (lib *AssetLibrary) {
 func NewWindow(hints ...*WindowHints) *Window {
 	winHints := WindowHints{}
 	if len(hints) > 0 {
-		winHints.Borderless = hints[0].Borderless
-		winHints.Resizable = hints[0].Resizable
+		winHints = *hints[0]
 	}
 
 	w := &Window{
 		borderless:     winHints.Borderless,
 		resizable:      winHints.Resizable,
+		multisampling:  winHints.MultiSampling,
 		clearColorVec:  mgl32.Vec4{0, 0, 0, 1},
 		clearColorRgba: color.RGBA{A: 255},
 		opacity:        255,
