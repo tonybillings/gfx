@@ -1309,6 +1309,10 @@ func (w *Window) EnableMouseTracking() *Window {
 func (w *Window) ReadyChan() <-chan bool {
 	c := make(chan bool)
 	w.stateMutex.Lock()
+	if w.initialized.Load() {
+		close(c)
+		return c
+	}
 	w.readyChannels = append(w.readyChannels, c)
 	w.stateMutex.Unlock()
 	return c
