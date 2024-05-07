@@ -78,6 +78,7 @@ var (
 
 	gfxInitialized bool
 	gfxRunning     bool
+	gfxClosedChan  chan struct{}
 
 	gfxWindow  GlfwWindow
 	gfxWindows []GlfwWindow
@@ -215,6 +216,9 @@ func gfxResetState() {
 	gfxCancelFunc = nil
 	gfxWindowInitQueue = make([]GlfwWindow, 0)
 	gfxWindowCloseQueue = make([]GlfwWindow, 0)
+	if gfxClosedChan != nil {
+		close(gfxClosedChan)
+	}
 }
 
 func gfxClose() {
@@ -245,6 +249,7 @@ func Init() error {
 	glfw.WindowHint(glfw.DoubleBuffer, glfw.True)
 
 	gfxInitialized = true
+	gfxClosedChan = make(chan struct{})
 	gfxStateMutex.Unlock()
 
 	return nil
@@ -383,4 +388,5 @@ func Close() {
 
 	gfxCancelFunc()
 	gfxStateMutex.Unlock()
+	<-gfxClosedChan
 }
