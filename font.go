@@ -160,7 +160,7 @@ func textToTexture(text string, ttf *truetype.Font, alignment Alignment, rgba co
 		scale[1] = scaleY
 	}
 
-	id := fmt.Sprintf("%s%v%v%v%f%f", text, ttf, alignment, rgba, scale[0], scale[1])
+	id := fmt.Sprintf("%s%v%v%v%f%f", text, ttf.Name(1), alignment, rgba, scale[0], scale[1])
 
 	if cacheEnabled {
 		if cached := cache[id]; cached != nil {
@@ -201,6 +201,7 @@ func textToTexture(text string, ttf *truetype.Font, alignment Alignment, rgba co
 	_, _ = ctx.DrawString(text, pt)
 
 	texture := NewTexture2D(id, img)
+
 	if cacheEnabled {
 		cache[id] = texture
 	}

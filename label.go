@@ -233,7 +233,9 @@ func (l *Label) CacheEnabled() bool {
 func (l *Label) SetCacheEnabled(enabled bool) *Label {
 	l.stateMutex.Lock()
 	if enabled {
-		l.cache = l.Window().labelCache
+		if w := l.Window(); w != nil {
+			l.cache = w.labelCache
+		}
 	} else {
 		l.cache = nil
 	}
@@ -286,9 +288,11 @@ func NewLabel() *Label {
 	}
 
 	l.SetName(defaultLabelName)
+	l.SetCacheEnabled(true)
 	l.fill.SetParent(l)
 	l.border.SetParent(l)
 	l.textView.SetParent(l)
+
 	l.defaultLayout()
 
 	return l

@@ -1395,6 +1395,7 @@ func NewWindow(hints ...*WindowHints) *Window {
 		clearColorRgba: color.RGBA{A: 255},
 		opacity:        255,
 		hasFocus:       true,
+		labelCache:     make(map[string]*Texture2D),
 	}
 
 	w.SetWidth(defaultWinWidth)
