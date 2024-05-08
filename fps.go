@@ -43,7 +43,7 @@ func (c *FpsCounter) Init() (ok bool) {
 	return true
 }
 
-func (c *FpsCounter) Update(deltaTime int64) bool {
+func (c *FpsCounter) Update(deltaTime int64) (ok bool) {
 	if !c.ObjectBase.Update(deltaTime) {
 		return false
 	}
@@ -56,9 +56,10 @@ func (c *FpsCounter) Update(deltaTime int64) bool {
 		c.text.SetText(strconv.Itoa(fps))
 		c.sum = 0
 		c.count = 0
+		return c.text.Update(deltaTime)
 	}
 
-	return c.text.Update(deltaTime)
+	return true
 }
 
 func (c *FpsCounter) Draw(deltaTime int64) bool {
