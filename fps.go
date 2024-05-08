@@ -112,6 +112,10 @@ func (c *FpsCounter) SetUpdateInterval(milliseconds int) *FpsCounter {
 	return c
 }
 
+func (c *FpsCounter) Label() *Label {
+	return c.text
+}
+
 /******************************************************************************
  New FpsCounter Function
 ******************************************************************************/
