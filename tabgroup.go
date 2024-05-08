@@ -17,10 +17,9 @@ const (
 type TabGroup struct {
 	WindowObjectBase
 
-	tabIdx      int
-	tabAction   TabAction
-	navKeys          NavKeys
-	keyEventHandlers []*KeyEventHandler
+	tabIdx    int
+	tabAction TabAction
+	navKeys   NavKeys
 
 	tranTarget      WindowObject
 	tranQuad        *Shape2D
@@ -59,9 +58,7 @@ func (g *TabGroup) Close() {
 		return
 	}
 
-	for _, h := range g.keyEventHandlers {
-		g.window.RemoveKeyEventHandler(h)
-	}
+	g.window.RemoveKeyEventHandlers(g)
 
 	g.WindowObjectBase.Close()
 }
@@ -147,35 +144,26 @@ func (g *TabGroup) updateNav() {
 	g.stateMutex.Lock()
 	switch g.navKeys {
 	case TabAndArrowKeys:
-		keyHandler := g.window.AddKeyEventHandler(glfw.KeyTab, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
+		g.window.AddKeyEventHandler(g, glfw.KeyTab, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
 			g.Next()
 		})
-		g.keyEventHandlers = append(g.keyEventHandlers, keyHandler)
-
-		keyHandler = g.window.AddKeyEventHandler(glfw.KeyRight, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
+		g.window.AddKeyEventHandler(g, glfw.KeyRight, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
 			g.Next()
 		})
-		g.keyEventHandlers = append(g.keyEventHandlers, keyHandler)
-
-		keyHandler = g.window.AddKeyEventHandler(glfw.KeyLeft, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
+		g.window.AddKeyEventHandler(g, glfw.KeyLeft, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
 			g.Previous()
 		})
-		g.keyEventHandlers = append(g.keyEventHandlers, keyHandler)
 	case TabKeyOnly:
-		keyHandler := g.window.AddKeyEventHandler(glfw.KeyTab, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
+		g.window.AddKeyEventHandler(g, glfw.KeyTab, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
 			g.Next()
 		})
-		g.keyEventHandlers = append(g.keyEventHandlers, keyHandler)
 	case ArrowKeysOnly:
-		keyHandler := g.window.AddKeyEventHandler(glfw.KeyRight, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
+		g.window.AddKeyEventHandler(g, glfw.KeyRight, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
 			g.Next()
 		})
-		g.keyEventHandlers = append(g.keyEventHandlers, keyHandler)
-
-		keyHandler = g.window.AddKeyEventHandler(glfw.KeyLeft, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
+		g.window.AddKeyEventHandler(g, glfw.KeyLeft, glfw.Press, func(w *Window, key glfw.Key, action glfw.Action) {
 			g.Previous()
 		})
-		g.keyEventHandlers = append(g.keyEventHandlers, keyHandler)
 	}
 	g.stateMutex.Unlock()
 }
@@ -358,14 +346,10 @@ func (g *TabGroup) NavKeys() NavKeys {
 
 func (g *TabGroup) SetNavKeys(keys NavKeys) *TabGroup {
 	g.stateMutex.Lock()
-	for _, h := range g.keyEventHandlers {
-		g.window.RemoveKeyEventHandler(h)
-	}
-
+	g.window.RemoveKeyEventHandlers(g)
 	g.navKeys = keys
 	g.stateMutex.Unlock()
 	g.updateNav()
-
 	return g
 }
 

@@ -13,10 +13,19 @@ type KeyEvent struct {
 	Action glfw.Action
 }
 
+func (e *KeyEvent) Event() uint64 {
+	return (uint64(e.Key) << 32) | uint64(e.Action)
+}
+
 type KeyEventHandler struct {
+	Receiver any
 	Key      glfw.Key
 	Action   glfw.Action
 	Callback func(*Window, glfw.Key, glfw.Action)
+}
+
+func (h *KeyEventHandler) Event() uint64 {
+	return (uint64(h.Key) << 32) | uint64(h.Action)
 }
 
 /******************************************************************************

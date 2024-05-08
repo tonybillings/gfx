@@ -175,7 +175,7 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 	// data stored in graphics card memory (VRAM).
 	emojiTexture := gfx.NewTexture2D("emoji.t2d", "emoji.png")
 	// Finally, because Texture assets require participation in the
-	// Init()/Close() life-cycle, they should be managed by an
+	// Init()/Close() life cycle, they should be managed by an
 	// AssetLibrary, so here we'll just add to the default one:
 	window.Assets().Add(emojiTexture)
 	// Alternatively, you could manually initialize/close the texture

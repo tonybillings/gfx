@@ -196,19 +196,19 @@ func New2DView(window *gfx.Window) gfx.WindowObject {
 	tabGroup.AddChild(tab8())
 	tabGroup.AddChild(tab9())
 
-	window.AddKeyEventHandler(glfw.KeyPageUp, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
+	window.AddKeyEventHandler(tabGroup, glfw.KeyPageUp, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
 		tabGroup.TransitionPrevious()
 	})
 
-	window.AddKeyEventHandler(glfw.KeyPageDown, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
+	window.AddKeyEventHandler(tabGroup, glfw.KeyPageDown, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
 		tabGroup.TransitionNext()
 	})
 
-	window.AddKeyEventHandler(glfw.KeyHome, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
+	window.AddKeyEventHandler(tabGroup, glfw.KeyHome, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
 		tabGroup.Transition(tabGroup.IndexOf("home"))
 	})
 
-	window.AddKeyEventHandler(glfw.KeyF12, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
+	window.AddKeyEventHandler(tabGroup, glfw.KeyF12, glfw.Press, func(window *gfx.Window, key glfw.Key, action glfw.Action) {
 		go func() {
 			pngBytes := window.ToPNG()
 			if homeDir, err := os.UserHomeDir(); err != nil {

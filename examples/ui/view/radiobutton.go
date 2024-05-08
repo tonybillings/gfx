@@ -162,7 +162,7 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 		}
 	})
 
-	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}
@@ -170,7 +170,7 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 		signalLine.SetThickness(signalLine.Thickness() + 1)
 	})
 
-	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}

@@ -75,7 +75,7 @@ type Window struct {
 	labelCache map[string]*Texture2D
 
 	keyEventChan          chan *KeyEvent
-	keyEventHandlers      []*KeyEventHandler
+	keyEventHandlers      map[uint64][]*KeyEventHandler
 	keyEventHandlersMutex sync.Mutex
 
 	mouseTrackingEnabled atomic.Bool
@@ -507,8 +507,8 @@ func (w *Window) handleKeyEvents() {
 			}
 
 			w.keyEventHandlersMutex.Lock()
-			for _, h := range w.keyEventHandlers {
-				if h.Key == keyEvent.Key && h.Action == keyEvent.Action {
+			if handlers, exists := w.keyEventHandlers[keyEvent.Event()]; exists {
+				for _, h := range handlers {
 					h.Callback(w, keyEvent.Key, keyEvent.Action)
 				}
 			}
@@ -569,34 +569,43 @@ func (w *Window) tick(deltaTime int64) {
 	w.drawObjects(deltaTime)
 }
 
-func (w *Window) AddKeyEventHandler(key glfw.Key, action glfw.Action, callback func(window *Window, key glfw.Key, action glfw.Action)) *KeyEventHandler {
+func (w *Window) AddKeyEventHandler(receiver any, key glfw.Key, action glfw.Action,
+	callback func(window *Window, key glfw.Key, action glfw.Action)) *KeyEventHandler {
 	w.keyEventHandlersMutex.Lock()
 	handler := &KeyEventHandler{
+		Receiver: receiver,
 		Key:      key,
 		Action:   action,
 		Callback: callback,
 	}
 
-	w.keyEventHandlers = append(w.keyEventHandlers, handler)
+	if handlers, ok := w.keyEventHandlers[handler.Event()]; ok {
+		w.keyEventHandlers[handler.Event()] = append(handlers, handler)
+	} else {
+		w.keyEventHandlers[handler.Event()] = []*KeyEventHandler{handler}
+	}
 	w.keyEventHandlersMutex.Unlock()
 	return handler
 }
 
-func (w *Window) RemoveKeyEventHandler(handler *KeyEventHandler) {
+func (w *Window) RemoveKeyEventHandlers(receiver any) {
 	if len(w.keyEventHandlers) == 0 {
 		return
 	}
 
 	w.keyEventHandlersMutex.Lock()
-	index := -1
-	for i, h := range w.keyEventHandlers {
-		if h == handler {
-			index = i
-			break
+	for event, handlers := range w.keyEventHandlers {
+		index := -1
+		for i, h := range handlers {
+			if h.Receiver == receiver {
+				index = i
+				break
+			}
 		}
-	}
-	if index != -1 {
-		w.keyEventHandlers = append(w.keyEventHandlers[:index], w.keyEventHandlers[index+1:]...)
+		if index != -1 {
+			handlers = append(handlers[:index], handlers[index+1:]...)
+		}
+		w.keyEventHandlers[event] = handlers
 	}
 	w.keyEventHandlersMutex.Unlock()
 }
@@ -617,7 +626,7 @@ func (w *Window) EnableFullscreenKey() *Window {
 	w.configMutex.Lock()
 	if !w.fullscreenButtonEnabled {
 		w.fullscreenButtonEnabled = true
-		w.AddKeyEventHandler(glfw.KeyF11, glfw.Press, func(win *Window, _ glfw.Key, _ glfw.Action) {
+		w.AddKeyEventHandler(w, glfw.KeyF11, glfw.Press, func(win *Window, _ glfw.Key, _ glfw.Action) {
 			win.SetFullscreenEnabled(!win.IsFullscreen())
 		})
 	}
@@ -629,8 +638,7 @@ func (w *Window) EnableQuitKey(cancelFuncs ...context.CancelFunc) *Window {
 	w.configMutex.Lock()
 	if !w.quitButtonEnabled {
 		w.quitButtonEnabled = true
-
-		w.AddKeyEventHandler(glfw.KeyEscape, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
+		w.AddKeyEventHandler(w, glfw.KeyEscape, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 			for _, cancelFunc := range cancelFuncs {
 				cancelFunc()
 			}
@@ -1388,14 +1396,15 @@ func NewWindow(hints ...*WindowHints) *Window {
 	}
 
 	w := &Window{
-		borderless:     winHints.Borderless,
-		resizable:      winHints.Resizable,
-		multisampling:  winHints.MultiSampling,
-		clearColorVec:  mgl32.Vec4{0, 0, 0, 1},
-		clearColorRgba: color.RGBA{A: 255},
-		opacity:        255,
-		hasFocus:       true,
-		labelCache:     make(map[string]*Texture2D),
+		borderless:       winHints.Borderless,
+		resizable:        winHints.Resizable,
+		multisampling:    winHints.MultiSampling,
+		clearColorVec:    mgl32.Vec4{0, 0, 0, 1},
+		clearColorRgba:   color.RGBA{A: 255},
+		opacity:          255,
+		hasFocus:         true,
+		labelCache:       make(map[string]*Texture2D),
+		keyEventHandlers: make(map[uint64][]*KeyEventHandler),
 	}
 
 	w.SetWidth(defaultWinWidth)

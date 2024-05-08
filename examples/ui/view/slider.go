@@ -35,14 +35,14 @@ func newRawSignalView(window *gfx.Window, signalSampleCount int, signalSource *s
 	signalLine.EnableInspector()
 	signalLine.SetInspectorAnchor(gfx.TopRight)
 
-	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}
 		signalLine.SetThickness(signalLine.Thickness() + 1)
 	})
 
-	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}
@@ -159,14 +159,14 @@ func newLowPassFilterView(window *gfx.Window, signalSampleCount int, signalSourc
 	signalLine.SetInspectorAnchor(gfx.TopRight)
 	signalLine.AddFilter(filter)
 
-	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}
 		signalLine.SetThickness(signalLine.Thickness() + 1)
 	})
 
-	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}
@@ -283,14 +283,14 @@ func newHighPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	signalLine.SetInspectorAnchor(gfx.TopRight)
 	signalLine.AddFilter(filter)
 
-	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}
 		signalLine.SetThickness(signalLine.Thickness() + 1)
 	})
 
-	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}
@@ -408,14 +408,14 @@ func newBandPassFilterView(window *gfx.Window, signalSampleCount int, signalSour
 	signalLine.SetInspectorAnchor(gfx.TopRight)
 	signalLine.AddFilter(filter)
 
-	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}
 		signalLine.SetThickness(signalLine.Thickness() + 1)
 	})
 
-	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(signalLine, glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !signalLine.Enabled() {
 			return
 		}

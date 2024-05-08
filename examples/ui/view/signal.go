@@ -27,7 +27,7 @@ func NewSignalsView(ctx context.Context, window *gfx.Window, signalSampleCount i
 		labelsIdx = (labelsIdx + 1) % len(labels)
 	}
 
-	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(sg, glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !sg.Enabled() {
 			return
 		}
@@ -36,7 +36,7 @@ func NewSignalsView(ctx context.Context, window *gfx.Window, signalSampleCount i
 		}
 	})
 
-	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(sg, glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !sg.Enabled() {
 			return
 		}
@@ -157,7 +157,7 @@ func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampl
 		labelsIdx = (labelsIdx + 1) % len(labels)
 	}
 
-	window.AddKeyEventHandler(glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(sg, glfw.KeyUp, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !sg.Enabled() {
 			return
 		}
@@ -166,7 +166,7 @@ func NewSignalInspectorView(ctx context.Context, window *gfx.Window, signalSampl
 		}
 	})
 
-	window.AddKeyEventHandler(glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
+	window.AddKeyEventHandler(sg, glfw.KeyDown, glfw.Press, func(_ *gfx.Window, _ glfw.Key, _ glfw.Action) {
 		if !sg.Enabled() {
 			return
 		}

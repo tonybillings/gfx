@@ -20,7 +20,7 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// .obj file on the local file system.
 	model := obj.NewModel("cube", "cube.obj")
 	// Unlike with the "in_mem" example, this Model asset needs to
-	// participate in the Init()/Close() life-cycle.  Like all
+	// participate in the Init()/Close() life cycle.  Like all
 	// Assets, it's best to manage them via an AssetLibrary anyway,
 	// so we'll add it to the Window's asset library.  If we didn't
 	// use an asset library then the file references in the OBJ/MTL
@@ -77,8 +77,8 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// material.DiffuseMap = gfx.NewTexture2D("MyTexture", gfx.Red)
 	// In that example, the texture is set to a solid color, but regardless
 	// since you provided the texture (it wasn't loaded by the material library
-	// as per the materials defined therein), you're responsible for its life-cycle.
-	// Adding it to an AssetLibrary ensures the life-cycle is properly handled:
+	// as per the materials defined therein), you're responsible for its life cycle.
+	// Adding it to an AssetLibrary ensures the life cycle is properly handled:
 	// window.Assets().Add(material.DiffuseMap)
 
 	// You could also change the transforms for individual meshes, where

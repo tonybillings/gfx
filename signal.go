@@ -173,6 +173,7 @@ func (l *SignalLine) Update(deltaTime int64) (ok bool) {
 }
 
 func (l *SignalLine) Close() {
+	l.window.RemoveKeyEventHandlers(l)
 	l.View.Close()
 	l.label.Close()
 	l.inspector.Close()
@@ -217,6 +218,7 @@ func (g *SignalGroup) Update(deltaTime int64) (ok bool) {
 }
 
 func (g *SignalGroup) Close() {
+	g.window.RemoveKeyEventHandlers(g)
 	g.View.Close()
 	g.inspector.Close()
 }
@@ -852,10 +854,10 @@ func (l *SignalLine) EnableInspector(inspectKey ...glfw.Key) {
 	}
 	l.inspectKeyRegistered.Store(true)
 
-	l.window.AddKeyEventHandler(l.inspectorKey, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
+	l.window.AddKeyEventHandler(l, l.inspectorKey, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 		l.inspector.keyPressed = true
 	})
-	l.window.AddKeyEventHandler(l.inspectorKey, glfw.Release, func(_ *Window, _ glfw.Key, _ glfw.Action) {
+	l.window.AddKeyEventHandler(l, l.inspectorKey, glfw.Release, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 		l.inspector.keyPressed = false
 	})
 }
@@ -890,7 +892,7 @@ func (l *SignalLine) EnableDataExportKey(key glfw.Key) *SignalLine {
 	}
 	l.dataExportKeyRegistered.Store(true)
 
-	l.window.AddKeyEventHandler(key, glfw.Press, func(window *Window, key glfw.Key, action glfw.Action) {
+	l.window.AddKeyEventHandler(l, key, glfw.Press, func(window *Window, key glfw.Key, action glfw.Action) {
 		_ = ExportSignalDataToCsv(l)
 	})
 
@@ -995,10 +997,10 @@ func (g *SignalGroup) EnableInspector(inspectKey ...glfw.Key) {
 	}
 	g.inspectKeyRegistered.Store(true)
 
-	g.window.AddKeyEventHandler(g.inspectorKey, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
+	g.window.AddKeyEventHandler(g, g.inspectorKey, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 		g.inspector.keyPressed = true
 	})
-	g.window.AddKeyEventHandler(g.inspectorKey, glfw.Release, func(_ *Window, _ glfw.Key, _ glfw.Action) {
+	g.window.AddKeyEventHandler(g, g.inspectorKey, glfw.Release, func(_ *Window, _ glfw.Key, _ glfw.Action) {
 		g.inspector.keyPressed = false
 	})
 }
@@ -1043,7 +1045,7 @@ func (g *SignalGroup) EnableDataExportKey(key glfw.Key) *SignalGroup {
 	}
 	g.dataExportKeyRegistered.Store(true)
 
-	g.window.AddKeyEventHandler(key, glfw.Press, func(window *Window, key glfw.Key, action glfw.Action) {
+	g.window.AddKeyEventHandler(g, key, glfw.Press, func(window *Window, key glfw.Key, action glfw.Action) {
 		_ = ExportSignalGroupDataToCsv(g)
 	})
 
