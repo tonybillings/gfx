@@ -64,7 +64,6 @@ type SignalLine struct {
 
 	inspector            *SignalInspector
 	inspectorKey         glfw.Key
-	inspectorActive      atomic.Bool
 	inspectKeyRegistered atomic.Bool
 
 	dataExportKey           glfw.Key
@@ -103,7 +102,9 @@ type SignalGroup struct {
 type SignalInspector struct {
 	WindowObjectBase
 
-	bounds *BoundingBox
+	bounds     *BoundingBox
+	keyPressed bool
+	mouseOver  bool
 
 	panel    *View
 	minValue *Label
@@ -241,8 +242,8 @@ func (i *SignalInspector) Init() (ok bool) {
 }
 
 func (i *SignalInspector) Update(deltaTime int64) (ok bool) {
-	if !i.enabled.Load() {
-		return true
+	if !i.enabled.Load() || !i.initialized.Load() {
+		return false
 	}
 
 	if i.stateChanged.Load() {
@@ -279,6 +280,8 @@ func (i *SignalInspector) Update(deltaTime int64) (ok bool) {
 	}
 
 	if i.bounds.MouseOver() {
+		i.mouseOver = true
+
 		var signal *SignalLine
 		if s, okay := i.Parent().(*SignalLine); okay {
 			signal = s
@@ -292,17 +295,15 @@ func (i *SignalInspector) Update(deltaTime int64) (ok bool) {
 					idx--
 				}
 				signal = sg.Children()[(signalCount-1)-idx].(*SignalLine)
-				i.SetVisibility(true)
 				updatePanel(signal)
 			} else {
-				i.SetVisibility(false)
+				i.mouseOver = false
 			}
 		} else {
-			i.SetVisibility(true)
 			updatePanel(signal)
 		}
 	} else {
-		i.SetVisibility(false)
+		i.mouseOver = false
 	}
 
 	return true
@@ -362,7 +363,7 @@ func (g *SignalGroup) Draw(deltaTime int64) (ok bool) {
 }
 
 func (i *SignalInspector) Draw(deltaTime int64) (ok bool) {
-	if !i.visible.Load() {
+	if !i.keyPressed || !i.mouseOver || !i.visible.Load() {
 		return false
 	}
 
@@ -852,18 +853,10 @@ func (l *SignalLine) EnableInspector(inspectKey ...glfw.Key) {
 	l.inspectKeyRegistered.Store(true)
 
 	l.window.AddKeyEventHandler(l.inspectorKey, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
-		if l.enabled.Load() && !l.inspectorActive.Load() {
-			l.inspectorActive.Store(true)
-			l.inspector.SetEnabled(true)
-			l.inspector.SetVisibility(true)
-		}
+		l.inspector.keyPressed = true
 	})
 	l.window.AddKeyEventHandler(l.inspectorKey, glfw.Release, func(_ *Window, _ glfw.Key, _ glfw.Action) {
-		if l.enabled.Load() && l.inspectorActive.Load() {
-			l.inspectorActive.Store(false)
-			l.inspector.SetEnabled(false)
-			l.inspector.SetVisibility(false)
-		}
+		l.inspector.keyPressed = false
 	})
 }
 
@@ -1003,18 +996,10 @@ func (g *SignalGroup) EnableInspector(inspectKey ...glfw.Key) {
 	g.inspectKeyRegistered.Store(true)
 
 	g.window.AddKeyEventHandler(g.inspectorKey, glfw.Press, func(_ *Window, _ glfw.Key, _ glfw.Action) {
-		if g.enabled.Load() && !g.inspectorActive.Load() {
-			g.inspectorActive.Store(true)
-			g.inspector.SetEnabled(true)
-			g.inspector.SetVisibility(true)
-		}
+		g.inspector.keyPressed = true
 	})
 	g.window.AddKeyEventHandler(g.inspectorKey, glfw.Release, func(_ *Window, _ glfw.Key, _ glfw.Action) {
-		if g.enabled.Load() && g.inspectorActive.Load() {
-			g.inspectorActive.Store(false)
-			g.inspector.SetEnabled(false)
-			g.inspector.SetVisibility(false)
-		}
+		g.inspector.keyPressed = false
 	})
 }
 
@@ -1182,6 +1167,7 @@ func NewSignalLine(label string, sampleCount int) *SignalLine {
 
 	sl.enabled.Store(true)
 	sl.visible.Store(true)
+
 	return sl
 }
 
@@ -1206,6 +1192,7 @@ func NewSignalGroup(defaultSampleCount int, defaultLineThickness int, colors ...
 	sg.border.SetParent(sg)
 	sg.enabled.Store(true)
 	sg.visible.Store(true)
+
 	return sg
 }
 
@@ -1233,7 +1220,8 @@ func NewSignalInspector[T SignalControl](parent T) *SignalInspector {
 
 	si.defaultLayout()
 
-	si.enabled.Store(false)
-	si.visible.Store(false)
+	si.enabled.Store(true)
+	si.visible.Store(true)
+
 	return si
 }
