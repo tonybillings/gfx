@@ -92,7 +92,7 @@ func BenchmarkSignalGroup(b *testing.B) {
 
 			ctx, cancelFunc := context.WithCancel(context.Background())
 
-			win.AddObjects(newSignalGroup(ctx, win, signalSampleCount))
+			win.AddObjects(newSignalGroup(ctx, win, signalSampleCount), gfx.NewFpsCounter())
 			win.EnableQuitKey(cancelFunc)
 			win.EnableFullscreenKey()
 
