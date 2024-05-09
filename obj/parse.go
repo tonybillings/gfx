@@ -153,6 +153,6 @@ func setFaceTangents(model *Model, face *Face) {
 	tanIdx := (len(model.tangents) / 3) - 1
 	bitanIdx := (len(model.bitangents) / 3) - 1
 
-	face.tangents = []int{tanIdx, tanIdx, tanIdx}
-	face.bitangents = []int{bitanIdx, bitanIdx, bitanIdx}
+	face.tangents = []int{tanIdx, tanIdx, tanIdx, tanIdx}
+	face.bitangents = []int{bitanIdx, bitanIdx, bitanIdx, bitanIdx}
 }

@@ -187,12 +187,23 @@ func (s *BasicShader) loadShaderFromFile(shaderType uint32, name string) uint32 
 	}
 
 	shaderBytes := make([]byte, reader.Size())
-	n, _ := reader.Read(shaderBytes)
-	if n != reader.Size() {
+
+	sb := strings.Builder{}
+	for {
+		if n, err := reader.Read(shaderBytes); n > 0 && err == nil {
+			sb.Write(shaderBytes[:n])
+		} else {
+			if err != nil {
+				panic(fmt.Errorf("shader file read error: %w", err))
+			}
+			break
+		}
+	}
+	if sb.Len() == 0 {
 		panic("unable to read shader file into memory")
 	}
 
-	return s.loadShaderFromString(shaderType, string(shaderBytes))
+	return s.loadShaderFromString(shaderType, sb.String())
 }
 
 func (s *BasicShader) loadShaderFromString(shaderType uint32, code string) uint32 {

@@ -9,6 +9,7 @@ import (
 	"golang.org/x/image/math/fixed"
 	"image"
 	"image/color"
+	"strings"
 	"tonysoft.com/gfx/fonts"
 )
 
@@ -88,12 +89,22 @@ func (f *TrueTypeFont) loadFromFile(name string) {
 	}
 
 	fontBytes := make([]byte, reader.Size())
-	n, _ := reader.Read(fontBytes)
-	if n != reader.Size() {
+	sb := strings.Builder{}
+	for {
+		if n, err := reader.Read(fontBytes); n > 0 && err == nil {
+			sb.Write(fontBytes[:n])
+		} else {
+			if err != nil {
+				panic(fmt.Errorf("font file read error: %w", err))
+			}
+			break
+		}
+	}
+	if sb.Len() == 0 {
 		panic("unable to read font file into memory")
 	}
 
-	f.loadFromSlice(fontBytes)
+	f.loadFromSlice([]byte(sb.String()))
 }
 
 func (f *TrueTypeFont) TTF() *truetype.Font {

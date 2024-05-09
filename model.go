@@ -332,10 +332,27 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 		material: m.faces[0].material,
 	}
 
+	vertexCountMultiplier := 0
+	var indices []int
+	indicesLen := 0
+
+	switch len(faces[0].VertexIndices()) {
+	case 3:
+		vertexCountMultiplier = 3
+		indices = []int{0, 1, 2}
+		indicesLen = 3
+	case 4:
+		vertexCountMultiplier = 6
+		indices = []int{0, 1, 2, 0, 2, 3}
+		indicesLen = 6
+	default:
+		panic("unsupported number of face vertices (expecting 3 or 4)")
+	}
+
 	for _, face := range faces {
 		material := face.AttachedMaterial()
 		if material != group.material {
-			group.vertexCount = int32(group.faceCount * 3)
+			group.vertexCount = int32(group.faceCount * vertexCountMultiplier)
 			m.faceGroups = append(m.faceGroups, group)
 			group = &faceRenderGroup{
 				model:    m.parent,
@@ -347,42 +364,50 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 		switch layout {
 		case PositionOnlyVaoLayout:
 			vertIndices := face.VertexIndices()
-			for i := 0; i < 3; i++ {
-				vertexIdx := vertIndices[i] * 3
+			for i := 0; i < indicesLen; i++ {
+				index := indices[i]
+
+				vertexIdx := vertIndices[index] * 3
 				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
 			}
 		case PositionColorVaoLayout:
 			vertIndices := face.VertexIndices()
 			colIndices := face.ColorIndices()
-			for i := 0; i < 3; i++ {
-				vertexIdx := vertIndices[i] * 3
+			for i := 0; i < indicesLen; i++ {
+				index := indices[i]
+
+				vertexIdx := vertIndices[index] * 3
 				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
 
-				colIdx := colIndices[i] * 3
+				colIdx := colIndices[index] * 3
 				group.buffer = append(group.buffer, colors[colIdx:colIdx+3]...)
 			}
 		case PositionUvVaoLayout:
 			vertIndices := face.VertexIndices()
 			uvIndices := face.UvIndices()
-			for i := 0; i < 3; i++ {
-				vertexIdx := vertIndices[i] * 3
+			for i := 0; i < indicesLen; i++ {
+				index := indices[i]
+
+				vertexIdx := vertIndices[index] * 3
 				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
 
-				uvIdx := uvIndices[i] * 2
+				uvIdx := uvIndices[index] * 2
 				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
 			}
 		case PositionNormalUvVaoLayout:
 			vertIndices := face.VertexIndices()
 			normIndices := face.NormalIndices()
 			uvIndices := face.UvIndices()
-			for i := 0; i < 3; i++ {
-				vertexIdx := vertIndices[i] * 3
+			for i := 0; i < indicesLen; i++ {
+				index := indices[i]
+
+				vertexIdx := vertIndices[index] * 3
 				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
 
-				normalIdx := normIndices[i] * 3
+				normalIdx := normIndices[index] * 3
 				group.buffer = append(group.buffer, normals[normalIdx:normalIdx+3]...)
 
-				uvIdx := uvIndices[i] * 2
+				uvIdx := uvIndices[index] * 2
 				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
 			}
 		case PositionNormalUvTangentsVaoLayout:
@@ -391,20 +416,22 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 			uvIndices := face.UvIndices()
 			tanIndices := face.TangentIndices()
 			bitanIndices := face.BitangentIndices()
-			for i := 0; i < 3; i++ {
-				vertexIdx := vertIndices[i] * 3
+			for i := 0; i < indicesLen; i++ {
+				index := indices[i]
+
+				vertexIdx := vertIndices[index] * 3
 				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
 
-				normalIdx := normIndices[i] * 3
+				normalIdx := normIndices[index] * 3
 				group.buffer = append(group.buffer, normals[normalIdx:normalIdx+3]...)
 
-				uvIdx := uvIndices[i] * 2
+				uvIdx := uvIndices[index] * 2
 				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
 
-				tanIdx := tanIndices[i] * 3
+				tanIdx := tanIndices[index] * 3
 				group.buffer = append(group.buffer, tangents[tanIdx:tanIdx+3]...)
 
-				bitanIdx := bitanIndices[i] * 3
+				bitanIdx := bitanIndices[index] * 3
 				group.buffer = append(group.buffer, bitangents[bitanIdx:bitanIdx+3]...)
 			}
 		}
@@ -413,7 +440,7 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 	}
 
 	if group.faceCount > 0 {
-		group.vertexCount = int32(group.faceCount * 3)
+		group.vertexCount = int32(group.faceCount * vertexCountMultiplier)
 		m.faceGroups = append(m.faceGroups, group)
 	}
 
