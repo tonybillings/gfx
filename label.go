@@ -1,7 +1,6 @@
 package gfx
 
 import (
-	"github.com/golang/freetype/truetype"
 	"image/color"
 	"sync/atomic"
 )
@@ -19,7 +18,6 @@ type Label struct {
 
 	text      string
 	font      Font
-	ttf       *truetype.Font
 	alignment Alignment
 
 	cache        map[string]*Texture2D
@@ -80,14 +78,14 @@ func (l *Label) Draw(deltaTime int64) (ok bool) {
 		l.stateChanged.Store(false)
 		scale := l.WorldScale()
 
-		if l.ttf != nil {
+		if l.font != nil {
 			l.stateMutex.Lock()
 			if l.texture != nil {
 				l.texture.Close()
 			}
 			l.texture = textToTexture(
 				l.text,
-				l.ttf,
+				l.font.TTF(),
 				l.alignment,
 				FloatArrayToRgba(l.color),
 				l.window.Width(), l.window.Height(),
@@ -158,7 +156,6 @@ func (l *Label) defaultLayout() {
 func (l *Label) initFont() {
 	if l.font == nil {
 		l.font = l.window.getFontOrDefault(DefaultFont)
-		l.ttf = l.font.TTF()
 	}
 }
 
@@ -195,7 +192,6 @@ func (l *Label) Font() Font {
 func (l *Label) SetFont(ttfFont Font) *Label {
 	l.stateMutex.Lock()
 	l.font = ttfFont
-	l.ttf = ttfFont.TTF()
 	l.stateChanged.Store(true)
 	l.stateMutex.Unlock()
 	return l

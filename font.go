@@ -9,7 +9,7 @@ import (
 	"golang.org/x/image/math/fixed"
 	"image"
 	"image/color"
-	"strings"
+	"io"
 	"tonysoft.com/gfx/fonts"
 )
 
@@ -88,23 +88,21 @@ func (f *TrueTypeFont) loadFromFile(name string) {
 		panic("font file not found")
 	}
 
-	fontBytes := make([]byte, reader.Size())
-	sb := strings.Builder{}
+	buffer := make([]byte, reader.Size())
+	fontBytes := make([]byte, 0)
 	for {
-		if n, err := reader.Read(fontBytes); n > 0 && err == nil {
-			sb.Write(fontBytes[:n])
+		n, err := reader.Read(buffer)
+		if n > 0 {
+			fontBytes = append(fontBytes, buffer[:n]...)
 		} else {
-			if err != nil {
+			if err != nil && err != io.EOF {
 				panic(fmt.Errorf("font file read error: %w", err))
 			}
 			break
 		}
 	}
-	if sb.Len() == 0 {
-		panic("unable to read font file into memory")
-	}
 
-	f.loadFromSlice([]byte(sb.String()))
+	f.loadFromSlice(fontBytes)
 }
 
 func (f *TrueTypeFont) TTF() *truetype.Font {
@@ -141,9 +139,12 @@ func newDefaultFont(assetName string, filename string) *TrueTypeFont {
 }
 
 func addDefaultFonts(lib *AssetLibrary) {
-	lib.Add(newDefaultFont(DefaultFont, "default"))
-	lib.Add(newDefaultFont(SquareFont, "square"))
-	lib.Add(newDefaultFont(AnitaFont, "anita"))
+	const prefix = "_font_"
+	const pfxLen = len(prefix)
+
+	lib.Add(newDefaultFont(DefaultFont, DefaultFont[pfxLen:]))
+	lib.Add(newDefaultFont(SquareFont, SquareFont[pfxLen:]))
+	lib.Add(newDefaultFont(AnitaFont, AnitaFont[pfxLen:]))
 }
 
 /******************************************************************************
