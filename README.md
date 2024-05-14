@@ -750,8 +750,8 @@ To bind a field to that uniform, it would need to be defined like this in the
 binding struct:  
 ```go
 type MyMaterial struct {
-	gfx.MaterialBase
-	SomeFactor float32
+    gfx.MaterialBase
+    SomeFactor float32
 }
 ```
 
@@ -763,8 +763,8 @@ uniform sampler2D u_SomeMap;
 ...then you would do this:  
 ```go
 type MyMaterial struct {
-	gfx.MaterialBase
-	SomeMap gfx.Texture 
+    gfx.MaterialBase
+    SomeMap gfx.Texture 
 }
 ```
 
@@ -785,8 +785,8 @@ type MyMaterial struct {
 }
 
 type MyMaterialProperties struct { // must have the std140 layout
-	SomeProp1 mgl32.Vec4
-	SomeProp2 [4]float32 // either of these types will work
+    SomeProp1 mgl32.Vec4
+    SomeProp2 [4]float32 // either of these types will work
 }
 ```
 
