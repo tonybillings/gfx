@@ -73,24 +73,51 @@ type Shader interface {
 }
 
 /******************************************************************************
+ ShaderBase
+******************************************************************************/
+
+type ShaderBase struct {
+	AssetBase
+	glName uint32
+}
+
+func (s *ShaderBase) GlName() uint32 {
+	return s.glName
+}
+
+func (s *ShaderBase) Activate() {
+	gl.UseProgram(s.glName)
+}
+
+func (s *ShaderBase) GetAttribLocation(name string) int32 {
+	return gl.GetAttribLocation(s.glName, gl.Str(name+"\x00"))
+}
+
+func (s *ShaderBase) GetUniformLocation(name string) int32 {
+	return gl.GetUniformLocation(s.glName, gl.Str(name+"\x00"))
+}
+
+func (s *ShaderBase) GetUniformBlockIndex(name string) uint32 {
+	return gl.GetUniformBlockIndex(s.glName, gl.Str(name+"\x00"))
+}
+
+/******************************************************************************
  BasicShader
 ******************************************************************************/
 
 type BasicShader struct {
-	AssetBase
+	ShaderBase
 
 	vsSource any
 	gsSource any
 	fsSource any
-
-	glName uint32
 }
 
 /******************************************************************************
  Asset Implementation
 ******************************************************************************/
 
-func (s *BasicShader) Init() bool {
+func (s *BasicShader) Init() (ok bool) {
 	if s.Initialized() {
 		return true
 	}
@@ -142,30 +169,6 @@ func (s *BasicShader) Close() {
 	s.glName = 0
 
 	s.AssetBase.Close()
-}
-
-/******************************************************************************
- Shader Implementation
-******************************************************************************/
-
-func (s *BasicShader) GlName() uint32 {
-	return s.glName
-}
-
-func (s *BasicShader) Activate() {
-	gl.UseProgram(s.glName)
-}
-
-func (s *BasicShader) GetAttribLocation(name string) int32 {
-	return gl.GetAttribLocation(s.glName, gl.Str(name+"\x00"))
-}
-
-func (s *BasicShader) GetUniformLocation(name string) int32 {
-	return gl.GetUniformLocation(s.glName, gl.Str(name+"\x00"))
-}
-
-func (s *BasicShader) GetUniformBlockIndex(name string) uint32 {
-	return gl.GetUniformBlockIndex(s.glName, gl.Str(name+"\x00"))
 }
 
 /******************************************************************************
@@ -246,8 +249,10 @@ func NewBasicShader[T ShaderSource](name string, vertexShaderSource, fragmentSha
 	}
 
 	return &BasicShader{
-		AssetBase: AssetBase{
-			name: name,
+		ShaderBase: ShaderBase{
+			AssetBase: AssetBase{
+				name: name,
+			},
 		},
 		vsSource: vertexShaderSource,
 		gsSource: gsSource,
