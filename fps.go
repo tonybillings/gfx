@@ -12,6 +12,11 @@ const (
  FpsCounter
 ******************************************************************************/
 
+// FpsCounter When added to a Window, will display the current
+// frames per second, calculating the metric at the update
+// interval specified (defaults to 250 ms).  Note that this
+// object cannot be disabled or hidden, only added/removed from
+// a Window.
 type FpsCounter struct {
 	WindowObjectBase
 
@@ -44,15 +49,15 @@ func (c *FpsCounter) Init() (ok bool) {
 }
 
 func (c *FpsCounter) Update(deltaTime int64) (ok bool) {
-	if !c.ObjectBase.Update(deltaTime) {
+	if !c.initialized.Load() {
 		return false
 	}
 
 	c.sum += deltaTime
 	c.count++
-	if c.sum > c.interval {
-		avgDeltaMilli := (float64(c.sum) / float64(c.count)) / 1000.0
-		fps := int((1000.0 / avgDeltaMilli) + 0.5)
+
+	if c.sum >= c.interval {
+		fps := int((1_000_000 / (float64(c.sum) / float64(c.count))) + 0.5)
 		c.text.SetText(strconv.Itoa(fps))
 		c.sum = 0
 		c.count = 0
@@ -63,7 +68,7 @@ func (c *FpsCounter) Update(deltaTime int64) (ok bool) {
 }
 
 func (c *FpsCounter) Draw(deltaTime int64) bool {
-	if !c.visible.Load() {
+	if !c.initialized.Load() {
 		return false
 	}
 
