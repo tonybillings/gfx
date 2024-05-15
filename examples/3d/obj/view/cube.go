@@ -2,11 +2,11 @@ package view
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/examples/3d/obj/models"
-	"tonysoft.com/gfx/examples/3d/obj/object"
-	"tonysoft.com/gfx/examples/3d/obj/textures"
-	"tonysoft.com/gfx/obj"
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/examples/3d/obj/models"
+	"github.com/tonybillings/gfx/examples/3d/obj/object"
+	"github.com/tonybillings/gfx/examples/3d/obj/textures"
+	"github.com/tonybillings/gfx/obj"
 )
 
 func NewCubeView(window *gfx.Window) gfx.WindowObject {

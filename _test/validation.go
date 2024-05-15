@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/google/uuid"
+	"github.com/tonybillings/gfx"
 	"image/color"
 	"sync/atomic"
 	"testing"
-	"tonysoft.com/gfx"
 )
 
 /******************************************************************************

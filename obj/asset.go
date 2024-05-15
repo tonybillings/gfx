@@ -3,8 +3,8 @@ package obj
 import (
 	"bufio"
 	"fmt"
+	"github.com/tonybillings/gfx"
 	"os"
-	"tonysoft.com/gfx"
 )
 
 func getSourceReader(asset gfx.Asset, sourceName string) (reader *bufio.Reader, closeFunc func()) {

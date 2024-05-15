@@ -4,11 +4,11 @@ import (
 	"context"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/tonybillings/gfx"
 	"image/color"
 	"math"
 	"math/rand"
 	"time"
-	"tonysoft.com/gfx"
 )
 
 func NewSignalsView(ctx context.Context, window *gfx.Window, signalSampleCount int) gfx.WindowObject {

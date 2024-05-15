@@ -1,7 +1,7 @@
 package obj
 
 import (
-	"tonysoft.com/gfx"
+	"github.com/tonybillings/gfx"
 )
 
 /******************************************************************************

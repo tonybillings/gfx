@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/examples/ui/signal"
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/examples/ui/signal"
 )
 
 func newRawSignalView(window *gfx.Window, signalSampleCount int, signalSource *signal.Source) gfx.WindowObject {

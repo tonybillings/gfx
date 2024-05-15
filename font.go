@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
+	"github.com/tonybillings/gfx/fonts"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 	"image"
 	"image/color"
 	"io"
-	"tonysoft.com/gfx/fonts"
 )
 
 const (

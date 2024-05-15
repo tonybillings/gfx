@@ -3,8 +3,8 @@ package _test
 import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/stretchr/testify/assert"
+	"github.com/tonybillings/gfx"
 	"testing"
-	"tonysoft.com/gfx"
 )
 
 const (

@@ -1,8 +1,8 @@
 package _test
 
 import (
+	"github.com/tonybillings/gfx/obj"
 	"testing"
-	"tonysoft.com/gfx/obj"
 )
 
 var objFile = `
@@ -127,4 +127,3 @@ func TestOBJLoading(t *testing.T) {
 			int(model.UVs()[vtIdx1*2]), int(model.UVs()[vtIdx2*2]), int(model.UVs()[vtIdx3*2]))
 	}
 }
-

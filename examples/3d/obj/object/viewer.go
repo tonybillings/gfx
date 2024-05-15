@@ -2,9 +2,9 @@ package object
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/tonybillings/gfx"
 	"image/color"
 	"math"
-	"tonysoft.com/gfx"
 )
 
 func newRotationControl(window *gfx.Window, obj *gfx.Shape3D) *gfx.View {

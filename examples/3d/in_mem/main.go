@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/examples/3d/in_mem/view"
 	"os"
 	"os/signal"
 	"syscall"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/examples/3d/in_mem/view"
 )
 
 const (

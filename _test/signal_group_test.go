@@ -2,13 +2,13 @@ package _test
 
 import (
 	"context"
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/_test"
 	"image/color"
 	"math"
 	"math/rand"
 	"testing"
 	"time"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/_test"
 )
 
 const (

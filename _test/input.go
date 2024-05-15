@@ -1,6 +1,6 @@
 package _test
 
-import "tonysoft.com/gfx"
+import "github.com/tonybillings/gfx"
 
 /******************************************************************************
  MockMouse

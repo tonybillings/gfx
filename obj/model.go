@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/tonybillings/gfx"
 	"io"
 	"strings"
 	"sync/atomic"
-	"tonysoft.com/gfx"
 )
 
 /******************************************************************************

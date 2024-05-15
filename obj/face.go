@@ -1,6 +1,6 @@
 package obj
 
-import "tonysoft.com/gfx"
+import "github.com/tonybillings/gfx"
 
 /******************************************************************************
  Face

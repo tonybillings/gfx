@@ -1,10 +1,10 @@
 package _test
 
 import (
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/_test"
 	"math"
 	"testing"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/_test"
 )
 
 func setupSignal() *gfx.Signal {

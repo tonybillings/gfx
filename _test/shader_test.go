@@ -4,15 +4,15 @@ import (
 	"context"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/_test"
+	"github.com/tonybillings/gfx/obj"
 	"image/color"
 	"math"
 	"reflect"
 	"runtime"
 	"testing"
 	"time"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/_test"
-	"tonysoft.com/gfx/obj"
 	"unsafe"
 )
 

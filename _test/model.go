@@ -1,8 +1,8 @@
 package _test
 
 import (
+	"github.com/tonybillings/gfx"
 	"image/color"
-	"tonysoft.com/gfx"
 )
 
 /******************************************************************************

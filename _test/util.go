@@ -2,9 +2,9 @@ package _test
 
 import (
 	"fmt"
+	"github.com/tonybillings/gfx"
 	"runtime"
 	"time"
-	"tonysoft.com/gfx"
 )
 
 var (

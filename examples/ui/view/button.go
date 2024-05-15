@@ -1,10 +1,10 @@
 package view
 
 import (
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/examples/ui/textures"
 	"image/color"
 	"strconv"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/examples/ui/textures"
 )
 
 func onClick(button gfx.WindowObject, _ *gfx.MouseState) {

@@ -2,10 +2,10 @@ package view
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/examples/3d/in_mem/textures"
 	"math"
 	"time"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/examples/3d/in_mem/textures"
 )
 
 /******************************************************************************

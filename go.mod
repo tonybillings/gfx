@@ -1,4 +1,4 @@
-module tonysoft.com/gfx
+module github.com/tonybillings/gfx
 
 go 1.21
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/_test"
 	"image/color"
 	"testing"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/_test"
 )
 
 func TestAspectRatio(t *testing.T) {

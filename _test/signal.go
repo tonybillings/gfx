@@ -1,8 +1,8 @@
 package _test
 
 import (
+	"github.com/tonybillings/gfx"
 	"math/rand"
-	"tonysoft.com/gfx"
 )
 
 /******************************************************************************

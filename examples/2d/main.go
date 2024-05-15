@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"github.com/tonybillings/gfx"
 	"os"
 	"os/signal"
 	"syscall"
-	"tonysoft.com/gfx"
 )
 
 const (

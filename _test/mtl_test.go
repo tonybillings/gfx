@@ -2,8 +2,8 @@ package _test
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/tonybillings/gfx/obj"
 	"testing"
-	"tonysoft.com/gfx/obj"
 )
 
 var mtlFile = `

@@ -1,8 +1,8 @@
 package _test
 
 import (
+	"github.com/tonybillings/gfx"
 	"testing"
-	"tonysoft.com/gfx"
 )
 
 func TestAssetLibrarySetName(t *testing.T) {

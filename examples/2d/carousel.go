@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/tonybillings/gfx"
 	"math"
-	"tonysoft.com/gfx"
 )
 
 type Carousel struct {

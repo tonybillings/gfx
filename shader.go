@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/tonybillings/gfx/shaders"
 	"golang.org/x/image/math/f32"
 	"os"
 	"reflect"
 	"strings"
 	"sync"
-	"tonysoft.com/gfx/shaders"
 	"unsafe"
 )
 

@@ -3,10 +3,10 @@ package _test
 import (
 	"context"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/tonybillings/gfx"
+	"github.com/tonybillings/gfx/_test"
 	"testing"
 	"time"
-	"tonysoft.com/gfx"
-	"tonysoft.com/gfx/_test"
 )
 
 const (

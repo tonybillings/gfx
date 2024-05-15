@@ -155,7 +155,7 @@ package main
 
 import (
     "context"
-    "tonysoft.com/gfx"
+    "github.com/tonybillings/gfx"
 )
 
 func main() {
