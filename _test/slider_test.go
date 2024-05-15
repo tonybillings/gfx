@@ -53,15 +53,13 @@ func TestSliderSetValue(t *testing.T) {
 		validator.Validate()
 
 		slider.SetValue(.5)                            // set to 50%
-		_test.SleepAFewFrames()                        // allow the slider to render at the new value
 		validator.Samplers[0].ExpectedColor = gfx.Gray // previous slider button position
 		validator.AddPixelSampler(func() (x, y float32) { return .01, 0 }, gfx.Magenta, "inside slider button")
 		validator.Validate()
 
 		time.Sleep(200 * time.Millisecond) // *optional; allow us to see the change in value
 
-		slider.SetValue(1) // set to 100%
-		_test.SleepAFewFrames()
+		slider.SetValue(1)                             // set to 100%
 		validator.Samplers[1].ExpectedColor = gfx.Gray // previous slider button position
 		validator.AddPixelSampler(func() (x, y float32) { return .01, .29 }, gfx.Magenta, "inside slider button")
 		validator.Validate()

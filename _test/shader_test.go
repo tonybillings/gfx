@@ -291,7 +291,6 @@ func TestColorShader(t *testing.T) {
 		validator.AddPixelSampler(func() (float32, float32) { return -.5, -.5 }, gfx.Magenta, "bottom-left quadrant")
 		validator.AddPixelSampler(func() (float32, float32) { return .5, -.5 }, gfx.Magenta, "bottom-right quadrant")
 
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the initial color
@@ -308,7 +307,6 @@ func TestColorShader(t *testing.T) {
 			sampler.ExpectedColor = gfx.Green
 		}
 
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
@@ -365,7 +363,6 @@ func TestTextureShader(t *testing.T) {
 		validator.AddPixelSampler(func() (float32, float32) { return -.5, -.5 }, gfx.Magenta, "bottom-left quadrant")
 		validator.AddPixelSampler(func() (float32, float32) { return .5, -.5 }, gfx.Magenta, "bottom-right quadrant")
 
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the initial color
@@ -378,7 +375,6 @@ func TestTextureShader(t *testing.T) {
 			sampler.ExpectedColor = gfx.Green
 		}
 
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
@@ -473,7 +469,6 @@ func TestShape3DShaders(t *testing.T) {
 		for i := 1; i < len(validator.Samplers); i++ {
 			validator.Samplers[i].ExpectedColor = expectedColor2
 		}
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -483,7 +478,6 @@ func TestShape3DShaders(t *testing.T) {
 		material.Unlock()
 		expectedColor1.G = 255 // material.Diffuse(.5) * green_texture(255) + material.Emissive(.5)
 		validator.Samplers[0].ExpectedColor = expectedColor1
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -492,7 +486,6 @@ func TestShape3DShaders(t *testing.T) {
 		for _, sampler := range validator.Samplers {
 			sampler.ExpectedColor = expectedColor1
 		}
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -516,7 +509,6 @@ func TestShape3DShaders(t *testing.T) {
 		for _, sampler := range validator.Samplers {
 			sampler.ExpectedColor = expectedColor1
 		}
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -549,8 +541,6 @@ func TestShape3DShaders(t *testing.T) {
 		for i := 1; i < len(validator.Samplers); i++ {
 			validator.Samplers[i].ExpectedColor = expectedColor2
 		}
-
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -581,7 +571,6 @@ func TestShape3DShaders(t *testing.T) {
 		expectedColor1.G = 216
 		expectedColor1.B = 63
 		validator.Samplers[0].ExpectedColor = expectedColor1
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -596,7 +585,6 @@ func TestShape3DShaders(t *testing.T) {
 		expectedColor1.G = 255
 		expectedColor1.B = 127
 		validator.Samplers[0].ExpectedColor = expectedColor1
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -617,7 +605,6 @@ func TestShape3DShaders(t *testing.T) {
 		for _, sample := range validator.Samplers {
 			sample.ExpectedColor = expectedColor1
 		}
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -635,7 +622,6 @@ func TestShape3DShaders(t *testing.T) {
 		for i := 1; i < len(validator.Samplers); i++ {
 			validator.Samplers[i].ExpectedColor = expectedColor2
 		}
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -653,7 +639,6 @@ func TestShape3DShaders(t *testing.T) {
 		for i := 1; i < len(validator.Samplers); i++ {
 			validator.Samplers[i].ExpectedColor = expectedColor2
 		}
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)
@@ -669,8 +654,6 @@ func TestShape3DShaders(t *testing.T) {
 		for _, sample := range validator.Samplers {
 			sample.ExpectedColor = expectedColor1
 		}
-
-		_test.SleepAFewFrames()
 		validator.Validate()
 
 		time.Sleep(400 * time.Millisecond)

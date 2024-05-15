@@ -276,7 +276,6 @@ func TestShape3DWithAssetLibrary(t *testing.T) {
 		vp := gfx.NewViewport(win.Width(), win.Height())
 		vp.Set(-.5, -.5, 1, 1) // move left/down by half the window width/height (respectively)
 		quad.SetViewport(vp)
-		_test.SleepAFewFrames()
 
 		time.Sleep(400 * time.Millisecond) // *optional; give us some time to see the color change
 
