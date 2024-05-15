@@ -2,7 +2,6 @@ package _test
 
 import (
 	"github.com/tonybillings/gfx"
-	"os"
 )
 
 /******************************************************************************
@@ -10,8 +9,7 @@ import (
 ******************************************************************************/
 
 type MockMouse struct {
-	window    *gfx.Window
-	sleepTime int
+	window *gfx.Window
 }
 
 func (m *MockMouse) Click(x, y float32) {
@@ -20,13 +18,13 @@ func (m *MockMouse) Click(x, y float32) {
 		Y: y,
 	}
 	m.window.OverrideMouseState(&ms)
-	SleepNFrames(m.sleepTime) // wait for the mouse over event to be triggered/handled
+	SleepAFewFrames() // wait for the mouse over event to be triggered/handled
 	ms.PrimaryDown = true
 	m.window.OverrideMouseState(&ms)
-	SleepNFrames(m.sleepTime) // wait for the mouse down event to be triggered/handled
+	SleepAFewFrames() // wait for the mouse down event to be triggered/handled
 	ms.PrimaryDown = false
 	m.window.OverrideMouseState(&ms)
-	SleepNFrames(m.sleepTime) // wait for the mouse up event to be triggered/handled
+	SleepAFewFrames() // wait for the mouse up event to be triggered/handled
 }
 
 func (m *MockMouse) ClickAndDrag(startX, startY, endX, endY, steps float32) {
@@ -36,7 +34,7 @@ func (m *MockMouse) ClickAndDrag(startX, startY, endX, endY, steps float32) {
 	}
 
 	m.window.OverrideMouseState(&ms)
-	SleepNFrames(m.sleepTime)
+	SleepAFewFrames()
 
 	deltaX := endX - startX
 	deltaY := endY - startY
@@ -48,24 +46,17 @@ func (m *MockMouse) ClickAndDrag(startX, startY, endX, endY, steps float32) {
 		ms.Y += stepY
 		ms.PrimaryDown = true
 		m.window.OverrideMouseState(&ms)
-		SleepNFrames(m.sleepTime)
+		SleepAFewFrames()
 	}
 
 	ms.PrimaryDown = false
 	m.window.OverrideMouseState(&ms)
-	SleepNFrames(m.sleepTime)
+	SleepAFewFrames()
 }
 
 func NewMockMouse(window *gfx.Window) *MockMouse {
 	m := &MockMouse{
 		window: window,
 	}
-
-	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		m.sleepTime = 6
-	} else {
-		m.sleepTime = 2
-	}
-
 	return m
 }

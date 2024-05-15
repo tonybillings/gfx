@@ -30,7 +30,7 @@ func Begin() {
 	PanicOnErr(gfx.Init())
 
 	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		gfx.SetTargetFramerate(60)
+		gfx.SetTargetFramerate(30)
 	} else {
 		gfx.SetTargetFramerate(TargetFramerate)
 	}
