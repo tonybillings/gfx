@@ -129,7 +129,7 @@ func (v *SceneValidator) AddPixelSampler(getPixelPositionFunc func() (posX, posY
 func (v *SceneValidator) Validate() {
 	SleepNFrames(5)
 	v.Reset()
-
+	SleepNFrames(5)
 	for _, e := range v.Errors {
 		v.t.Error(e)
 	}
