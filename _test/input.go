@@ -20,13 +20,13 @@ func (m *MockMouse) Click(x, y float32) {
 		Y: y,
 	}
 	m.window.OverrideMouseState(&ms)
-	SleepAFewFrames() // wait for the mouse over event to be triggered/handled
+	SleepNFrames(m.sleepTime) // wait for the mouse over event to be triggered/handled
 	ms.PrimaryDown = true
 	m.window.OverrideMouseState(&ms)
-	SleepAFewFrames() // wait for the mouse down event to be triggered/handled
+	SleepNFrames(m.sleepTime) // wait for the mouse down event to be triggered/handled
 	ms.PrimaryDown = false
 	m.window.OverrideMouseState(&ms)
-	SleepAFewFrames() // wait for the mouse up event to be triggered/handled
+	SleepNFrames(m.sleepTime) // wait for the mouse up event to be triggered/handled
 }
 
 func (m *MockMouse) ClickAndDrag(startX, startY, endX, endY, steps float32) {
