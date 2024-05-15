@@ -144,7 +144,7 @@ windows you have spawned at an interval based on the target framerate (see
 application loop and will execute indefinitely, until one of the following 
 conditions is met:
 
-* the last **primary** window is closed
+* any **primary** window is closed (see [Window Destruction](#window-destruction))
 * `gfx.Close()` is called
 * the `context.Context` passed to `gfx.Run()` is canceled
 
@@ -185,10 +185,10 @@ is executed after `gfx.Init()` but before `gfx.Run()` is called.
 At the package level, there are currently only two configuration parameters:
 
 
-| Parameter        | Setter                        | Description                                                                                                                                                      |
-|:-----------------|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Target Framerate | `gfx.SetTargetFramerate(int)` | The target framerate, in frames per second*.                                                                                                                     |
-| V-Sync           | `gfx.SetVSyncEnabled(bool)`   | If enabled, prevents "screen tearing" by setting the [swap interval](https://www.glfw.org/docs/3.0/group__context.html#ga6d4e0cdf151b5e579bd67f13202994ed) to 1. |
+| Parameter        | Default  | Setter                        | Description                                                                                                                                                      |
+|:-----------------|:--------:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Target Framerate |  **60**  | `gfx.SetTargetFramerate(int)` | The target framerate, in frames per second*.                                                                                                                     |
+| V-Sync           | **true** | `gfx.SetVSyncEnabled(bool)`   | If enabled, prevents "screen tearing" by setting the [swap interval](https://www.glfw.org/docs/3.0/group__context.html#ga6d4e0cdf151b5e579bd67f13202994ed) to 1. |
 
 *Limiting the framerate, or frames per second (FPS), will result in putting the
 main thread to sleep so that other, higher-priority threads/processes (such as
@@ -234,11 +234,11 @@ passed into the `gfx.NewWindow` function.
 Currently, the following hints are supported:
 
 
-| Hint           | Description                                                                                                                       |
-|:---------------|:----------------------------------------------------------------------------------------------------------------------------------|
-| Borderless     | If true, the window will not be "decorated," meaning it will not have a title bar or border.                                      |
-| Resizeable     | If true, the maximize button in the title bar will not be enabled/visible and resizing via border gripping/dragging is disabled*. |
-| Multi-sampling | If true, will enable anti-aliasing via OpenGL's native MSAA feature, with the sample count set to 4.                              |
+| Hint           |  Default  | Description                                                                                                                       |
+|:---------------|:---------:|:----------------------------------------------------------------------------------------------------------------------------------|
+| Borderless     | **false** | If true, the window will not be "decorated," meaning it will not have a title bar or border.                                      |
+| Resizeable     | **false** | If true, the maximize button in the title bar will not be enabled/visible and resizing via border gripping/dragging is disabled*. |
+| Multi-sampling | **false** | If true, will enable anti-aliasing via OpenGL's native MSAA feature, with the sample count set to 4.                              |
 
 *Resizing and going fullscreen is still possible programmatically and the
 `Window` type provides functions for those actions.
@@ -433,7 +433,7 @@ stopSignFill := gfx.NewShape2D()
 stopSignFill.
     SetSides(8).  // the inner fill shape will also be an octagon
     SetColor(gfx.Red).  // red fill, of course
-    SetScale(mgl32.Vec3{.9, .9})  // the line has .1 thickness, so we scale down to not overlap
+    SetScale(mgl32.Vec3{.9, .9})  // set to 90% the size of parent to not overlap with the line
 
 stopSignText := gfx.NewLabel()
 stopSignText.
@@ -453,7 +453,7 @@ That should produce this result:
 <img alt="stop_sign" src="img/stop_sign.png" width="600"/>
 
 To learn more about what's possible with `Shape2D`, please see 
-the examples.  
+the included examples.  
 
 ### Shape3D
 
@@ -467,12 +467,12 @@ collection of `Face` instances; and a `Face` defines which vertices and
 associated attributes should be used to render that particular polygon, as well 
 as which `Material` to use when shading. Faces can be defined using 3 or 4 
 vertices and reference vertex positions, normals, texture coordinates, etc, by 
-way of indexing...just like the Wavefront OBJ format, which these interfaces 
-were modeled after. In fact, the `obj` package (found in this module) contains 
-an implementation of these interfaces that you can use to easily import OBJ 
-(Object) and MTL (Material Library) files. `Model` and `Material` are also 
-examples of assets, as they include the `Asset` interface in their definition, 
-and are meant to be shared across `Shape3D` instances.
+way of indexing...just like the [Wavefront OBJ](https://en.wikipedia.org/wiki/Wavefront_.obj_file) 
+format, which these interfaces were modeled after. In fact, the `obj` package 
+(found in this module) contains an implementation of these interfaces that you 
+can use to easily import OBJ (Object) and MTL (Material Library) files. `Model` 
+and `Material` are also examples of assets, as they include the `Asset` interface 
+in their definition, and are meant to be shared across `Shape3D` instances.
 
 Unless your model's vertex position data is already in the normalized, 
 device/screen space, you will also need to supply a `Camera` to the `SetCamera` 
@@ -560,16 +560,16 @@ In addition to labels for text rendering, this library comes with several
 common (and not so common) user interface controls:  
 
 
-| Type              | Short Description                                                                                       |
-|:------------------|:--------------------------------------------------------------------------------------------------------|
-| `Button`          | Can be clicked or depressed to trigger further action.                                                  |
-| `Slider`          | Draggable button on a rail, used to represent a value within a range.                                   |
-| `CheckButton`     | (aka, checkbox) Can be clicked to toggle a binary "checked" state.                                      |
-| `RadioButton`     | Like `CheckButton`, but meant to be used in a group where only one can have a positive "checked" state. |
-| `SignalLine`      | Used to render a sample stream in real-time, in the form of a line graph.                               |
-| `SignalGroup`     | Used to render multiple, related signal lines.                                                          |
-| `SignalInspector` | Used to display the signal value at the position of the mouse cursor as well as aggregated metrics.     |
-| `FpsCounter`      | Used to display the effective "tick" rate of an object (a close approximation of the framerate).        |
+| Type              | Short Description                                                                                      |
+|:------------------|:-------------------------------------------------------------------------------------------------------|
+| `Button`          | Can be clicked or depressed to trigger further action.                                                 |
+| `Slider`          | Draggable button on a rail, used to represent a value within a range.                                  |
+| `CheckButton`     | (aka, checkbox) Can be clicked to toggle a binary "checked" state.                                     |
+| `RadioButton`     | Like `CheckButton`, but meant to be used in a group where only one can be checked at any given time.   |
+| `SignalLine`      | Used to render a sample stream in real-time, in the form of a line graph.                              |
+| `SignalGroup`     | Used to render multiple, related signal lines.                                                         |
+| `SignalInspector` | Used to display the signal value at the position of the mouse cursor as well as aggregated metrics.    |
+| `FpsCounter`      | Used to display the effective "tick" rate of an object (a close approximation of the framerate).       |
 
 Example usage of these controls can be found in both the included examples and tests.  
 
@@ -719,8 +719,8 @@ are structs that contain **exported** members that are of one of the supported
 **bindable types**, each mapping to a particular GLSL type. Additionally, these 
 struct members are given the **same name** (including casing) as the variables/buffers 
 they map to in the shader, sans the required `u_` prefix given to the names of 
-shader uniform variables; without the prefix, shader binding will not occur. Note 
-that it's perfectly fine for such structs to include non-bindable members.  
+shader uniform variables; without the prefix, uniform variable binding will not 
+occur. Note that it's perfectly fine for such structs to include non-bindable members.  
 
 Supported bindable types and their associated GLSL types:  
 
@@ -815,7 +815,7 @@ not made while currently sending the data to VRAM.
 For more examples, check out the implementation of `Material` found in the `obj` 
 package (`obj.BasicMaterial`); `gfx.BasicCamera` for an implementation of `Camera`; 
 and `gfx.QuadDirectionalLighting` for an example of a "purely" shader-bindable struct, 
-not pulling double-duty as an `Asset`, etc.
+not pulling double-duty as an `Asset` or `Object`, etc.
 
 ---
 
