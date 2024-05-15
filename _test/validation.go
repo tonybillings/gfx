@@ -131,7 +131,7 @@ func (v *SceneValidator) Validate() {
 	v.Reset()
 
 	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		SleepNFrames(20)
+		SleepNFrames(30)
 	} else {
 		SleepNFrames(5)
 	}
