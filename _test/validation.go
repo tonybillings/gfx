@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/tonybillings/gfx"
 	"image/color"
-	"os"
 	"sync/atomic"
 	"testing"
 )
@@ -129,13 +128,7 @@ func (v *SceneValidator) AddPixelSampler(getPixelPositionFunc func() (posX, posY
 
 func (v *SceneValidator) Validate() {
 	v.Reset()
-
-	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		SleepNFrames(20)
-	} else {
-		SleepNFrames(5)
-	}
-
+	SleepNFrames(5)
 	for _, e := range v.Errors {
 		v.t.Error(e)
 	}
