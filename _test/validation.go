@@ -43,16 +43,16 @@ func (s *PixelSampler) Sample() (isValid bool) {
 	// Allow for systems/drivers that may round .5 up to even numbers in the shaders
 	if !s.IsValid {
 		adjustedColor := s.ActualColor
-		if s.ExpectedColor.R-adjustedColor.R == 1 && adjustedColor.R%2 == 1 {
+		if s.ActualColor.R-s.ExpectedColor.R == 1 && adjustedColor.R%2 == 1 {
 			adjustedColor.R++
 		}
-		if s.ExpectedColor.G-adjustedColor.G == 1 && adjustedColor.G%2 == 1 {
+		if s.ActualColor.G-s.ExpectedColor.G == 1 && adjustedColor.G%2 == 1 {
 			adjustedColor.G++
 		}
-		if s.ExpectedColor.B-adjustedColor.B == 1 && adjustedColor.B%2 == 1 {
+		if s.ActualColor.B-s.ExpectedColor.B == 1 && adjustedColor.B%2 == 1 {
 			adjustedColor.B++
 		}
-		if s.ExpectedColor.A-adjustedColor.A == 1 && adjustedColor.A%2 == 1 {
+		if s.ActualColor.A-s.ExpectedColor.A == 1 && adjustedColor.A%2 == 1 {
 			adjustedColor.A++
 		}
 		s.IsValid = adjustedColor == s.ExpectedColor
