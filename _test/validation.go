@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tonybillings/gfx"
 	"image/color"
+	"os"
 	"sync/atomic"
 	"testing"
 )
@@ -80,6 +81,7 @@ type SceneValidator struct {
 	t         *testing.T
 	window    *gfx.Window
 	validated atomic.Bool
+	sleepTime int
 
 	Samplers []*PixelSampler
 	Errors   []error
@@ -127,7 +129,7 @@ func (v *SceneValidator) AddPixelSampler(getPixelPositionFunc func() (posX, posY
 }
 
 func (v *SceneValidator) Validate() {
-	SleepAFewFrames()
+	SleepNFrames(v.sleepTime)
 	v.Reset()
 	SleepAFewFrames()
 	for _, e := range v.Errors {
@@ -144,5 +146,12 @@ func NewSceneValidator(t *testing.T, window *gfx.Window) *SceneValidator {
 		window: window,
 	}
 	v.SetName(uuid.New().String())
+
+	if os.Getenv("GITHUB_ACTIONS") == "true" {
+		v.sleepTime = 20
+	} else {
+		v.sleepTime = 5
+	}
+
 	return v
 }
