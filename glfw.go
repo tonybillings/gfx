@@ -1,3 +1,6 @@
+// Package gfx is a 2D/3D graphics library powered by OpenGL.
+// Easily render shapes, text, and UI controls, including a
+// performant line graph designed for real-time signal analysis.
 package gfx
 
 import (
