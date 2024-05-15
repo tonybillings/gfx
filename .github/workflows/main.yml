@@ -37,3 +37,4 @@ jobs:
         ./run_tests.sh
       env:
         DISPLAY: :99
+        
