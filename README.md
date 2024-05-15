@@ -1,3 +1,5 @@
+[![Run Tests](https://github.com/tonybillings/gfx/actions/workflows/main.yml/badge.svg)](https://github.com/tonybillings/gfx/actions/workflows/main.yml)
+
 # 2D/3D Graphics Module for Go
 
 ## Overview
