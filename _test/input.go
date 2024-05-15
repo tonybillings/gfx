@@ -1,13 +1,17 @@
 package _test
 
-import "github.com/tonybillings/gfx"
+import (
+	"github.com/tonybillings/gfx"
+	"os"
+)
 
 /******************************************************************************
  MockMouse
 ******************************************************************************/
 
 type MockMouse struct {
-	window *gfx.Window
+	window    *gfx.Window
+	sleepTime int
 }
 
 func (m *MockMouse) Click(x, y float32) {
@@ -32,7 +36,7 @@ func (m *MockMouse) ClickAndDrag(startX, startY, endX, endY, steps float32) {
 	}
 
 	m.window.OverrideMouseState(&ms)
-	SleepACoupleFrames()
+	SleepNFrames(m.sleepTime)
 
 	deltaX := endX - startX
 	deltaY := endY - startY
@@ -44,16 +48,24 @@ func (m *MockMouse) ClickAndDrag(startX, startY, endX, endY, steps float32) {
 		ms.Y += stepY
 		ms.PrimaryDown = true
 		m.window.OverrideMouseState(&ms)
-		SleepACoupleFrames()
+		SleepNFrames(m.sleepTime)
 	}
 
 	ms.PrimaryDown = false
 	m.window.OverrideMouseState(&ms)
-	SleepAFewFrames()
+	SleepNFrames(m.sleepTime)
 }
 
 func NewMockMouse(window *gfx.Window) *MockMouse {
-	return &MockMouse{
+	m := &MockMouse{
 		window: window,
 	}
+
+	if os.Getenv("GITHUB_ACTIONS") == "true" {
+		m.sleepTime = 6
+	} else {
+		m.sleepTime = 2
+	}
+
+	return m
 }
