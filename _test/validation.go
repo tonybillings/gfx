@@ -44,16 +44,16 @@ func (s *PixelSampler) Sample() (isValid bool) {
 	if !s.IsValid {
 		adjustedColor := s.ActualColor
 		if s.ActualColor.R-s.ExpectedColor.R == 1 && s.ExpectedColor.R%2 == 1 {
-			adjustedColor.R++
+			adjustedColor.R--
 		}
 		if s.ActualColor.G-s.ExpectedColor.G == 1 && s.ExpectedColor.G%2 == 1 {
-			adjustedColor.G++
+			adjustedColor.G--
 		}
 		if s.ActualColor.B-s.ExpectedColor.B == 1 && s.ExpectedColor.B%2 == 1 {
-			adjustedColor.B++
+			adjustedColor.B--
 		}
 		if s.ActualColor.A-s.ExpectedColor.A == 1 && s.ExpectedColor.A%2 == 1 {
-			adjustedColor.A++
+			adjustedColor.A--
 		}
 		s.IsValid = adjustedColor == s.ExpectedColor
 	}
