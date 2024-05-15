@@ -3,7 +3,6 @@ package _test
 import (
 	"fmt"
 	"github.com/tonybillings/gfx"
-	"os"
 	"runtime"
 	"time"
 )
@@ -29,12 +28,7 @@ func Begin() {
 
 	PanicOnErr(gfx.Init())
 
-	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		gfx.SetTargetFramerate(30)
-	} else {
-		gfx.SetTargetFramerate(TargetFramerate)
-	}
-
+	gfx.SetTargetFramerate(TargetFramerate)
 	gfx.SetVSyncEnabled(VSyncEnabled)
 }
 
