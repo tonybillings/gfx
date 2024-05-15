@@ -74,10 +74,12 @@ cd _test
 ./run_tests.sh
 ```
 
-Included is a mix of unit and smoke tests, the latter of which requires the creation of windows to render testable scenes to the framebuffer. Obviously,
+Included is a mix of unit and smoke tests, the latter of which requires the 
+creation of windows to render testable scenes to the framebuffer. Obviously, 
 those tests will only succeed when executing in the context of a GUI-enabled OS
 environment supported by GLFW or, as in the case when the tests run as a GitHub 
-Action, when rendering to a virtual framebuffer using a service like [Xvfb](https://www.x.org/releases/X11R7.6/doc/man/man1/Xvfb.1.xhtml).  
+Action, when rendering to a virtual framebuffer using a service like 
+[Xvfb](https://www.x.org/releases/X11R7.6/doc/man/man1/Xvfb.1.xhtml).  
 
 ---
 
