@@ -320,7 +320,7 @@ func Run(ctx context.Context, cancelFunc context.CancelFunc) {
 
 	now := time.Now().UnixMicro()
 	lastTick := now
-	deltaTime := now
+	deltaTime := int64(0)
 	drawInterval := int64(1000000 / targetFramerate.Load())
 	gfxRunning = true
 	doneChan := gfxContext.Done()
