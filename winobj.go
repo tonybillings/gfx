@@ -337,38 +337,7 @@ func (o *WindowObjectBase) RefreshLayout() {
 		return
 	}
 
-	left := float32(-1)
-	right := float32(1)
-	top := float32(1)
-	bottom := float32(-1)
-
-	adjustBounds := func(parent WindowObject) {
-		pScale := parent.Scale()
-		if parent.MaintainAspectRatio() {
-			left *= window.ScaleX(pScale.X())
-			top *= window.ScaleY(pScale.Y())
-		} else {
-			left *= pScale.X()
-			top *= pScale.Y()
-		}
-		right = left * -1
-		bottom = top * -1
-	}
-
-	if p := o.Parent(); p != nil {
-		switch p.(type) {
-		case *View:
-			adjustBounds(p)
-		case *Button:
-			adjustBounds(p)
-		case *Label:
-			adjustBounds(p)
-		case *SignalLine:
-			adjustBounds(p)
-		case *SignalGroup:
-			adjustBounds(p)
-		}
-	}
+	left, right, top, bottom := o.getBounds()
 
 	margin := o.Margin()
 	margin.Left = window.ScaleX(margin.Left)
@@ -537,6 +506,43 @@ func (o *WindowObjectBase) closeChildren() {
 	for _, c := range o.children {
 		c.Close()
 	}
+}
+
+func (o *WindowObjectBase) getBounds() (left, right, top, bottom float32) {
+	left = float32(-1)
+	right = float32(1)
+	top = float32(1)
+	bottom = float32(-1)
+
+	adjustBounds := func(parent WindowObject) {
+		pScale := parent.Scale()
+		if parent.MaintainAspectRatio() {
+			left *= o.window.ScaleX(pScale.X())
+			top *= o.window.ScaleY(pScale.Y())
+		} else {
+			left *= pScale.X()
+			top *= pScale.Y()
+		}
+		right = left * -1
+		bottom = top * -1
+	}
+
+	if p := o.Parent(); p != nil {
+		switch p.(type) {
+		case *View:
+			adjustBounds(p)
+		case *Button:
+			adjustBounds(p)
+		case *Label:
+			adjustBounds(p)
+		case *SignalLine:
+			adjustBounds(p)
+		case *SignalGroup:
+			adjustBounds(p)
+		}
+	}
+
+	return
 }
 
 /******************************************************************************

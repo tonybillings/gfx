@@ -1,6 +1,7 @@
 package _test
 
 import (
+	"github.com/stretchr/testify/assert"
 	"github.com/tonybillings/gfx/obj"
 	"testing"
 )
@@ -47,27 +48,16 @@ func TestOBJLoading(t *testing.T) {
 	model := obj.NewModel("TestModel", objFile)
 	model.Load()
 
-	if len(model.Meshes()) != 2 {
-		t.Errorf("unexpected mesh count: expected %d, got %d", 2, len(model.Meshes()))
-	}
+	assert.Equal(t, 2, len(model.Meshes()), "unexpected mesh count")
 
 	mesh1 := model.Meshes()[0]
-	if mesh1.Name() != "FubarMesh001" {
-		t.Errorf("unexpected mesh name: expected %s, got %s", "FubarMesh001", mesh1.Name())
-	}
+	assert.Equal(t, "FubarMesh001", mesh1.Name(), "unexpected mesh name for mesh1")
 
 	mesh2 := model.Meshes()[1]
-	if mesh2.Name() != "FubarMesh002" {
-		t.Errorf("unexpected mesh name: expected %s, got %s", "FubarMesh002", mesh2.Name())
-	}
+	assert.Equal(t, "FubarMesh002", mesh2.Name(), "unexpected mesh name for mesh2")
 
-	if len(mesh1.Faces()) != 2 {
-		t.Errorf("unexpected face count: expected %d, got %d", 2, len(mesh1.Faces()))
-	}
-
-	if len(mesh2.Faces()) != 3 {
-		t.Errorf("unexpected face count: expected %d, got %d", 3, len(mesh2.Faces()))
-	}
+	assert.Equal(t, 2, len(mesh1.Faces()), "unexpected face count for mesh1")
+	assert.Equal(t, 3, len(mesh2.Faces()), "unexpected face count for mesh2")
 
 	face1 := mesh1.Faces()[0]
 	face2 := mesh1.Faces()[1]
@@ -78,10 +68,9 @@ func TestOBJLoading(t *testing.T) {
 	v1 := int(model.Vertices()[vIdx1*3])
 	v2 := int(model.Vertices()[vIdx2*3])
 	v3 := int(model.Vertices()[vIdx3*3])
-	if v1 != 1 || v2 != 4 || v3 != 7 {
-		t.Errorf("unexpected vertex data: expected 1, 4, 7, got %d, %d, %d",
-			int(model.Vertices()[vIdx1*3]), int(model.Vertices()[vIdx2*3]), int(model.Vertices()[vIdx3*3]))
-	}
+	assert.Equal(t, 1, v1, "unexpected vertex data for face1, vertex1")
+	assert.Equal(t, 4, v2, "unexpected vertex data for face1, vertex2")
+	assert.Equal(t, 7, v3, "unexpected vertex data for face1, vertex3")
 
 	vIdx1 = face2.VertexIndices()[0]
 	vIdx2 = face2.VertexIndices()[1]
@@ -89,10 +78,9 @@ func TestOBJLoading(t *testing.T) {
 	v1 = int(model.Vertices()[vIdx1*3])
 	v2 = int(model.Vertices()[vIdx2*3])
 	v3 = int(model.Vertices()[vIdx3*3])
-	if v1 != -1 || v2 != -4 || v3 != -7 {
-		t.Errorf("unexpected vertex data: expected -1, -4, -7, got %d, %d, %d",
-			int(model.Vertices()[vIdx1*3]), int(model.Vertices()[vIdx2*3]), int(model.Vertices()[vIdx3*3]))
-	}
+	assert.Equal(t, -1, v1, "unexpected vertex data for face2, vertex1")
+	assert.Equal(t, -4, v2, "unexpected vertex data for face2, vertex2")
+	assert.Equal(t, -7, v3, "unexpected vertex data for face2, vertex3")
 
 	vnIdx1 := face1.NormalIndices()[0]
 	vnIdx2 := face1.NormalIndices()[1]
@@ -100,10 +88,9 @@ func TestOBJLoading(t *testing.T) {
 	vn1 := int(model.Normals()[vnIdx1*3])
 	vn2 := int(model.Normals()[vnIdx2*3])
 	vn3 := int(model.Normals()[vnIdx3*3])
-	if vn1 != 10 || vn2 != 40 || vn3 != 70 {
-		t.Errorf("unexpected normal data: expected 10, 40, 70, got %d, %d, %d",
-			int(model.Normals()[vnIdx1*3]), int(model.Normals()[vnIdx2*3]), int(model.Normals()[vnIdx3*3]))
-	}
+	assert.Equal(t, 10, vn1, "unexpected normal data for face1, normal1")
+	assert.Equal(t, 40, vn2, "unexpected normal data for face1, normal2")
+	assert.Equal(t, 70, vn3, "unexpected normal data for face1, normal3")
 
 	vnIdx1 = face2.NormalIndices()[0]
 	vnIdx2 = face2.NormalIndices()[1]
@@ -111,10 +98,9 @@ func TestOBJLoading(t *testing.T) {
 	vn1 = int(model.Normals()[vnIdx1*3])
 	vn2 = int(model.Normals()[vnIdx2*3])
 	vn3 = int(model.Normals()[vnIdx3*3])
-	if vn1 != -10 || vn2 != -40 || vn3 != -70 {
-		t.Errorf("unexpected normal data: expected -10, -40, -70, got %d, %d, %d",
-			int(model.Normals()[vnIdx1*3]), int(model.Normals()[vnIdx2*3]), int(model.Normals()[vnIdx3*3]))
-	}
+	assert.Equal(t, -10, vn1, "unexpected normal data for face2, normal1")
+	assert.Equal(t, -40, vn2, "unexpected normal data for face2, normal2")
+	assert.Equal(t, -70, vn3, "unexpected normal data for face2, normal3")
 
 	vtIdx1 := face1.UvIndices()[0]
 	vtIdx2 := face1.UvIndices()[1]
@@ -122,8 +108,7 @@ func TestOBJLoading(t *testing.T) {
 	vt1 := int(model.UVs()[vtIdx1*2])
 	vt2 := int(model.UVs()[vtIdx2*2])
 	vt3 := int(model.UVs()[vtIdx3*2])
-	if vt1 != 111 || vt2 != 444 || vt3 != -111 {
-		t.Errorf("unexpected uv data: expected 111, 444, -111, got %d, %d, %d",
-			int(model.UVs()[vtIdx1*2]), int(model.UVs()[vtIdx2*2]), int(model.UVs()[vtIdx3*2]))
-	}
+	assert.Equal(t, 111, vt1, "unexpected uv data for face1, uv1")
+	assert.Equal(t, 444, vt2, "unexpected uv data for face1, uv2")
+	assert.Equal(t, -111, vt3, "unexpected uv data for face1, uv3")
 }

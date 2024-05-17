@@ -105,6 +105,92 @@ func (m *Model) Meshes() []gfx.Mesh {
  Model Functions
 ******************************************************************************/
 
+func (m *Model) parseFields(fields []string, currentMesh *Mesh, currentMat string, lineNumber int) (*Mesh, string) {
+	switch fields[0] {
+	case "mtllib":
+		m.parseMtllib(fields, lineNumber)
+	case "usemtl":
+		currentMat = m.parseUsemtl(fields, currentMat, lineNumber)
+	case "g":
+		currentMesh = m.parseGroup(fields, currentMesh, lineNumber)
+	case "v":
+		m.parseVertex(fields, lineNumber)
+	case "vn":
+		m.parseVertexNormal(fields, lineNumber)
+	case "vt":
+		m.parseVertexTexture(fields, lineNumber)
+	case "f":
+		m.parseFace(fields, currentMesh, currentMat, lineNumber)
+	}
+
+	return currentMesh, currentMat
+}
+
+func (m *Model) parseMtllib(fields []string, lineNumber int) {
+	if mat, err := parseString(fields[1:]); err != nil {
+		panic(fmt.Errorf("OBJ parse mtllib error: line %d: %w", lineNumber, err))
+	} else {
+		m.mtllibs = append(m.mtllibs, mat)
+	}
+}
+
+func (m *Model) parseUsemtl(fields []string, currentMat string, lineNumber int) string {
+	if mat, err := parseString(fields[1:]); err != nil {
+		panic(fmt.Errorf("OBJ parse usemtl error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat = mat
+	}
+	return currentMat
+}
+
+func (m *Model) parseGroup(fields []string, currentMesh *Mesh, lineNumber int) *Mesh {
+	if currentMesh.name != "" {
+		m.meshes = append(m.meshes, currentMesh)
+		currentMesh = NewMesh()
+	}
+
+	if group, err := parseString(fields[1:]); err != nil {
+		panic(fmt.Errorf("OBJ parse group error: line %d: %w", lineNumber, err))
+	} else {
+		currentMesh.name = group
+	}
+
+	return currentMesh
+}
+
+func (m *Model) parseVertex(fields []string, lineNumber int) {
+	if vertex, err := parseVec3(fields[1:]); err != nil {
+		panic(fmt.Errorf("OBJ vertex parsing error: line %d: %w", lineNumber, err))
+	} else {
+		m.vertices = append(m.vertices, vertex[:]...)
+	}
+}
+
+func (m *Model) parseVertexNormal(fields []string, lineNumber int) {
+	if normal, err := parseVec3(fields[1:]); err != nil {
+		panic(fmt.Errorf("OBJ vertex normal parsing error: line %d: %w", lineNumber, err))
+	} else {
+		m.normals = append(m.normals, normal[:]...)
+	}
+}
+
+func (m *Model) parseVertexTexture(fields []string, lineNumber int) {
+	if uv, err := parseVec2(fields[1:]); err != nil {
+		panic(fmt.Errorf("OBJ vertex texture parsing error: line %d: %w", lineNumber, err))
+	} else {
+		m.uvs = append(m.uvs, uv[:]...)
+	}
+}
+
+func (m *Model) parseFace(fields []string, currentMesh *Mesh, currentMat string, lineNumber int) {
+	if face, err := parseFace(fields[1:]); err != nil {
+		panic(fmt.Errorf("OBJ face parsing error: line %d: %w", lineNumber, err))
+	} else {
+		face.usemtl = currentMat
+		currentMesh.faces = append(currentMesh.faces, face)
+	}
+}
+
 func (m *Model) loadFromSlice(slice []byte) {
 	reader := bufio.NewReader(bytes.NewReader(slice))
 	m.loadFromReader(reader)
@@ -147,55 +233,7 @@ func (m *Model) loadFromReader(reader *bufio.Reader) {
 			continue
 		}
 
-		switch fields[0] {
-		case "mtllib":
-			if mat, err := parseString(fields[1:]); err != nil {
-				panic(fmt.Errorf("OBJ parse mtllib error: line %d: %w", lineNumber, err))
-			} else {
-				m.mtllibs = append(m.mtllibs, mat)
-			}
-		case "usemtl":
-			if mat, err := parseString(fields[1:]); err != nil {
-				panic(fmt.Errorf("OBJ parse usemtl error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat = mat
-			}
-		case "g":
-			if currentMesh.name != "" {
-				m.meshes = append(m.meshes, currentMesh)
-				currentMesh = NewMesh()
-			}
-			if group, err := parseString(fields[1:]); err != nil {
-				panic(fmt.Errorf("OBJ parse group error: line %d: %w", lineNumber, err))
-			} else {
-				currentMesh.name = group
-			}
-		case "v":
-			if vertex, err := parseVec3(fields[1:]); err != nil {
-				panic(fmt.Errorf("OBJ vertex parsing error: line %d: %w", lineNumber, err))
-			} else {
-				m.vertices = append(m.vertices, vertex[:]...)
-			}
-		case "vn":
-			if normal, err := parseVec3(fields[1:]); err != nil {
-				panic(fmt.Errorf("OBJ normal parsing error: line %d: %w", lineNumber, err))
-			} else {
-				m.normals = append(m.normals, normal[:]...)
-			}
-		case "vt":
-			if uv, err := parseVec2(fields[1:]); err != nil {
-				panic(fmt.Errorf("OBJ vertex texture parsing error: line %d: %w", lineNumber, err))
-			} else {
-				m.uvs = append(m.uvs, uv[:]...)
-			}
-		case "f":
-			if face, err := parseFace(fields[1:]); err != nil {
-				panic(fmt.Errorf("OBJ face parsing error: line %d: %w", lineNumber, err))
-			} else {
-				face.usemtl = currentMat
-				currentMesh.faces = append(currentMesh.faces, face)
-			}
-		}
+		currentMesh, currentMat = m.parseFields(fields, currentMesh, currentMat, lineNumber)
 	}
 
 	m.meshes = append(m.meshes, currentMesh)

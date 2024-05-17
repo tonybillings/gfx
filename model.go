@@ -370,8 +370,8 @@ func (m *meshInstance) initFaces(mesh Mesh) {
 	}
 }
 
-func (m *meshInstance) initFaceGroups(mesh Mesh) {
-	model := m.parent.model
+func (m *meshInstance) appendToFaceGroupBuffer(model Model, face Face, group *faceRenderGroup,
+	layout VertexAttributeLayout, indicesLen int, indices []int) {
 	vertices := model.Vertices()
 	colors := model.Colors()
 	uvs := model.UVs()
@@ -379,14 +379,86 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 	tangents := model.Tangents()
 	bitangents := model.Bitangents()
 
-	layout := m.parent.getLayout()
-	faces := mesh.Faces()
+	switch layout {
+	case PositionOnlyVaoLayout:
+		vertIndices := face.VertexIndices()
+		for i := 0; i < indicesLen; i++ {
+			index := indices[i]
 
-	group := &faceRenderGroup{
-		model:    m.parent,
-		layout:   layout,
-		material: m.faces[0].material,
+			vertexIdx := vertIndices[index] * 3
+			group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+		}
+	case PositionColorVaoLayout:
+		vertIndices := face.VertexIndices()
+		colIndices := face.ColorIndices()
+		for i := 0; i < indicesLen; i++ {
+			index := indices[i]
+
+			vertexIdx := vertIndices[index] * 3
+			group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+
+			colIdx := colIndices[index] * 3
+			group.buffer = append(group.buffer, colors[colIdx:colIdx+3]...)
+		}
+	case PositionUvVaoLayout:
+		vertIndices := face.VertexIndices()
+		uvIndices := face.UvIndices()
+		for i := 0; i < indicesLen; i++ {
+			index := indices[i]
+
+			vertexIdx := vertIndices[index] * 3
+			group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+
+			uvIdx := uvIndices[index] * 2
+			group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
+		}
+	case PositionNormalUvVaoLayout:
+		vertIndices := face.VertexIndices()
+		normIndices := face.NormalIndices()
+		uvIndices := face.UvIndices()
+		for i := 0; i < indicesLen; i++ {
+			index := indices[i]
+
+			vertexIdx := vertIndices[index] * 3
+			group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+
+			normalIdx := normIndices[index] * 3
+			group.buffer = append(group.buffer, normals[normalIdx:normalIdx+3]...)
+
+			uvIdx := uvIndices[index] * 2
+			group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
+		}
+	case PositionNormalUvTangentsVaoLayout:
+		vertIndices := face.VertexIndices()
+		normIndices := face.NormalIndices()
+		uvIndices := face.UvIndices()
+		tanIndices := face.TangentIndices()
+		bitanIndices := face.BitangentIndices()
+		for i := 0; i < indicesLen; i++ {
+			index := indices[i]
+
+			vertexIdx := vertIndices[index] * 3
+			group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
+
+			normalIdx := normIndices[index] * 3
+			group.buffer = append(group.buffer, normals[normalIdx:normalIdx+3]...)
+
+			uvIdx := uvIndices[index] * 2
+			group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
+
+			tanIdx := tanIndices[index] * 3
+			group.buffer = append(group.buffer, tangents[tanIdx:tanIdx+3]...)
+
+			bitanIdx := bitanIndices[index] * 3
+			group.buffer = append(group.buffer, bitangents[bitanIdx:bitanIdx+3]...)
+		}
 	}
+}
+
+func (m *meshInstance) createFaceGroups(mesh Mesh) {
+	model := m.parent.model
+	faces := mesh.Faces()
+	layout := m.parent.getLayout()
 
 	vertexCountMultiplier := 0
 	var indices []int
@@ -405,6 +477,12 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 		panic("unsupported number of face vertices (expecting 3 or 4)")
 	}
 
+	group := &faceRenderGroup{
+		model:    m.parent,
+		layout:   layout,
+		material: m.faces[0].material,
+	}
+
 	for _, face := range faces {
 		material := face.AttachedMaterial()
 		if material != group.material {
@@ -417,81 +495,7 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 			}
 		}
 
-		switch layout {
-		case PositionOnlyVaoLayout:
-			vertIndices := face.VertexIndices()
-			for i := 0; i < indicesLen; i++ {
-				index := indices[i]
-
-				vertexIdx := vertIndices[index] * 3
-				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
-			}
-		case PositionColorVaoLayout:
-			vertIndices := face.VertexIndices()
-			colIndices := face.ColorIndices()
-			for i := 0; i < indicesLen; i++ {
-				index := indices[i]
-
-				vertexIdx := vertIndices[index] * 3
-				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
-
-				colIdx := colIndices[index] * 3
-				group.buffer = append(group.buffer, colors[colIdx:colIdx+3]...)
-			}
-		case PositionUvVaoLayout:
-			vertIndices := face.VertexIndices()
-			uvIndices := face.UvIndices()
-			for i := 0; i < indicesLen; i++ {
-				index := indices[i]
-
-				vertexIdx := vertIndices[index] * 3
-				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
-
-				uvIdx := uvIndices[index] * 2
-				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
-			}
-		case PositionNormalUvVaoLayout:
-			vertIndices := face.VertexIndices()
-			normIndices := face.NormalIndices()
-			uvIndices := face.UvIndices()
-			for i := 0; i < indicesLen; i++ {
-				index := indices[i]
-
-				vertexIdx := vertIndices[index] * 3
-				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
-
-				normalIdx := normIndices[index] * 3
-				group.buffer = append(group.buffer, normals[normalIdx:normalIdx+3]...)
-
-				uvIdx := uvIndices[index] * 2
-				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
-			}
-		case PositionNormalUvTangentsVaoLayout:
-			vertIndices := face.VertexIndices()
-			normIndices := face.NormalIndices()
-			uvIndices := face.UvIndices()
-			tanIndices := face.TangentIndices()
-			bitanIndices := face.BitangentIndices()
-			for i := 0; i < indicesLen; i++ {
-				index := indices[i]
-
-				vertexIdx := vertIndices[index] * 3
-				group.buffer = append(group.buffer, vertices[vertexIdx:vertexIdx+3]...)
-
-				normalIdx := normIndices[index] * 3
-				group.buffer = append(group.buffer, normals[normalIdx:normalIdx+3]...)
-
-				uvIdx := uvIndices[index] * 2
-				group.buffer = append(group.buffer, uvs[uvIdx:uvIdx+2]...)
-
-				tanIdx := tanIndices[index] * 3
-				group.buffer = append(group.buffer, tangents[tanIdx:tanIdx+3]...)
-
-				bitanIdx := bitanIndices[index] * 3
-				group.buffer = append(group.buffer, bitangents[bitanIdx:bitanIdx+3]...)
-			}
-		}
-
+		m.appendToFaceGroupBuffer(model, face, group, layout, indicesLen, indices)
 		group.faceCount++
 	}
 
@@ -499,8 +503,10 @@ func (m *meshInstance) initFaceGroups(mesh Mesh) {
 		group.vertexCount = int32(group.faceCount * vertexCountMultiplier)
 		m.faceGroups = append(m.faceGroups, group)
 	}
+}
 
-	for _, group = range m.faceGroups {
+func (m *meshInstance) initFaceGroups() {
+	for _, group := range m.faceGroups {
 		group.init()
 	}
 }
@@ -546,7 +552,8 @@ func newMeshInstance(mesh Mesh, parentTransform Transform, parentModel *modelIns
 	}
 
 	instance.initFaces(mesh)
-	instance.initFaceGroups(mesh)
+	instance.createFaceGroups(mesh)
+	instance.initFaceGroups()
 	instance.initBindings()
 
 	return instance

@@ -209,45 +209,8 @@ func (o *BoundingObjectBase) endUpdate(winMouse *MouseState, mouseOver bool, xLo
 		raiseMouseLeave = true
 	}
 
-	if !o.winMouseState.PrimaryDown && mouseOver && winMouse.PrimaryDown {
-		o.mouseStateMutex.Lock()
-		o.mouseState.PrimaryDown = true
-		o.mouseStateMutex.Unlock()
-		raisePMouseDown = true
-	} else if o.mouseState.PrimaryDown && mouseOver && !winMouse.PrimaryDown {
-		o.mouseStateMutex.Lock()
-		o.mouseState.PrimaryDown = false
-		o.mouseStateMutex.Unlock()
-		raisePMouseUp = true
-		raisePMouseClick = true
-	} else if o.mouseState.PrimaryDown && !mouseOver && !winMouse.PrimaryDown {
-		o.mouseStateMutex.Lock()
-		o.mouseState.PrimaryDown = false
-		o.mouseStateMutex.Unlock()
-		raisePMouseUp = true
-	} else if o.mouseState.PrimaryDown && winMouse.PrimaryDown {
-		raisePMouseDepressed = true
-	}
-
-	if !o.winMouseState.SecondaryDown && mouseOver && winMouse.SecondaryDown {
-		o.mouseStateMutex.Lock()
-		o.mouseState.SecondaryDown = true
-		o.mouseStateMutex.Unlock()
-		raiseSMouseDown = true
-	} else if o.mouseState.SecondaryDown && mouseOver && !winMouse.SecondaryDown {
-		o.mouseStateMutex.Lock()
-		o.mouseState.SecondaryDown = false
-		o.mouseStateMutex.Unlock()
-		raiseSMouseUp = true
-		raiseSMouseClick = true
-	} else if o.mouseState.SecondaryDown && !mouseOver && !winMouse.SecondaryDown {
-		o.mouseStateMutex.Lock()
-		o.mouseState.SecondaryDown = false
-		o.mouseStateMutex.Unlock()
-		raiseSMouseUp = true
-	} else if o.mouseState.SecondaryDown && winMouse.SecondaryDown {
-		raiseSMouseDepressed = true
-	}
+	raisePMouseDown, raisePMouseUp, raisePMouseClick, raisePMouseDepressed = o.endUpdatePrimaryButton(mouseOver, winMouse.PrimaryDown)
+	raiseSMouseDown, raiseSMouseUp, raiseSMouseClick, raiseSMouseDepressed = o.endUpdateSecondaryButton(mouseOver, winMouse.SecondaryDown)
 
 	o.mouseStateMutex.Lock()
 	o.mouseState.X = xLocal
@@ -257,102 +220,192 @@ func (o *BoundingObjectBase) endUpdate(winMouse *MouseState, mouseOver bool, xLo
 	o.winMouseState = winMouse
 
 	if raiseMouseEnter {
-		for _, f := range o.onMouseEnterHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raiseMouseEnter(&localMouse)
 	}
 
 	if raiseMouseLeave {
-		for _, f := range o.onMouseLeaveHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raiseMouseLeave(&localMouse)
 	}
 
 	if raisePMouseDown {
-		for _, f := range o.onPMouseDownHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raisePMouseDown(&localMouse)
 	}
 
 	if raisePMouseDepressed {
-		for _, f := range o.onPMouseDepressedHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raisePMouseDepressed(&localMouse)
 	}
 
 	if raisePMouseUp {
-		for _, f := range o.onPMouseUpHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raisePMouseUp(&localMouse)
 	}
 
 	if raisePMouseClick {
-		for _, f := range o.onPMouseClickHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raisePMouseClick(&localMouse)
 	}
 
 	if raiseSMouseDown {
-		for _, f := range o.onSMouseDownHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raiseSMouseDown(&localMouse)
 	}
 
 	if raiseSMouseDepressed {
-		for _, f := range o.onSMouseDepressedHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raiseSMouseDepressed(&localMouse)
 	}
 
 	if raiseSMouseUp {
-		for _, f := range o.onSMouseUpHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
-		}
+		o.raiseSMouseUp(&localMouse)
 	}
 
 	if raiseSMouseClick {
-		for _, f := range o.onSMouseClickHandlers {
-			if parent := o.parent.Load(); parent != nil {
-				f(*parent, &localMouse)
-			} else {
-				f(o, &localMouse)
-			}
+		o.raiseSMouseClick(&localMouse)
+	}
+}
+
+func (o *BoundingObjectBase) endUpdatePrimaryButton(mouseOver, winMousePrimaryDown bool) (
+	raisePMouseDown, raisePMouseUp, raisePMouseClick, raisePMouseDepressed bool) {
+	if !o.winMouseState.PrimaryDown && mouseOver && winMousePrimaryDown {
+		o.mouseStateMutex.Lock()
+		o.mouseState.PrimaryDown = true
+		o.mouseStateMutex.Unlock()
+		raisePMouseDown = true
+	} else if o.mouseState.PrimaryDown && mouseOver && !winMousePrimaryDown {
+		o.mouseStateMutex.Lock()
+		o.mouseState.PrimaryDown = false
+		o.mouseStateMutex.Unlock()
+		raisePMouseUp = true
+		raisePMouseClick = true
+	} else if o.mouseState.PrimaryDown && !mouseOver && !winMousePrimaryDown {
+		o.mouseStateMutex.Lock()
+		o.mouseState.PrimaryDown = false
+		o.mouseStateMutex.Unlock()
+		raisePMouseUp = true
+	} else if o.mouseState.PrimaryDown && winMousePrimaryDown {
+		raisePMouseDepressed = true
+	}
+
+	return
+}
+
+func (o *BoundingObjectBase) endUpdateSecondaryButton(mouseOver, winMouseSecondaryDown bool) (
+	raiseSMouseDown, raiseSMouseUp, raiseSMouseClick, raiseSMouseDepressed bool) {
+	if !o.winMouseState.SecondaryDown && mouseOver && winMouseSecondaryDown {
+		o.mouseStateMutex.Lock()
+		o.mouseState.SecondaryDown = true
+		o.mouseStateMutex.Unlock()
+		raiseSMouseDown = true
+	} else if o.mouseState.SecondaryDown && mouseOver && !winMouseSecondaryDown {
+		o.mouseStateMutex.Lock()
+		o.mouseState.SecondaryDown = false
+		o.mouseStateMutex.Unlock()
+		raiseSMouseUp = true
+		raiseSMouseClick = true
+	} else if o.mouseState.SecondaryDown && !mouseOver && !winMouseSecondaryDown {
+		o.mouseStateMutex.Lock()
+		o.mouseState.SecondaryDown = false
+		o.mouseStateMutex.Unlock()
+		raiseSMouseUp = true
+	} else if o.mouseState.SecondaryDown && winMouseSecondaryDown {
+		raiseSMouseDepressed = true
+	}
+
+	return
+}
+
+func (o *BoundingObjectBase) raiseMouseEnter(localMouse *MouseState) {
+	for _, f := range o.onMouseEnterHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raiseMouseLeave(localMouse *MouseState) {
+	for _, f := range o.onMouseLeaveHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raisePMouseDown(localMouse *MouseState) {
+	for _, f := range o.onPMouseDownHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raisePMouseDepressed(localMouse *MouseState) {
+	for _, f := range o.onPMouseDepressedHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raisePMouseUp(localMouse *MouseState) {
+	for _, f := range o.onPMouseUpHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raisePMouseClick(localMouse *MouseState) {
+	for _, f := range o.onPMouseClickHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raiseSMouseDown(localMouse *MouseState) {
+	for _, f := range o.onSMouseDownHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raiseSMouseDepressed(localMouse *MouseState) {
+	for _, f := range o.onSMouseDepressedHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raiseSMouseUp(localMouse *MouseState) {
+	for _, f := range o.onSMouseUpHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
+		}
+	}
+}
+
+func (o *BoundingObjectBase) raiseSMouseClick(localMouse *MouseState) {
+	for _, f := range o.onSMouseClickHandlers {
+		if parent := o.parent.Load(); parent != nil {
+			f(*parent, localMouse)
+		} else {
+			f(o, localMouse)
 		}
 	}
 }

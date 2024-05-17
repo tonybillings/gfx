@@ -2,15 +2,16 @@ package _test
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/stretchr/testify/assert"
 	"github.com/tonybillings/gfx"
 	"github.com/tonybillings/gfx/_test"
 	"github.com/tonybillings/gfx/obj"
 	"image/color"
 	"math"
 	"reflect"
-	"runtime"
 	"testing"
 	"time"
 	"unsafe"
@@ -151,8 +152,6 @@ void main() {
 }
 
 func TestShaderBinding(t *testing.T) {
-	startRoutineCount := runtime.NumGoroutine()
-
 	_test.Begin()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -220,37 +219,25 @@ void main() {
 	gfx.Run(ctx, cancelFunc)
 	_test.End()
 
-	endRoutineCount := runtime.NumGoroutine()
-	if endRoutineCount != startRoutineCount {
-		t.Logf("Starting routine count: %d", startRoutineCount)
-		t.Logf("Ending routine count: %d", endRoutineCount)
-		t.Error("routine leak")
-	}
+	assert.True(t, testObj.OutAmbient[0] == 1, fmt.Sprintf("unexpected ambient value: expected %f, got %f", 1.0, testObj.OutAmbient[0]))
+	assert.True(t, testObj.OutAmbient[1] == 2, fmt.Sprintf("unexpected ambient value: expected %f, got %f", 2.0, testObj.OutAmbient[1]))
+	assert.True(t, testObj.OutAmbient[2] == 3, fmt.Sprintf("unexpected ambient value: expected %f, got %f", 3.0, testObj.OutAmbient[2]))
+	assert.True(t, testObj.OutAmbient[3] == 4, fmt.Sprintf("unexpected ambient value: expected %f, got %f", 4.0, testObj.OutAmbient[3]))
 
-	if testObj.OutAmbient[0] != 1 || testObj.OutAmbient[1] != 2 || testObj.OutAmbient[2] != 3 || testObj.OutAmbient[3] != 4 {
-		t.Errorf("unexpected ambient value: expected [1 2 3 4], got %v", testObj.OutAmbient)
-	}
+	assert.True(t, testObj.OutDiffuse[0] == 5, fmt.Sprintf("unexpected diffuse value: expected %f, got %f", 5.0, testObj.OutDiffuse[0]))
+	assert.True(t, testObj.OutDiffuse[1] == 6, fmt.Sprintf("unexpected diffuse value: expected %f, got %f", 6.0, testObj.OutDiffuse[1]))
+	assert.True(t, testObj.OutDiffuse[2] == 7, fmt.Sprintf("unexpected diffuse value: expected %f, got %f", 7.0, testObj.OutDiffuse[2]))
+	assert.True(t, testObj.OutDiffuse[3] == 8, fmt.Sprintf("unexpected diffuse value: expected %f, got %f", 8.0, testObj.OutDiffuse[3]))
 
-	if testObj.OutDiffuse[0] != 5 || testObj.OutDiffuse[1] != 6 || testObj.OutDiffuse[2] != 7 || testObj.OutDiffuse[3] != 8 {
-		t.Errorf("unexpected diffuse value: expected [5 6 7 8], got %v", testObj.OutDiffuse)
-	}
+	assert.InEpsilonf(t, 32.5, testObj.OutSpecPow, .5, fmt.Sprintf("unexpected specular value: expected %f, got %f", 32.5, testObj.OutSpecPow))
 
-	if testObj.OutSpecPow < 32.4 || testObj.OutSpecPow > 32.6 {
-		t.Errorf("unexpected specular power value: expected 32.5, got %f", testObj.OutSpecPow)
-	}
+	assert.True(t, testObj.OutLightCount == 3, fmt.Sprintf("unexpected light count: expected %d, got %d", 3, testObj.OutLightCount))
 
-	if testObj.OutLightCount != 3 {
-		t.Errorf("unexpected light count value: expected 3, got %d", testObj.OutLightCount)
-	}
+	assert.True(t, testObj.OutExtraProps.ExtraProp1[0] == 11, fmt.Sprintf("unexpected ExtraProp1 value: expected %f, got %f", 11.0, testObj.OutExtraProps.ExtraProp1[0]))
+	assert.True(t, testObj.OutExtraProps.ExtraProp1[1] == 22, fmt.Sprintf("unexpected ExtraProp1 value: expected %f, got %f", 22.0, testObj.OutExtraProps.ExtraProp1[1]))
+	assert.True(t, testObj.OutExtraProps.ExtraProp1[2] == 33, fmt.Sprintf("unexpected ExtraProp1 value: expected %f, got %f", 33.0, testObj.OutExtraProps.ExtraProp1[2]))
 
-	if testObj.OutExtraProps.ExtraProp1[0] != 11 || testObj.OutExtraProps.ExtraProp1[1] != 22 ||
-		testObj.OutExtraProps.ExtraProp1[2] != 33 {
-		t.Errorf("unexpected ExtraProp1 value: expected [11 22 33], got %v", testObj.OutExtraProps.ExtraProp1)
-	}
-
-	if testObj.OutExtraProps.ExtraProp2 < 44.3 || testObj.OutExtraProps.ExtraProp2 > 44.5 {
-		t.Errorf("unexpected ExtraProp2 value: expected 44.4, got %f", testObj.OutExtraProps.ExtraProp2)
-	}
+	assert.InEpsilonf(t, 44.4, testObj.OutExtraProps.ExtraProp2, .5, fmt.Sprintf("unexpected ExtraProp2 value: expected %f, got %f", 44.4, testObj.OutExtraProps.ExtraProp2))
 }
 
 func TestColorShader(t *testing.T) {

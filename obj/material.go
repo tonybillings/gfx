@@ -132,6 +132,130 @@ func (l *MaterialLibrary) Close() {
  MaterialLibrary Functions
 ******************************************************************************/
 
+func (l *MaterialLibrary) parseFields(fields []string, currentMat *BasicMaterial, lineNumber int) *BasicMaterial {
+	switch fields[0] {
+	case "newmtl":
+		currentMat = l.parseNewmtl(fields, currentMat, lineNumber)
+	case "Ka":
+		l.parseKa(fields, currentMat, lineNumber)
+	case "Kd":
+		l.parseKd(fields, currentMat, lineNumber)
+	case "Ks":
+		l.parseKs(fields, currentMat, lineNumber)
+	case "Ns":
+		l.parseNs(fields, currentMat, lineNumber)
+	case "Ke":
+		l.parseKe(fields, currentMat, lineNumber)
+	case "Tr":
+		l.parseTr(fields, currentMat, lineNumber)
+	case "map_Kd":
+		l.parseMapKd(fields, currentMat, lineNumber)
+	case "map_Ks":
+		l.parseMapKs(fields, currentMat, lineNumber)
+	case "norm", "map_Kn":
+		l.parseMapKn(fields, currentMat, lineNumber)
+	}
+
+	return currentMat
+}
+
+func (l *MaterialLibrary) parseNewmtl(fields []string, currentMat *BasicMaterial, lineNumber int) *BasicMaterial {
+	if currentMat.name != "" {
+		l.materials[currentMat.name] = currentMat
+		currentMat = NewMaterial()
+		currentMat.SetSourceLibrary(l.SourceLibrary())
+	}
+
+	if name, err := parseString(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL parse newmtl error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.name = name
+	}
+
+	return currentMat
+}
+
+func (l *MaterialLibrary) parseKa(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseVec4(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL Ka parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.Properties.Ambient = value
+	}
+}
+
+func (l *MaterialLibrary) parseKd(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseVec4(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL Kd parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.Properties.Diffuse = value
+	}
+}
+
+func (l *MaterialLibrary) parseKs(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseVec4(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL Ks parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.Properties.Specular = value
+	}
+}
+
+func (l *MaterialLibrary) parseNs(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseFloat(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL Ns parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.Properties.Shininess = value
+	}
+}
+
+func (l *MaterialLibrary) parseKe(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseVec4(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL Ke parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.Properties.Emissive = value
+	}
+}
+
+func (l *MaterialLibrary) parseTr(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseFloat(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL Tr parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.Properties.Transparency = value
+	}
+}
+
+func (l *MaterialLibrary) parseMapKd(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseString(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL map_Kd parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.mapKd = value
+		currentMat.DiffuseMap = gfx.NewTexture2D(value, value)
+		currentMat.DiffuseMap.SetSourceLibrary(l.SourceLibrary())
+		currentMat.textures = append(currentMat.textures, currentMat.DiffuseMap)
+	}
+}
+
+func (l *MaterialLibrary) parseMapKs(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseString(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL map_Ks parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.mapKs = value
+		currentMat.SpecularMap = gfx.NewTexture2D(value, value)
+		currentMat.SpecularMap.SetSourceLibrary(l.SourceLibrary())
+		currentMat.textures = append(currentMat.textures, currentMat.SpecularMap)
+	}
+}
+
+func (l *MaterialLibrary) parseMapKn(fields []string, currentMat *BasicMaterial, lineNumber int) {
+	if value, err := parseString(fields[1:]); err != nil {
+		panic(fmt.Errorf("MTL norm/map_Kn parsing error: line %d: %w", lineNumber, err))
+	} else {
+		currentMat.mapNorm = value
+		currentMat.NormalMap = gfx.NewTexture2D(value, value)
+		currentMat.NormalMap.SetSourceLibrary(l.SourceLibrary())
+		currentMat.textures = append(currentMat.textures, currentMat.NormalMap)
+	}
+}
+
 func (l *MaterialLibrary) loadFromSlice(slice []byte) {
 	reader := bufio.NewReader(bytes.NewReader(slice))
 	l.loadFromReader(reader)
@@ -154,6 +278,28 @@ func (l *MaterialLibrary) loadFromString(mtl string) {
 	l.loadFromReader(reader)
 }
 
+func (l *MaterialLibrary) loadTextures() {
+	for _, mat := range l.materials {
+		if mat.DiffuseMap == nil {
+			mat.DiffuseMap = gfx.NewTexture2D("", gfx.White)
+			mat.DiffuseMap.SetSourceLibrary(l.SourceLibrary())
+			mat.textures = append(mat.textures, mat.DiffuseMap)
+		}
+
+		if mat.NormalMap == nil {
+			mat.NormalMap = gfx.NewTexture2D("", gfx.DefaultNormalMapColor)
+			mat.NormalMap.SetSourceLibrary(l.SourceLibrary())
+			mat.textures = append(mat.textures, mat.NormalMap)
+		}
+
+		if mat.SpecularMap == nil {
+			mat.SpecularMap = gfx.NewTexture2D("", gfx.DefaultSpecularMapColor)
+			mat.SpecularMap.SetSourceLibrary(l.SourceLibrary())
+			mat.textures = append(mat.textures, mat.SpecularMap)
+		}
+	}
+}
+
 func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 	lineNumber := 0
 	currentMat := NewMaterial()
@@ -174,106 +320,12 @@ func (l *MaterialLibrary) loadFromReader(reader *bufio.Reader) {
 			continue
 		}
 
-		switch fields[0] {
-		case "newmtl":
-			if currentMat.name != "" {
-				l.materials[currentMat.name] = currentMat
-				currentMat = NewMaterial()
-				currentMat.SetSourceLibrary(l.SourceLibrary())
-			}
-
-			if name, err := parseString(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL parse newmtl error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.name = name
-			}
-		case "Ka":
-			if value, err := parseVec4(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL Ka parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.Properties.Ambient = value
-			}
-		case "Kd":
-			if value, err := parseVec4(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL Kd parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.Properties.Diffuse = value
-			}
-		case "Ks":
-			if value, err := parseVec4(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL Ks parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.Properties.Specular = value
-			}
-		case "Ns":
-			if value, err := parseFloat(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL Ns parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.Properties.Shininess = value
-			}
-		case "Ke":
-			if value, err := parseVec4(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL Ke parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.Properties.Emissive = value
-			}
-		case "Tr":
-			if value, err := parseFloat(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL Tr parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.Properties.Transparency = value
-			}
-		case "map_Kd":
-			if value, err := parseString(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL map_Kd parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.mapKd = value
-				currentMat.DiffuseMap = gfx.NewTexture2D(value, value)
-				currentMat.DiffuseMap.SetSourceLibrary(l.SourceLibrary())
-				currentMat.textures = append(currentMat.textures, currentMat.DiffuseMap)
-			}
-		case "map_Ks":
-			if value, err := parseString(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL map_Ks parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.mapKs = value
-				currentMat.SpecularMap = gfx.NewTexture2D(value, value)
-				currentMat.SpecularMap.SetSourceLibrary(l.SourceLibrary())
-				currentMat.textures = append(currentMat.textures, currentMat.SpecularMap)
-			}
-		case "norm", "map_Kn":
-			if value, err := parseString(fields[1:]); err != nil {
-				panic(fmt.Errorf("MTL norm/map_Kn parsing error: line %d: %w", lineNumber, err))
-			} else {
-				currentMat.mapNorm = value
-				currentMat.NormalMap = gfx.NewTexture2D(value, value)
-				currentMat.NormalMap.SetSourceLibrary(l.SourceLibrary())
-				currentMat.textures = append(currentMat.textures, currentMat.NormalMap)
-			}
-		}
+		currentMat = l.parseFields(fields, currentMat, lineNumber)
 	}
 
 	l.materials[currentMat.name] = currentMat
 
-	for _, mat := range l.materials {
-		if mat.DiffuseMap == nil {
-			mat.DiffuseMap = gfx.NewTexture2D("", gfx.White)
-			mat.DiffuseMap.SetSourceLibrary(l.SourceLibrary())
-			mat.textures = append(mat.textures, mat.DiffuseMap)
-		}
-
-		if mat.NormalMap == nil {
-			mat.NormalMap = gfx.NewTexture2D("", gfx.DefaultNormalMapColor)
-			mat.NormalMap.SetSourceLibrary(l.SourceLibrary())
-			mat.textures = append(mat.textures, mat.NormalMap)
-		}
-
-		if mat.SpecularMap == nil {
-			mat.SpecularMap = gfx.NewTexture2D("", gfx.DefaultSpecularMapColor)
-			mat.SpecularMap.SetSourceLibrary(l.SourceLibrary())
-			mat.textures = append(mat.textures, mat.SpecularMap)
-		}
-	}
+	l.loadTextures()
 }
 
 func (l *MaterialLibrary) initMaterials() bool {

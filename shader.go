@@ -445,8 +445,18 @@ func (b *ShaderBinding) bindStructFields(struct_ reflect.Value, uniformNamePrefi
 	}
 }
 
-func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix string) {
+func (b *ShaderBinding) canBindField(uniformLoc int32, field reflect.Value, fieldKind reflect.Kind) bool {
 	const invalidLoc = -1
+	if uniformLoc == invalidLoc {
+		if fieldKind != reflect.Struct && fieldKind != reflect.Pointer && fieldKind != reflect.Interface &&
+			(fieldKind != reflect.Array || field.Type().Elem().Kind() != reflect.Struct || field.Len() == 0) {
+			return false
+		}
+	}
+	return true
+}
+
+func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix string) {
 
 	if uniformNamePrefix == "" {
 		uniformNamePrefix = "u_"
@@ -455,98 +465,13 @@ func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix s
 	uniformName := uniformNamePrefix + name
 	uniformLoc := gl.GetUniformLocation(b.shaderName, gl.Str(uniformName+"\x00"))
 	fieldKind := field.Kind()
-	if uniformLoc == invalidLoc {
-		if fieldKind != reflect.Struct && fieldKind != reflect.Pointer && fieldKind != reflect.Interface &&
-			(fieldKind != reflect.Array || field.Type().Elem().Kind() != reflect.Struct || field.Len() == 0) {
-			return
-		}
+	if !b.canBindField(uniformLoc, field, fieldKind) {
+		return
 	}
 
 	switch fieldKind {
 	case reflect.Array:
-		if field.Type().Elem().Kind() == reflect.Struct {
-			for i := 0; i < field.Len(); i++ {
-				b.bindStructFields(field.Index(i), fmt.Sprintf("u_%s[%d].", name, i))
-			}
-		} else {
-			switch field.Interface().(type) {
-			case mgl32.Mat4:
-				ptr := &getPointer[mgl32.Mat4](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
-				})
-			case f32.Mat4:
-				ptr := &getPointer[f32.Mat4](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
-				})
-			case [16]float32:
-				ptr := &getPointer[[16]float32](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
-				})
-			case mgl32.Mat3:
-				ptr := &getPointer[mgl32.Mat3](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
-				})
-			case f32.Mat3:
-				ptr := &getPointer[f32.Mat3](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
-				})
-			case [9]float32:
-				ptr := &getPointer[[9]float32](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
-				})
-			case mgl32.Vec4:
-				ptr := &getPointer[mgl32.Vec4](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform4fv(uniformLoc, 1, ptr)
-				})
-			case f32.Vec4:
-				ptr := &getPointer[f32.Vec4](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform4fv(uniformLoc, 1, ptr)
-				})
-			case [4]float32:
-				ptr := &getPointer[[4]float32](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform4fv(uniformLoc, 1, ptr)
-				})
-			case mgl32.Vec3:
-				ptr := &getPointer[mgl32.Vec3](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform3fv(uniformLoc, 1, ptr)
-				})
-			case f32.Vec3:
-				ptr := &getPointer[f32.Vec3](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform3fv(uniformLoc, 1, ptr)
-				})
-			case [3]float32:
-				ptr := &getPointer[[3]float32](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform3fv(uniformLoc, 1, ptr)
-				})
-			case mgl32.Vec2:
-				ptr := &getPointer[mgl32.Vec2](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform2fv(uniformLoc, 1, ptr)
-				})
-			case f32.Vec2:
-				ptr := &getPointer[f32.Vec2](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform2fv(uniformLoc, 1, ptr)
-				})
-			case [2]float32:
-				ptr := &getPointer[[2]float32](field)[0]
-				b.updateFuncs = append(b.updateFuncs, func() {
-					gl.Uniform2fv(uniformLoc, 1, ptr)
-				})
-			}
-		}
+		b.bindArray(uniformLoc, field, name)
 	case reflect.Float32:
 		ptr := getPointer[float32](field)
 		b.updateFuncs = append(b.updateFuncs, func() {
@@ -565,32 +490,169 @@ func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix s
 	case reflect.Struct:
 		b.bindStructFields(field, fmt.Sprintf("u_%s.", name))
 	case reflect.Pointer:
-		if field.IsNil() {
-			return
-		}
-		if name == "Properties" {
-			boundStructName := fmt.Sprintf("%T", b.boundStruct)
-			boundStructNameParts := strings.Split(boundStructName, ".")
-			name = boundStructNameParts[len(boundStructNameParts)-1]
-		}
-		b.bindStruct(name, field)
+		b.bindPointer(field, name)
 	case reflect.Interface:
-		if field.IsNil() {
-			return
-		}
-		switch fieldAsType := field.Interface().(type) {
-		case Texture:
-			glName := fieldAsType.GlName()
-			unit := b.textureCount
-			b.updateFuncs = append(b.updateFuncs, func() {
-				gl.ActiveTexture(gl.TEXTURE0 + unit)
-				gl.BindTexture(gl.TEXTURE_2D, glName)
-				gl.Uniform1i(uniformLoc, int32(unit))
-			})
-			b.textureCount++
-		default:
-			b.bindStructFields(field, fmt.Sprintf("u_%s.", name))
-		}
+		b.bindInterface(uniformLoc, field, name)
+	}
+}
+
+func (b *ShaderBinding) bindArray(uniformLoc int32, field reflect.Value, name string) {
+	if field.Type().Elem().Kind() == reflect.Struct {
+		b.bindStructArray(field, name)
+	} else {
+		b.bindFloatArray(uniformLoc, field)
+	}
+}
+
+func (b *ShaderBinding) bindStructArray(field reflect.Value, name string) {
+	for i := 0; i < field.Len(); i++ {
+		b.bindStructFields(field.Index(i), fmt.Sprintf("u_%s[%d].", name, i))
+	}
+}
+
+func (b *ShaderBinding) bindFloatArray(uniformLoc int32, field reflect.Value) {
+	switch field.Interface().(type) {
+	case mgl32.Mat4, f32.Mat4, [16]float32:
+		b.bindFloatArray4x4(uniformLoc, field)
+	case mgl32.Mat3, f32.Mat3, [9]float32:
+		b.bindFloatArray3x3(uniformLoc, field)
+	case mgl32.Vec4, f32.Vec4, [4]float32:
+		b.bindFloatArray4(uniformLoc, field)
+	case mgl32.Vec3, f32.Vec3, [3]float32:
+		b.bindFloatArray3(uniformLoc, field)
+	case mgl32.Vec2, f32.Vec2, [2]float32:
+		b.bindFloatArray2(uniformLoc, field)
+	}
+}
+
+func (b *ShaderBinding) bindFloatArray4x4(uniformLoc int32, field reflect.Value) {
+	switch field.Interface().(type) {
+	case mgl32.Mat4:
+		ptr := &getPointer[mgl32.Mat4](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
+		})
+	case f32.Mat4:
+		ptr := &getPointer[f32.Mat4](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
+		})
+	case [16]float32:
+		ptr := &getPointer[[16]float32](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.UniformMatrix4fv(uniformLoc, 1, false, ptr)
+		})
+	}
+}
+
+func (b *ShaderBinding) bindFloatArray3x3(uniformLoc int32, field reflect.Value) {
+	switch field.Interface().(type) {
+	case mgl32.Mat3:
+		ptr := &getPointer[mgl32.Mat3](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
+		})
+	case f32.Mat3:
+		ptr := &getPointer[f32.Mat3](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
+		})
+	case [9]float32:
+		ptr := &getPointer[[9]float32](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.UniformMatrix3fv(uniformLoc, 1, false, ptr)
+		})
+	}
+}
+
+func (b *ShaderBinding) bindFloatArray4(uniformLoc int32, field reflect.Value) {
+	switch field.Interface().(type) {
+	case mgl32.Vec4:
+		ptr := &getPointer[mgl32.Vec4](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform4fv(uniformLoc, 1, ptr)
+		})
+	case f32.Vec4:
+		ptr := &getPointer[f32.Vec4](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform4fv(uniformLoc, 1, ptr)
+		})
+	case [4]float32:
+		ptr := &getPointer[[4]float32](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform4fv(uniformLoc, 1, ptr)
+		})
+	}
+}
+
+func (b *ShaderBinding) bindFloatArray3(uniformLoc int32, field reflect.Value) {
+	switch field.Interface().(type) {
+	case mgl32.Vec3:
+		ptr := &getPointer[mgl32.Vec3](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform3fv(uniformLoc, 1, ptr)
+		})
+	case f32.Vec3:
+		ptr := &getPointer[f32.Vec3](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform3fv(uniformLoc, 1, ptr)
+		})
+	case [3]float32:
+		ptr := &getPointer[[3]float32](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform3fv(uniformLoc, 1, ptr)
+		})
+	}
+}
+
+func (b *ShaderBinding) bindFloatArray2(uniformLoc int32, field reflect.Value) {
+	switch field.Interface().(type) {
+	case mgl32.Vec2:
+		ptr := &getPointer[mgl32.Vec2](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform2fv(uniformLoc, 1, ptr)
+		})
+	case f32.Vec2:
+		ptr := &getPointer[f32.Vec2](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform2fv(uniformLoc, 1, ptr)
+		})
+	case [2]float32:
+		ptr := &getPointer[[2]float32](field)[0]
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.Uniform2fv(uniformLoc, 1, ptr)
+		})
+	}
+}
+
+func (b *ShaderBinding) bindPointer(field reflect.Value, name string) {
+	if field.IsNil() {
+		return
+	}
+	if name == "Properties" {
+		boundStructName := fmt.Sprintf("%T", b.boundStruct)
+		boundStructNameParts := strings.Split(boundStructName, ".")
+		name = boundStructNameParts[len(boundStructNameParts)-1]
+	}
+	b.bindStruct(name, field)
+}
+
+func (b *ShaderBinding) bindInterface(uniformLoc int32, field reflect.Value, name string) {
+	if field.IsNil() {
+		return
+	}
+	switch fieldAsType := field.Interface().(type) {
+	case Texture:
+		glName := fieldAsType.GlName()
+		unit := b.textureCount
+		b.updateFuncs = append(b.updateFuncs, func() {
+			gl.ActiveTexture(gl.TEXTURE0 + unit)
+			gl.BindTexture(gl.TEXTURE_2D, glName)
+			gl.Uniform1i(uniformLoc, int32(unit))
+		})
+		b.textureCount++
+	default:
+		b.bindStructFields(field, fmt.Sprintf("u_%s.", name))
 	}
 }
 
