@@ -9,6 +9,9 @@ import (
  Transform
 ******************************************************************************/
 
+// Transform Drawable objects are expected to have a transform that can be
+// used to position the object in world space and within the context of a
+// hierarchical parent/child structure.  This type defines that contract.
 type Transform interface {
 	ParentTransform() Transform
 	SetParentTransform(Transform) Transform

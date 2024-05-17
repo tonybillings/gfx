@@ -21,16 +21,39 @@ const (
  Asset
 ******************************************************************************/
 
+// Asset Resources that are needed/shared by objects, have a separate
+// lifecycle than objects, and that are initialized before objects, are
+// considered to be assets.  These include resources like fonts, shaders,
+// textures, materials, and models.  It's recommended to use an AssetLibrary
+// to manage a collection of related assets to facilitate life-cycle management.
 type Asset interface {
 	Initer
 	Closer
 
+	// Initialized shall return true if Init() has already been called.
 	Initialized() bool
+
+	// Name shall return the unique name/id given to the asset.
 	Name() string
+
+	// Source shall return whatever was used to construct the asset or
+	// what otherwise represents the asset itself.  For example, with a
+	// Texture asset the source could be the raw binary for a PNG file,
+	// which would also be the case when loading the PNG file as an
+	// asset itself for other purposes, etc.
 	Source() any
+
+	// SourceLibrary shall return the library this asset can use
+	// to look for a source that is needed for construction.
 	SourceLibrary() *AssetLibrary
 	SetSourceLibrary(*AssetLibrary) Asset
 
+	// Protected shall return true if this asset has been marked
+	// for protection from closure/removal while being managed
+	// by an AssetLibrary. It is used, for example, to allow
+	// consumers to freely call DisposeAll() on the Window's
+	// default AssetLibrary without concern that it will affect
+	// the default assets added therein.
 	Protected() bool
 	SetProtected(bool) Asset
 }
@@ -145,8 +168,14 @@ func NewBinaryAsset(name string, data []byte) *BinaryAsset {
  GlAsset
 ******************************************************************************/
 
+// GlAsset assets are those with an associated OpenGL name, which is an
+// unsigned number that is assigned with creating the object (usually one
+// taking up memory in VRAM).
 type GlAsset interface {
 	Asset
+
+	// GlName shall return the unique name/id assigned to the asset by the
+	// OpenGL framework.
 	GlName() uint32
 }
 

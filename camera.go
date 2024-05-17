@@ -9,13 +9,27 @@ import (
  Camera
 ******************************************************************************/
 
+// Camera Use cameras to apply the same view-projection matrix to the world
+// matrix of each Shape3D object to which the camera is assigned, ensuring
+// they are all rendered from the same perspective.  Must be added to a
+// window to ensure its properties get updated over time.
 type Camera interface {
 	Object
 	sync.Locker
 
+	// Location shall return the camera's coordinates in world space,
+	// using a 4-byte-aligned float array.
 	Location() mgl32.Vec4
+
+	// View shall return the current view matrix for the camera.
 	View() mgl32.Mat4
+
+	// Projection shall return the current projection matrix for the camera.
 	Projection() mgl32.Mat4
+
+	// ViewProjection shall return the current combined view-projection matrix
+	// for the camera.  Passing this matrix to the shader rather than computing
+	// it there may increase performance.
 	ViewProjection() mgl32.Mat4
 }
 

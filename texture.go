@@ -15,6 +15,8 @@ import (
  Texture
 ******************************************************************************/
 
+// Texture assets represent texture maps that can be sampled by shaders by
+// binding them to sampler2D variables.
 type Texture interface {
 	GlAsset
 }

@@ -11,6 +11,9 @@ import (
  WindowObject
 ******************************************************************************/
 
+// WindowObject objects are drawable objects that are "window-aware," contain
+// additional rendering and positioning properties, and those that allow them
+// to form a hierarchical structure of parent/child objects.
 type WindowObject interface {
 	DrawableObject
 	Transform

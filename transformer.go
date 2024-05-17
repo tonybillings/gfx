@@ -13,13 +13,21 @@ const (
  Transformer
 ******************************************************************************/
 
+// Transformer instances are used to transform the data being added to a
+// signal, such as to translate from the time domain to the frequency domain.
 type Transformer interface {
+	// Name shall return the unique name given to the transformer.
 	Name() string
 	SetName(string)
 
+	// Enabled shall return true if this transformer should actually have an
+	// effect on the data being passed through it.
 	Enabled() bool
 	SetEnabled(bool)
 
+	// Transform shall perform the actual transformations to the data,
+	// with the input provided to the src argument and the output in the
+	// dst argument, optionally returning additional data as a float array.
 	Transform(dst, src []float64) []float64
 }
 

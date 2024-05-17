@@ -9,12 +9,22 @@ import (
  Light
 ******************************************************************************/
 
+// Light Lights are used to illuminate models within a scene and are normally
+// part of a shader-bindable object used when setting the Lighting property
+// of Shape3D objects.  Before changing a light's properties, it is recommended
+// to call Lock() to ensure the shader is not being sent their values while
+// they are being changed; and of course, call Unlock() when finished changing
+// them.
 type Light interface {
 	sync.Locker
 
+	// Name shall return the unique name/id given to the light, if one was
+	// given.
 	Name() string
 	SetName(string)
 
+	// Enabled shall return true if the light will contribute to the lighting
+	// being applied to the model.
 	Enabled() bool
 	SetEnabled(bool)
 }

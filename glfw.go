@@ -36,20 +36,33 @@ var (
 	vSyncEnabled    atomic.Bool
 )
 
+// TargetFramerate returns the target framerate in frames per second.
+// The actual, rendered framerate will not exceed the monitor's refresh
+// rate when V-Sync is enabled and will always be limited by system
+// performance.
 func TargetFramerate() (framesPerSec uint32) {
 	framesPerSec = targetFramerate.Load()
 	return
 }
 
+// SetTargetFramerate changes the current target framerate, which
+// must be done before a Window has been initialized.
 func SetTargetFramerate(framesPerSec uint32) {
 	targetFramerate.Store(framesPerSec)
 }
 
+// VSyncEnabled returns true if V-Sync has been enabled.
+// V-Sync ensures the active framebuffer will not be
+// written to while being read by the monitor, which
+// prevents "screen-tearing," but limits the maximum
+// framerate to that of the monitor's refresh rate.
 func VSyncEnabled() (enabled bool) {
 	enabled = vSyncEnabled.Load()
 	return
 }
 
+// SetVSyncEnabled is used to enable/disable V-Sync, which
+// must be done before a Window has been initialized.
 func SetVSyncEnabled(enabled bool) {
 	vSyncEnabled.Store(enabled)
 }
@@ -58,17 +71,20 @@ func SetVSyncEnabled(enabled bool) {
  init Function
 ******************************************************************************/
 
-// init Ensure that the initial Go routine used to execute your
-// application is locked to the thread to which it was assigned
-// (by the Go runtime).  By locking at the point init() is called,
-// hopefully that means locking the routine to the "main" thread
-// (see GLFW docs for more info).
+// init is called by the Go runtime, before main() is called, and here
+// it is used for ensuring the engine runs on the application's main
+// thread and for setting the initial global configuration.
 func init() {
+	// Ensure that the initial Go routine used to execute your
+	// application is locked to the thread to which it was assigned
+	// (by the Go runtime).  By locking at the point init() is called,
+	// hopefully that means locking the routine to the "main" thread
+	// (see GLFW docs for more info).
 	runtime.LockOSThread()
 
-	// Default configuration
-	targetFramerate.Store(defaultTargetFramerate)
-	vSyncEnabled.Store(defaultVSyncEnabled)
+	// Set default configuration
+	SetTargetFramerate(defaultTargetFramerate)
+	SetVSyncEnabled(defaultVSyncEnabled)
 }
 
 /******************************************************************************
@@ -96,7 +112,7 @@ var (
  GlfwWindow
 ******************************************************************************/
 
-// GlfwWindow A wrapper for a GLFW window that also contains
+// GlfwWindow is a wrapper for a GLFW window that also contains
 // the services, objects, and assets needed to render and manage
 // a scene or user interface, etc.  Life-cycle functions Init(),
 // Update(), and Close() should NOT be directly invoked by importers
@@ -105,16 +121,52 @@ var (
 type GlfwWindow interface {
 	GLFW() *glfw.Window
 
+	// Title shall return the window's title, which is rendered in the
+	// title bar, if the window is decorated (not borderless).
 	Title() string
+
+	// Width shall return the window's width, in pixels.
 	Width() int
+
+	// Height shall return the window's height, in pixels.
 	Height() int
+
+	// Borderless shall return true if the window will not be decorated
+	// with a border/frame or a title bar.
 	Borderless() bool
+
+	// Resizable shall return true if the window can be resized either
+	// by the maximize button or by dragging the edges/corners; both
+	// of which are only possible with a decorated window.  Note that
+	// you can always change the size of a window programmatically.
 	Resizable() bool
+
+	// MultiSamplingEnabled shall return true if antialiasing has been
+	// enabled, which is provided by OpenGL's native MSAA capability,
+	// with the sample size set to 4.
 	MultiSamplingEnabled() bool
+
+	// IsSecondary shall return true if the window has been designated
+	// as a secondary/tool/dialog window, which means closing it will
+	// not result in the application closing.
 	IsSecondary() bool
 
+	// Init should only be called by the engine and shall cause the window
+	// to initialize itself, its services/objects, and begin the process of
+	// updating ("ticking") them at a rate based on the target framerate.
+	// Consumers of this package should initialize windows by passing them
+	// to gfx.InitWindowAsync().
 	Init(*glfw.Window, context.Context)
+
+	// Update should only be called by the engine and shall cause the window
+	// to update its services/objects, passing in the amount of time (in
+	// microseconds) that has passed since the last update.
 	Update(deltaTime int64)
+
+	// Close should only be called by the engine and shall cause the window
+	// to release any resources it consumed and call Close() on its
+	// services/objects, causing them to do the same. Consumers of this
+	// package should close windows by passing them to gfx.CloseWindowAsync().
 	Close()
 }
 

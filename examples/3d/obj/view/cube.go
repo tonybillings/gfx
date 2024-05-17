@@ -37,12 +37,17 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	model.ComputeTangents(true)
 
 	// The default shader that the obj package uses is gfx.Shape3DShader.
-	// That shader fully supports obj.BasicMaterial.
-	model.SetDefaultShader(window.Assets().Get(gfx.Shape3DShader).(gfx.Shader))
-	// That will set the default shader assigned to materials,
-	// though you can always load the model now and change the
-	// shader for any given material and each face can be rendered
-	// by a separate material, if desired.
+	// That shader fully supports obj.BasicMaterial. This is how you could
+	// change it to the "no lights" Shape3D shader:
+	// model.SetDefaultShader(window.Assets().Get(gfx.Shape3DNoLightsShader).(gfx.Shader))
+	// That will set the default shader assigned to materials when loading,
+	// though you can always load the model now and change the shader
+	// for any given material and each face can be rendered by a separate
+	// material, if desired.  Note that *contiguous* groups of faces belonging
+	// to the same mesh and having the same material will be rendered together
+	// in the same draw call, so having a mesh with 100 faces, all using the same
+	// material except for face #50, will result in 3 draw calls for the rendering
+	// of that mesh (for faces 1-49, 50, and 51-100).
 
 	camera := gfx.NewCamera()
 	camera.SetProjection(45, window.AspectRatio(), .1, 1000)
@@ -72,6 +77,7 @@ func NewCubeView(window *gfx.Window) gfx.WindowObject {
 	// material.Lock()                       // again, not needed now
 	// material.Properties.Transparency = .5 // make it transparent!
 	// material.Unlock()
+	// Remember that you are changing the material referenced to by many faces!
 
 	// You can also override the texture that's set based on the OBJ/MTL:
 	// material.DiffuseMap = gfx.NewTexture2D("MyTexture", gfx.Red)

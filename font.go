@@ -23,8 +23,13 @@ const (
  Font
 ******************************************************************************/
 
+// Font represents a TrueType font asset that will be used to render the text
+// of a Label object.
 type Font interface {
 	Asset
+
+	// TTF shall return a pointer to the TrueType font that has been loaded
+	// into memory and is ready to be used to rasterize text to a texture.
 	TTF() *truetype.Font
 }
 
@@ -151,7 +156,7 @@ func addDefaultFonts(lib *AssetLibrary) {
  Rasterization Functions
 ******************************************************************************/
 
-func textToTexture(text string, ttf *truetype.Font, alignment Alignment, rgba color.RGBA,
+func textToTexture(text string, ttf *truetype.Font, alignment TextAlignment, rgba color.RGBA,
 	windowWidth, windowHeight int, scaleX, scaleY float32, maintainAspectRatio, cacheEnabled bool, cache map[string]*Texture2D) *Texture2D {
 
 	scale := [2]float32{}

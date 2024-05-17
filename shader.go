@@ -64,11 +64,25 @@ const (
  Shader
 ******************************************************************************/
 
+// Shader assets represent compiled shader programs that are then used to
+// render objects on the screen.
 type Shader interface {
 	GlAsset
+
+	// Activate shall change the current OpenGL context, making this shader
+	// program the active one.
 	Activate()
+
+	// GetAttribLocation shall return the location of the given vertex
+	// attribute.  Will return -1 if not found in the shader.
 	GetAttribLocation(name string) int32
+
+	// GetUniformLocation shall return the location of the given uniform
+	// variable.  Will return -1 if not found in the shader.
 	GetUniformLocation(name string) int32
+
+	// GetUniformBlockIndex shall return the location of the given uniform
+	// block.  Will return -1 if not found in the shader.
 	GetUniformBlockIndex(name string) uint32
 }
 

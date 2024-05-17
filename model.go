@@ -15,16 +15,46 @@ const (
  Model
 ******************************************************************************/
 
+// Model instances hold the vertex information used to render a Shape3D object.
+// Changes made to a model asset (after loading it or after it has been
+// initialized, etc) will only affect new Shape3D instances to which it is
+// assigned; i.e., once a Shape3D object has been initialized, it will no
+// longer be influenced by changes to the model asset. For an example
+// implementation, see the obj package.
 type Model interface {
 	Asset
 
+	// Vertices shall return a float array containing the positions of the
+	// vertices in local/model space.
 	Vertices() []float32
+
+	// Colors shall return a float array containing the colors of each
+	// vertex.  May optionally return nil for a different vertex attribute
+	// layout.
 	Colors() []float32
+
+	// UVs shall return a float array containing the texture coordinates
+	// of each vertex.  May optionally return nil for a different vertex
+	// attribute layout.
 	UVs() []float32
+
+	// Normals shall return a float array containing the normal vectors
+	// associated with the vertices.  May optionally return nil for a
+	// different vertex attribute layout.
 	Normals() []float32
+
+	// Tangents shall return a float array containing the tangent
+	// vectors associated with the vertices.  May optionally return
+	// nil for a different vertex attribute layout.
 	Tangents() []float32
+
+	// Bitangents shall return a float array containing the bitangent
+	// vectors associated with the vertices.  May optionally return
+	// nil for a different vertex attribute layout.
 	Bitangents() []float32
 
+	// Meshes shall return an array of Mesh instances that comprise
+	// the model.
 	Meshes() []Mesh
 }
 
@@ -32,10 +62,15 @@ type Model interface {
  Mesh
 ******************************************************************************/
 
+// Mesh instances contain the collection of faces that comprise the mesh.
 type Mesh interface {
 	Transform
 
+	// Name shall return the given name/id of the mesh, which may or may
+	// not be unique within the model.
 	Name() string
+
+	// Faces shall return an array of Face instances that comprise the mesh.
 	Faces() []Face
 }
 
@@ -43,14 +78,35 @@ type Mesh interface {
  Face
 ******************************************************************************/
 
+// Face instances hold the indices of the vertex attributes that comprise the
+// face.  A face may be defined with either 3 or 4 vertices.
 type Face interface {
+	// VertexIndices shall return the indices for vertex positions associated
+	// with the face.
 	VertexIndices() []int
+
+	// ColorIndices shall return the indices for vertex colors associated
+	// with the face.
 	ColorIndices() []int
+
+	// UvIndices shall return the indices for vertex texture coordinates
+	// associated with the face.
 	UvIndices() []int
+
+	// NormalIndices shall return the indices for normal vectors associated
+	// with the face.
 	NormalIndices() []int
+
+	// TangentIndices shall return the indices for tangent vectors associated
+	// with the face.
 	TangentIndices() []int
+
+	// BitangentIndices shall return the indices for bitangent vectors associated
+	// with the face.
 	BitangentIndices() []int
 
+	// AttachedMaterial shall return the Material instance that will be used
+	// when shading the face during rendering.
 	AttachedMaterial() Material
 }
 

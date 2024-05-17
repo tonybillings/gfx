@@ -12,18 +12,32 @@ const (
  Filter
 ******************************************************************************/
 
+// Filter instances are used to filter the data being added to signals.
 type Filter interface {
+	// Name shall return the unique name given to the filter.
 	Name() string
 	SetName(string)
 
+	// Enabled shall return true if this filter should actually have an
+	// effect on the data being passed through it.
 	Enabled() bool
 	SetEnabled(bool)
 
+	// SampleRate shall return the current sample rate of the filter.
 	SampleRate() float64
+
+	// CutoffFrequencies shall return the current cutoff frequencies of
+	// the filter.
 	CutoffFrequencies() []float64
+
+	// GenerateCoefficients shall generate the coefficients for the filter.
 	GenerateCoefficients(int, float64, ...float64) []float64
+
+	// CoefficientCount shall return the current coefficient count.
 	CoefficientCount() int
 
+	// Apply shall filter the data, passed to it as a float array along
+	// with the index of value to be filtered, and shall return the result.
 	Apply(int, []float64) float64
 }
 

@@ -46,10 +46,11 @@ type Face struct {
  contains fields that can be "bound" to uniform variables/buffers defined in
  a shader program. These bindings make it easy to send data from system memory
  (RAM) to graphics card memory (VRAM). Fields meant to be bound must adhere to
- a set of rules defined in detail elsewhere, but for now know that they must
- be exported, be of a certain type, and be named exactly as they are in the
- shader, sans the "u_" and "a_" prefix for uniform variables and vertex
- attributes, respectively.
+ a set of rules defined in the README, but for now know that they must be exported,
+ be of a certain type, and be named exactly as they are in the shader, sans the
+ "u_" prefix for uniform variables (binding to uniform buffer objects is done
+ via their block name, which should not have that prefix; that would normally
+ be used when assigning the UBO an instance name).
 ******************************************************************************/
 
 type BasicMaterial struct {
@@ -103,7 +104,7 @@ uniform float u_WaveFactor;
 layout (std140) uniform BasicMaterial {  
     vec4 Ambient;
     vec4 Diffuse;
-}; // you can also assign an instance name here, if you like
+}; // can also assign an instance name if preferred, like u_Material, etc
 
 void main() {
   	vec4 diffuseMap = texture(u_DiffuseMap, UV);
@@ -218,7 +219,7 @@ func NewQuadView(window *gfx.Window) gfx.WindowObject {
 
 	// Instantiate the Model.  Models are also Assets, but in this case
 	// there is no need to add to the Window's asset library as there's
-	// nothing to "initialize"	or "update", though you could of course
+	// nothing to "initialize" or "update", though you could of course
 	// use that library simply to make the Asset available throughout the
 	// application (but only for objects rendered on that Window instance).
 	model := &Model{ // here we store the data referenced by the faces

@@ -18,7 +18,7 @@ type Label struct {
 
 	text      string
 	font      Font
-	alignment Alignment
+	alignment TextAlignment
 
 	cache        map[string]*Texture2D
 	cacheEnabled bool
@@ -204,14 +204,14 @@ func (l *Label) SetFontSize(size float32) *Label {
 	return l
 }
 
-func (l *Label) Alignment() Alignment {
+func (l *Label) Alignment() TextAlignment {
 	l.stateMutex.Lock()
 	alignment := l.alignment
 	l.stateMutex.Unlock()
 	return alignment
 }
 
-func (l *Label) SetAlignment(alignment Alignment) *Label {
+func (l *Label) SetAlignment(alignment TextAlignment) *Label {
 	l.stateMutex.Lock()
 	l.alignment = alignment
 	l.stateChanged.Store(true)
