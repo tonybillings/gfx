@@ -445,7 +445,7 @@ func (b *ShaderBinding) bindStructFields(struct_ reflect.Value, uniformNamePrefi
 	}
 }
 
-func (b *ShaderBinding) canBindField(uniformLoc int32, field reflect.Value, fieldKind reflect.Kind) bool {
+func (b *ShaderBinding) canBindField(field reflect.Value, uniformLoc int32, fieldKind reflect.Kind) bool {
 	const invalidLoc = -1
 	if uniformLoc == invalidLoc {
 		if fieldKind != reflect.Struct && fieldKind != reflect.Pointer && fieldKind != reflect.Interface &&
@@ -465,13 +465,13 @@ func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix s
 	uniformName := uniformNamePrefix + name
 	uniformLoc := gl.GetUniformLocation(b.shaderName, gl.Str(uniformName+"\x00"))
 	fieldKind := field.Kind()
-	if !b.canBindField(uniformLoc, field, fieldKind) {
+	if !b.canBindField(field, uniformLoc, fieldKind) {
 		return
 	}
 
 	switch fieldKind {
 	case reflect.Array:
-		b.bindArray(uniformLoc, field, name)
+		b.bindArray(field, uniformLoc, name)
 	case reflect.Float32:
 		ptr := getPointer[float32](field)
 		b.updateFuncs = append(b.updateFuncs, func() {
@@ -492,15 +492,15 @@ func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix s
 	case reflect.Pointer:
 		b.bindPointer(field, name)
 	case reflect.Interface:
-		b.bindInterface(uniformLoc, field, name)
+		b.bindInterface(field, uniformLoc, name)
 	}
 }
 
-func (b *ShaderBinding) bindArray(uniformLoc int32, field reflect.Value, name string) {
+func (b *ShaderBinding) bindArray(field reflect.Value, uniformLoc int32, name string) {
 	if field.Type().Elem().Kind() == reflect.Struct {
 		b.bindStructArray(field, name)
 	} else {
-		b.bindFloatArray(uniformLoc, field)
+		b.bindFloatArray(field, uniformLoc)
 	}
 }
 
@@ -510,22 +510,22 @@ func (b *ShaderBinding) bindStructArray(field reflect.Value, name string) {
 	}
 }
 
-func (b *ShaderBinding) bindFloatArray(uniformLoc int32, field reflect.Value) {
+func (b *ShaderBinding) bindFloatArray(field reflect.Value, uniformLoc int32) {
 	switch field.Interface().(type) {
 	case mgl32.Mat4, f32.Mat4, [16]float32:
-		b.bindFloatArray4x4(uniformLoc, field)
+		b.bindFloatArray4x4(field, uniformLoc)
 	case mgl32.Mat3, f32.Mat3, [9]float32:
-		b.bindFloatArray3x3(uniformLoc, field)
+		b.bindFloatArray3x3(field, uniformLoc)
 	case mgl32.Vec4, f32.Vec4, [4]float32:
-		b.bindFloatArray4(uniformLoc, field)
+		b.bindFloatArray4(field, uniformLoc)
 	case mgl32.Vec3, f32.Vec3, [3]float32:
-		b.bindFloatArray3(uniformLoc, field)
+		b.bindFloatArray3(field, uniformLoc)
 	case mgl32.Vec2, f32.Vec2, [2]float32:
-		b.bindFloatArray2(uniformLoc, field)
+		b.bindFloatArray2(field, uniformLoc)
 	}
 }
 
-func (b *ShaderBinding) bindFloatArray4x4(uniformLoc int32, field reflect.Value) {
+func (b *ShaderBinding) bindFloatArray4x4(field reflect.Value, uniformLoc int32) {
 	switch field.Interface().(type) {
 	case mgl32.Mat4:
 		ptr := &getPointer[mgl32.Mat4](field)[0]
@@ -545,7 +545,7 @@ func (b *ShaderBinding) bindFloatArray4x4(uniformLoc int32, field reflect.Value)
 	}
 }
 
-func (b *ShaderBinding) bindFloatArray3x3(uniformLoc int32, field reflect.Value) {
+func (b *ShaderBinding) bindFloatArray3x3(field reflect.Value, uniformLoc int32) {
 	switch field.Interface().(type) {
 	case mgl32.Mat3:
 		ptr := &getPointer[mgl32.Mat3](field)[0]
@@ -565,7 +565,7 @@ func (b *ShaderBinding) bindFloatArray3x3(uniformLoc int32, field reflect.Value)
 	}
 }
 
-func (b *ShaderBinding) bindFloatArray4(uniformLoc int32, field reflect.Value) {
+func (b *ShaderBinding) bindFloatArray4(field reflect.Value, uniformLoc int32) {
 	switch field.Interface().(type) {
 	case mgl32.Vec4:
 		ptr := &getPointer[mgl32.Vec4](field)[0]
@@ -585,7 +585,7 @@ func (b *ShaderBinding) bindFloatArray4(uniformLoc int32, field reflect.Value) {
 	}
 }
 
-func (b *ShaderBinding) bindFloatArray3(uniformLoc int32, field reflect.Value) {
+func (b *ShaderBinding) bindFloatArray3(field reflect.Value, uniformLoc int32) {
 	switch field.Interface().(type) {
 	case mgl32.Vec3:
 		ptr := &getPointer[mgl32.Vec3](field)[0]
@@ -605,7 +605,7 @@ func (b *ShaderBinding) bindFloatArray3(uniformLoc int32, field reflect.Value) {
 	}
 }
 
-func (b *ShaderBinding) bindFloatArray2(uniformLoc int32, field reflect.Value) {
+func (b *ShaderBinding) bindFloatArray2(field reflect.Value, uniformLoc int32) {
 	switch field.Interface().(type) {
 	case mgl32.Vec2:
 		ptr := &getPointer[mgl32.Vec2](field)[0]
@@ -637,7 +637,7 @@ func (b *ShaderBinding) bindPointer(field reflect.Value, name string) {
 	b.bindStruct(name, field)
 }
 
-func (b *ShaderBinding) bindInterface(uniformLoc int32, field reflect.Value, name string) {
+func (b *ShaderBinding) bindInterface(field reflect.Value, uniformLoc int32, name string) {
 	if field.IsNil() {
 		return
 	}
