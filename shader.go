@@ -399,6 +399,17 @@ func (b *ShaderBinding) activate() {
 	gl.UseProgram(b.shaderName)
 }
 
+func (b *ShaderBinding) canBindField(field reflect.Value, uniformLoc int32, fieldKind reflect.Kind) bool {
+	const invalidLoc = -1
+	if uniformLoc == invalidLoc {
+		if fieldKind != reflect.Struct && fieldKind != reflect.Pointer && fieldKind != reflect.Interface &&
+			(fieldKind != reflect.Array || field.Type().Elem().Kind() != reflect.Struct || field.Len() == 0) {
+			return false
+		}
+	}
+	return true
+}
+
 func (b *ShaderBinding) bindStruct(uniformName string, nestedStruct reflect.Value) {
 	blockIndex := gl.GetUniformBlockIndex(b.shaderName, gl.Str(uniformName+"\x00"))
 	if blockIndex == gl.INVALID_INDEX {
@@ -445,19 +456,7 @@ func (b *ShaderBinding) bindStructFields(struct_ reflect.Value, uniformNamePrefi
 	}
 }
 
-func (b *ShaderBinding) canBindField(field reflect.Value, uniformLoc int32, fieldKind reflect.Kind) bool {
-	const invalidLoc = -1
-	if uniformLoc == invalidLoc {
-		if fieldKind != reflect.Struct && fieldKind != reflect.Pointer && fieldKind != reflect.Interface &&
-			(fieldKind != reflect.Array || field.Type().Elem().Kind() != reflect.Struct || field.Len() == 0) {
-			return false
-		}
-	}
-	return true
-}
-
 func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix string) {
-
 	if uniformNamePrefix == "" {
 		uniformNamePrefix = "u_"
 	}
@@ -470,8 +469,6 @@ func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix s
 	}
 
 	switch fieldKind {
-	case reflect.Array:
-		b.bindArray(field, uniformLoc, name)
 	case reflect.Float32:
 		ptr := getPointer[float32](field)
 		b.updateFuncs = append(b.updateFuncs, func() {
@@ -487,6 +484,8 @@ func (b *ShaderBinding) bindField(field reflect.Value, name, uniformNamePrefix s
 		b.updateFuncs = append(b.updateFuncs, func() {
 			gl.Uniform1ui(uniformLoc, *ptr)
 		})
+	case reflect.Array:
+		b.bindArray(field, uniformLoc, name)
 	case reflect.Struct:
 		b.bindStructFields(field, fmt.Sprintf("u_%s.", name))
 	case reflect.Pointer:
