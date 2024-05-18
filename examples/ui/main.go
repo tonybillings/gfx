@@ -62,7 +62,8 @@ func main() {
 		view.NewSliderView(ctx, win, signalSampleCount),
 		view.NewRadioButtonView(ctx, win, signalSampleCount),
 		view.NewCheckBoxView(ctx, win, signalSampleCount),
-		view.NewButtonView(win)))
+		view.NewButtonView(win),
+		view.NewCanvasView()))
 
 	win.EnableQuitKey()
 	win.EnableFullscreenKey()

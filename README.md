@@ -22,6 +22,7 @@ using [GLFW](https://www.glfw.org/).
 |------------------------------------------------------------------|:-:|
 | Dead-simple API for rendering shapes, text and more!             | ✅ |
 | Common UI controls: Label, Button, Slider, Checkbox, RadioButton | ✅ |
+| Canvas and Brush controls for end-user painting                  | ✅ |
 | Performant line graph intended for realtime signal analysis      | ✅ |
 | Hi/low/band-pass and custom (user-defined) filtering             | ✅ |
 | FFT and custom (user-defined) transformers                       | ✅ |
@@ -567,16 +568,17 @@ In addition to labels for text rendering, this library comes with several
 common (and not so common) user interface controls:  
 
 
-| Type              | Short Description                                                                                      |
-|:------------------|:-------------------------------------------------------------------------------------------------------|
-| `Button`          | Can be clicked or depressed to trigger further action.                                                 |
-| `Slider`          | Draggable button on a rail, used to represent a value within a range.                                  |
-| `CheckButton`     | (aka, checkbox) Can be clicked to toggle a binary "checked" state.                                     |
-| `RadioButton`     | Like `CheckButton`, but meant to be used in a group where only one can be checked at any given time.   |
-| `SignalLine`      | Used to render a sample stream in real-time, in the form of a line graph.                              |
-| `SignalGroup`     | Used to render multiple, related signal lines.                                                         |
-| `SignalInspector` | Used to display the signal value at the position of the mouse cursor as well as aggregated metrics.    |
-| `FpsCounter`      | Used to display the effective "tick" rate of an object (a close approximation of the framerate).       |
+| Type              | Short Description                                                                                    |
+|:------------------|:-----------------------------------------------------------------------------------------------------|
+| `Button`          | Can be clicked or depressed to trigger further action.                                               |
+| `Slider`          | Draggable button on a rail, used to represent a value within a range.                                |
+| `CheckButton`     | (aka, checkbox) Can be clicked to toggle a binary "checked" state.                                   |
+| `RadioButton`     | Like `CheckButton`, but meant to be used in a group where only one can be checked at any given time. |
+| `Canvas`          | Used with an implementation of `Brush`, allows end-users the ability to paint.                       |
+| `SignalLine`      | Used to render a sample stream in real-time, in the form of a line graph.                            |
+| `SignalGroup`     | Used to render multiple, related signal lines.                                                       |
+| `SignalInspector` | Used to display the signal value at the position of the mouse cursor as well as aggregated metrics.  |
+| `FpsCounter`      | Used to display the effective "tick" rate of an object (a close approximation of the framerate).     |
 
 Example usage of these controls can be found in both the included examples and tests.  
 
@@ -845,6 +847,8 @@ not pulling double-duty as an `Asset` or `Object`, etc.
 ![arc](img/arc.png)
 
 ![pacman](img/pacman.png)
+
+![canvas](img/canvas.png)
 
 ![cube](img/cube.png)
 

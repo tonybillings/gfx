@@ -539,6 +539,8 @@ func (o *WindowObjectBase) getBounds() (left, right, top, bottom float32) {
 			adjustBounds(p)
 		case *SignalGroup:
 			adjustBounds(p)
+		case *Canvas:
+			adjustBounds(p)
 		}
 	}
 

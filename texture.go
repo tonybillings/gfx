@@ -19,6 +19,12 @@ import (
 // binding them to sampler2D variables.
 type Texture interface {
 	GlAsset
+
+	// Width shall return the width of the texture, in pixels.
+	Width() int
+
+	// Height shall return the height of the texture, in pixels.
+	Height() int
 }
 
 /******************************************************************************
@@ -27,6 +33,9 @@ type Texture interface {
 
 type Texture2D struct {
 	AssetBase
+
+	width  int
+	height int
 
 	glName        uint32
 	uWrapMode     int32
@@ -82,6 +91,14 @@ func (t *Texture2D) GlName() uint32 {
 	return t.glName
 }
 
+func (t *Texture2D) Width() int {
+	return t.width
+}
+
+func (t *Texture2D) Height() int {
+	return t.height
+}
+
 /******************************************************************************
  Texture2D Functions
 ******************************************************************************/
@@ -121,28 +138,24 @@ func (t *Texture2D) createFromReader(reader *bufio.Reader) {
 }
 
 func (t *Texture2D) createFromColor(rgba color.RGBA) {
-	data := []uint8{
-		rgba.R, rgba.G, rgba.B, rgba.A,
-		rgba.R, rgba.G, rgba.B, rgba.A,
-		rgba.R, rgba.G, rgba.B, rgba.A,
-		rgba.R, rgba.G, rgba.B, rgba.A,
+	data := make([]uint8, t.width*t.height*4)
+	for i := 0; i < t.width*t.height*4; i += 4 {
+		data[i] = rgba.R
+		data[i+1] = rgba.G
+		data[i+2] = rgba.B
+		data[i+3] = rgba.A
 	}
 
 	var name uint32
 	gl.GenTextures(1, &name)
 	gl.BindTexture(gl.TEXTURE_2D, name)
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, t.uWrapMode)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, t.vWrapMode)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, t.minFilterMode)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, t.magFilterMode)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
-
-	if t.useMipMaps {
-		gl.GenerateMipmap(gl.TEXTURE_2D)
-	}
-
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(t.width), int32(t.height), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 
 	t.glName = name
@@ -189,6 +202,8 @@ func (t *Texture2D) createFromImage(img image.Image) {
 
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 	t.glName = name
+	t.width = img.Bounds().Size().X
+	t.height = img.Bounds().Size().Y
 }
 
 func (t *Texture2D) flipImage(nrgba *image.NRGBA) *image.NRGBA {
@@ -203,6 +218,11 @@ func (t *Texture2D) flipImage(nrgba *image.NRGBA) *image.NRGBA {
 		}
 	}
 	return flipped
+}
+
+func (t *Texture2D) SetSize(width, height int) {
+	t.width = width
+	t.height = height
 }
 
 /******************************************************************************
@@ -227,6 +247,8 @@ func NewTexture2D[T TextureSource](name string, source T, config ...*TextureConf
 		minFilterMode: minFilterMode,
 		magFilterMode: magFilterMode,
 		useMipMaps:    useMipMaps,
+		width:         2,
+		height:        2,
 	}
 }
 

@@ -853,6 +853,13 @@ func (s *Shape2D) renderBlurTexture(texture uint32, tex2DLoc int32) {
 	gl.DrawArrays(gl.TRIANGLES, 0, 6)
 }
 
+func (s *Shape2D) Texture() (texture Texture) {
+	s.stateMutex.Lock()
+	texture = s.texture
+	s.stateMutex.Unlock()
+	return
+}
+
 func (s *Shape2D) SetTexture(texture Texture) *Shape2D {
 	s.stateMutex.Lock()
 	s.texture = texture
