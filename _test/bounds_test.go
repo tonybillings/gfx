@@ -133,11 +133,10 @@ func TestBoundingBoxMouseEnterAndLeave(t *testing.T) {
 
 	// Now the container/box will consume the lower-right quadrant of the
 	// lower-right quadrant of the screen (based on anchor and scale). Child
-	// objects will anchor to their parent if that parent is a View, but will
-	// anchor to the Window if the parent is a WindowObject or user-defined type.
+	// objects will anchor to their parent based on the bounds of the parent.
 	container.SetAnchor(gfx.BottomRight)
 	container.SetScale(mgl32.Vec3{.25, .25})
-	container.RefreshLayout() // necessary if anchor changes, but would normally be called for us during the Init() cycle
+	container.RefreshLayout() // only necessary when not added to a running window
 
 	test(-1.1, 1.1, false, true)
 	test(1.0-w.ScaleX(.24)*2, -.5, true, false)     // the aspect ratio is still the same, so still scaling on the X axis
@@ -154,11 +153,13 @@ func TestBoundingBoxMouseEnterAndLeave(t *testing.T) {
 	// Finally, the container will be manually positioned/scaled to consume
 	// the same space, but with anchoring disabled and MAR set to false.
 	container.SetAnchor(gfx.NoAnchor)
+	container.RefreshLayout() // only necessary when not added to a running window
 	container.SetPosition(mgl32.Vec3{1.0 - w.ScaleX(.25), -1.0 + w.ScaleY(.25)})
 	container.SetScale(mgl32.Vec3{w.ScaleX(.25), w.ScaleY(.25)})
 	container.SetMaintainAspectRatio(false)
+	container.RefreshLayout() // only necessary when not added to a running window
 	b.SetMaintainAspectRatio(false)
-	container.RefreshLayout()
+	b.RefreshLayout() // only necessary when not added to a running window
 
 	// Run the same tests as before...
 	test(-1.1, 1.1, false, true)

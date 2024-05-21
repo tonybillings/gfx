@@ -160,6 +160,7 @@ func NewButtonView(window *gfx.Window) gfx.WindowObject {
 		SetPositionY(-.1)
 
 	container := gfx.NewWindowObject()
+	container.SetMaintainAspectRatio(false)
 	container.AddChild(button1)
 	container.AddChild(button2)
 	container.AddChild(button3)

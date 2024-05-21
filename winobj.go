@@ -51,6 +51,8 @@ type WindowObject interface {
 	SetMarginBottom(float32) WindowObject
 	SetMarginLeft(float32) WindowObject
 
+	Bounds() *Bounds
+
 	OnResize(func(int, int))
 	RefreshLayout()
 
@@ -83,6 +85,10 @@ type WindowObjectBase struct {
 
 	anchor Anchor
 	margin Margin
+	bounds Bounds
+
+	anchorSet   bool
+	positionBak mgl32.Vec3
 
 	onResizeHandlers []func(int, int)
 
@@ -107,6 +113,13 @@ func (o *WindowObjectBase) Init() (ok bool) {
 func (o *WindowObjectBase) Update(deltaTime int64) (ok bool) {
 	if ok = o.ObjectBase.Update(deltaTime); !ok {
 		return
+	}
+
+	if o.boundsChanged {
+		o.ObjectTransform.stateMutex.Lock()
+		o.boundsChanged = false
+		o.ObjectTransform.stateMutex.Unlock()
+		o.RefreshLayout()
 	}
 
 	return o.updateChildren(deltaTime)
@@ -268,6 +281,7 @@ func (o *WindowObjectBase) MaintainAspectRatio() bool {
 
 func (o *WindowObjectBase) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	o.maintainAspectRatio = maintainAspectRatio
+	o.boundsChanged = true
 	return o
 }
 
@@ -281,6 +295,7 @@ func (o *WindowObjectBase) Anchor() Anchor {
 func (o *WindowObjectBase) SetAnchor(anchor Anchor) WindowObject {
 	o.stateMutex.Lock()
 	o.anchor = anchor
+	o.boundsChanged = true
 	o.stateMutex.Unlock()
 	return o
 }
@@ -295,6 +310,7 @@ func (o *WindowObjectBase) Margin() *Margin {
 func (o *WindowObjectBase) SetMargin(margin Margin) WindowObject {
 	o.stateMutex.Lock()
 	o.margin = margin
+	o.boundsChanged = true
 	o.stateMutex.Unlock()
 	return o
 }
@@ -302,6 +318,7 @@ func (o *WindowObjectBase) SetMargin(margin Margin) WindowObject {
 func (o *WindowObjectBase) SetMarginTop(margin float32) WindowObject {
 	o.stateMutex.Lock()
 	o.margin.Top = margin
+	o.boundsChanged = true
 	o.stateMutex.Unlock()
 	return o
 }
@@ -309,6 +326,7 @@ func (o *WindowObjectBase) SetMarginTop(margin float32) WindowObject {
 func (o *WindowObjectBase) SetMarginRight(margin float32) WindowObject {
 	o.stateMutex.Lock()
 	o.margin.Right = margin
+	o.boundsChanged = true
 	o.stateMutex.Unlock()
 	return o
 }
@@ -316,6 +334,7 @@ func (o *WindowObjectBase) SetMarginRight(margin float32) WindowObject {
 func (o *WindowObjectBase) SetMarginBottom(margin float32) WindowObject {
 	o.stateMutex.Lock()
 	o.margin.Bottom = margin
+	o.boundsChanged = true
 	o.stateMutex.Unlock()
 	return o
 }
@@ -323,8 +342,16 @@ func (o *WindowObjectBase) SetMarginBottom(margin float32) WindowObject {
 func (o *WindowObjectBase) SetMarginLeft(margin float32) WindowObject {
 	o.stateMutex.Lock()
 	o.margin.Left = margin
+	o.boundsChanged = true
 	o.stateMutex.Unlock()
 	return o
+}
+
+func (o *WindowObjectBase) Bounds() *Bounds {
+	o.stateMutex.Lock()
+	bounds := o.bounds
+	o.stateMutex.Unlock()
+	return &bounds
 }
 
 func (o *WindowObjectBase) OnResize(handler func(newWidth, newHeight int)) {
@@ -337,7 +364,7 @@ func (o *WindowObjectBase) RefreshLayout() {
 		return
 	}
 
-	left, right, top, bottom := o.getBounds()
+	top, right, bottom, left := o.getParentBounds()
 
 	margin := o.Margin()
 	margin.Left = window.ScaleX(margin.Left)
@@ -345,31 +372,61 @@ func (o *WindowObjectBase) RefreshLayout() {
 	margin.Top = window.ScaleY(margin.Top)
 	margin.Bottom = window.ScaleY(margin.Bottom)
 
-	leftOffset := o.HalfWidth() + margin.Left
-	rightOffset := o.HalfWidth() + margin.Right
-	topOffset := o.HalfHeight() + margin.Top
-	bottomOffset := o.HalfHeight() + margin.Bottom
+	halfWidth := o.HalfWidth()
+	halfHeight := o.HalfHeight()
 
-	switch o.Anchor() {
-	case TopLeft:
-		o.SetPosition(mgl32.Vec3{left + leftOffset, top - topOffset})
-	case MiddleLeft:
-		o.SetPosition(mgl32.Vec3{left + leftOffset, -margin.Top + margin.Bottom})
-	case BottomLeft:
-		o.SetPosition(mgl32.Vec3{left + leftOffset, bottom + bottomOffset})
-	case TopCenter:
-		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, top - topOffset})
-	case Center:
-		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, -margin.Top + margin.Bottom})
-	case BottomCenter:
-		o.SetPosition(mgl32.Vec3{-margin.Right + margin.Left, bottom + bottomOffset})
-	case TopRight:
-		o.SetPosition(mgl32.Vec3{right - rightOffset, top - topOffset})
-	case MiddleRight:
-		o.SetPosition(mgl32.Vec3{right - rightOffset, -margin.Top + margin.Bottom})
-	case BottomRight:
-		o.SetPosition(mgl32.Vec3{right - rightOffset, bottom + bottomOffset})
+	leftOffset := halfWidth + margin.Left
+	rightOffset := halfWidth + margin.Right
+	topOffset := halfHeight + margin.Top
+	bottomOffset := halfHeight + margin.Bottom
+
+	if anchor := o.Anchor(); anchor == NoAnchor {
+		if o.anchorSet {
+			o.anchorSet = false
+			o.SetPosition(o.positionBak)
+		}
+	} else {
+		if !o.anchorSet {
+			o.anchorSet = true
+			o.positionBak = o.Position()
+		}
+
+		parentPos := mgl32.Vec3{}
+		if p := o.Parent(); p != nil {
+			parentPos = p.WorldPosition()
+		}
+
+		o.stateMutex.Lock()
+		switch anchor {
+		case TopLeft:
+			o.position = mgl32.Vec3{(left + leftOffset) - parentPos.X(), (top - topOffset) - parentPos.Y()}
+		case MiddleLeft:
+			o.position = mgl32.Vec3{(left + leftOffset) - parentPos.X(), -margin.Top + margin.Bottom}
+		case BottomLeft:
+			o.position = mgl32.Vec3{(left + leftOffset) - parentPos.X(), (bottom + bottomOffset) - parentPos.Y()}
+		case TopCenter:
+			o.position = mgl32.Vec3{-margin.Right + margin.Left, (top - topOffset) - parentPos.Y()}
+		case Center:
+			o.position = mgl32.Vec3{-margin.Right + margin.Left, -margin.Top + margin.Bottom}
+		case BottomCenter:
+			o.position = mgl32.Vec3{-margin.Right + margin.Left, (bottom + bottomOffset) - parentPos.Y()}
+		case TopRight:
+			o.position = mgl32.Vec3{(right - rightOffset) - parentPos.X(), (top - topOffset) - parentPos.Y()}
+		case MiddleRight:
+			o.position = mgl32.Vec3{(right - rightOffset) - parentPos.X(), -margin.Top + margin.Bottom}
+		case BottomRight:
+			o.position = mgl32.Vec3{(right - rightOffset) - parentPos.X(), (bottom + bottomOffset) - parentPos.Y()}
+		}
+		o.stateMutex.Unlock()
 	}
+
+	pos := o.WorldPosition()
+	o.stateMutex.Lock()
+	o.bounds.Top = pos.Y() + halfHeight
+	o.bounds.Right = pos.X() + halfWidth
+	o.bounds.Bottom = pos.Y() - halfHeight
+	o.bounds.Left = pos.X() - halfWidth
+	o.stateMutex.Unlock()
 }
 
 func (o *WindowObjectBase) Parent() WindowObject {
@@ -508,42 +565,19 @@ func (o *WindowObjectBase) closeChildren() {
 	}
 }
 
-func (o *WindowObjectBase) getBounds() (left, right, top, bottom float32) {
-	left = float32(-1)
-	right = float32(1)
-	top = float32(1)
-	bottom = float32(-1)
-
-	adjustBounds := func(parent WindowObject) {
-		pScale := parent.Scale()
-		if parent.MaintainAspectRatio() {
-			left *= o.window.ScaleX(pScale.X())
-			top *= o.window.ScaleY(pScale.Y())
-		} else {
-			left *= pScale.X()
-			top *= pScale.Y()
-		}
-		right = left * -1
-		bottom = top * -1
+func (o *WindowObjectBase) getParentBounds() (top, right, bottom, left float32) {
+	if p := o.Parent(); p == nil {
+		top = 1
+		right = 1
+		bottom = -1
+		left = -1
+	} else {
+		pBounds := p.Bounds()
+		top = pBounds.Top
+		right = pBounds.Right
+		bottom = pBounds.Bottom
+		left = pBounds.Left
 	}
-
-	if p := o.Parent(); p != nil {
-		switch p.(type) {
-		case *View:
-			adjustBounds(p)
-		case *Button:
-			adjustBounds(p)
-		case *Label:
-			adjustBounds(p)
-		case *SignalLine:
-			adjustBounds(p)
-		case *SignalGroup:
-			adjustBounds(p)
-		case *Canvas:
-			adjustBounds(p)
-		}
-	}
-
 	return
 }
 
@@ -553,12 +587,7 @@ func (o *WindowObjectBase) getBounds() (left, right, top, bottom float32) {
 
 func NewWindowObject() *WindowObjectBase {
 	w := &WindowObjectBase{
-		ObjectTransform: ObjectTransform{
-			origin:   [3]float32{0, 0, 0},
-			position: [3]float32{0, 0, 0},
-			rotation: [3]float32{0, 0, 0},
-			scale:    [3]float32{1, 1, 1},
-		},
+		ObjectTransform:     *NewObjectTransform(),
 		blurIntensity:       0.0001,
 		color:               RgbaToFloatArray(White),
 		maintainAspectRatio: true,

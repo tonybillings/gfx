@@ -172,6 +172,7 @@ func tab9() gfx.WindowObject {
 	bottomCenter.SetAlignment(gfx.Centered)
 
 	container := gfx.NewWindowObject()
+	container.SetMaintainAspectRatio(false)
 	container.SetName("tab9")
 	container.AddChildren(carousel, topLeft, bottomCenter)
 	return container

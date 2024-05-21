@@ -186,6 +186,7 @@ func newExtendedRawSignalView(window *gfx.Window, signalSampleCount int, signalS
 	}()
 
 	view := gfx.NewView()
+	view.SetMaintainAspectRatio(false)
 	view.AddChildren(controls, signalLine, timeDomainButton, freqDomainButton)
 
 	return view
@@ -196,6 +197,7 @@ func NewRadioButtonView(ctx context.Context, window *gfx.Window, signalSampleCou
 	source.Run(ctx)
 
 	container := gfx.NewWindowObject()
+	container.SetMaintainAspectRatio(false)
 	container.AddChild(newExtendedRawSignalView(window, signalSampleCount, source))
 
 	return container

@@ -61,15 +61,17 @@ type ObjectTransform struct {
 	rotationQuat    mgl32.Quat
 	rotationQuatSet bool
 
-	stateMutex sync.Mutex
+	boundsChanged bool
+	stateMutex    sync.Mutex
 }
 
 func NewObjectTransform() *ObjectTransform {
 	return &ObjectTransform{
-		origin:   [3]float32{0, 0, 0},
-		position: [3]float32{0, 0, 0},
-		rotation: [3]float32{0, 0, 0},
-		scale:    [3]float32{1, 1, 1},
+		origin:        [3]float32{0, 0, 0},
+		position:      [3]float32{0, 0, 0},
+		rotation:      [3]float32{0, 0, 0},
+		scale:         [3]float32{1, 1, 1},
+		boundsChanged: true,
 	}
 }
 
@@ -87,6 +89,7 @@ func (t *ObjectTransform) ParentTransform() Transform {
 func (t *ObjectTransform) SetParentTransform(parent Transform) Transform {
 	t.stateMutex.Lock()
 	t.parentTransform = parent
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -114,6 +117,7 @@ func (t *ObjectTransform) WorldOrigin() mgl32.Vec3 {
 func (t *ObjectTransform) SetOrigin(origin mgl32.Vec3) Transform {
 	t.stateMutex.Lock()
 	t.origin = origin
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -141,6 +145,7 @@ func (t *ObjectTransform) WorldPosition() mgl32.Vec3 {
 func (t *ObjectTransform) SetPosition(position mgl32.Vec3) Transform {
 	t.stateMutex.Lock()
 	t.position = position
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -148,6 +153,7 @@ func (t *ObjectTransform) SetPosition(position mgl32.Vec3) Transform {
 func (t *ObjectTransform) SetPositionX(x float32) Transform {
 	t.stateMutex.Lock()
 	t.position[0] = x
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -155,6 +161,7 @@ func (t *ObjectTransform) SetPositionX(x float32) Transform {
 func (t *ObjectTransform) SetPositionY(y float32) Transform {
 	t.stateMutex.Lock()
 	t.position[1] = y
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -162,6 +169,7 @@ func (t *ObjectTransform) SetPositionY(y float32) Transform {
 func (t *ObjectTransform) SetPositionZ(z float32) Transform {
 	t.stateMutex.Lock()
 	t.position[2] = z
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -237,6 +245,7 @@ func (t *ObjectTransform) WorldScale() mgl32.Vec3 {
 func (t *ObjectTransform) SetScale(scale mgl32.Vec3) Transform {
 	t.stateMutex.Lock()
 	t.scale = scale
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -244,6 +253,7 @@ func (t *ObjectTransform) SetScale(scale mgl32.Vec3) Transform {
 func (t *ObjectTransform) SetScaleX(x float32) Transform {
 	t.stateMutex.Lock()
 	t.scale[0] = x
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -251,6 +261,7 @@ func (t *ObjectTransform) SetScaleX(x float32) Transform {
 func (t *ObjectTransform) SetScaleY(y float32) Transform {
 	t.stateMutex.Lock()
 	t.scale[1] = y
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }
@@ -258,6 +269,7 @@ func (t *ObjectTransform) SetScaleY(y float32) Transform {
 func (t *ObjectTransform) SetScaleZ(z float32) Transform {
 	t.stateMutex.Lock()
 	t.scale[2] = z
+	t.boundsChanged = true
 	t.stateMutex.Unlock()
 	return t
 }

@@ -55,8 +55,24 @@ const (
  Margin
 ******************************************************************************/
 
-// Margin contains the position offsets used when objects are anchored.
+// Margin contains the position offsets used when objects are anchored, in the
+// normalized device/screen space range of [-1,1] for both axes.
 type Margin struct {
+	Top, Right, Bottom, Left float32
+}
+
+/******************************************************************************
+ Bounds
+******************************************************************************/
+
+// Bounds represents the boundaries or "frame" in which the associated object
+// is rendered, if not the full width/height of the window.  Objects that
+// become children of other objects will have their bounds adjusted, such
+// that the scale and positioning of the parent determines the maximum bounds
+// for its children, affecting their scaling/positioning/anchoring, etc.
+// Values are in the normalized device/screen space range of [-1,1] for both
+// axes.
+type Bounds struct {
 	Top, Right, Bottom, Left float32
 }
 
