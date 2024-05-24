@@ -5,8 +5,9 @@ import (
 	"github.com/tonybillings/gfx"
 )
 
-func newBrushControls(brush *gfx.BasicBrush) *gfx.View {
+func NewBrushControls(brush *gfx.BasicBrush) *gfx.View {
 	brushColorPreview := gfx.NewView()
+	brushColorPreview.SetName("ColorPreview")
 	brushColorPreview.
 		SetBorderColor(gfx.White).
 		SetBorderThickness(.1).
@@ -15,11 +16,13 @@ func newBrushControls(brush *gfx.BasicBrush) *gfx.View {
 		SetScale(mgl32.Vec3{.3, .1})
 
 	brushColorRSlider := gfx.NewSlider(gfx.Vertical, true)
+	brushColorRSlider.SetName("RedSlider")
 	brushColorRSlider.
 		SetFillColor(gfx.Transparent).
 		SetAnchor(gfx.MiddleLeft).
 		SetScaleX(.3333).
 		SetScaleY(1)
+
 	brushColorRSlider.Button().
 		SetText("R").
 		SetFontSize(.6).
@@ -42,6 +45,7 @@ func newBrushControls(brush *gfx.BasicBrush) *gfx.View {
 	})
 
 	brushColorGSlider := gfx.NewSlider(gfx.Vertical, true)
+	brushColorGSlider.SetName("GreenSlider")
 	brushColorGSlider.
 		SetFillColor(gfx.Transparent).
 		SetAnchor(gfx.MiddleLeft).
@@ -70,6 +74,7 @@ func newBrushControls(brush *gfx.BasicBrush) *gfx.View {
 	})
 
 	brushColorBSlider := gfx.NewSlider(gfx.Vertical, true)
+	brushColorBSlider.SetName("BlueSlider")
 	brushColorBSlider.
 		SetFillColor(gfx.Transparent).
 		SetAnchor(gfx.MiddleLeft).
@@ -186,7 +191,7 @@ func newBrushControls(brush *gfx.BasicBrush) *gfx.View {
 	return brushControls
 }
 
-func newCanvasControls(canvas *gfx.Canvas, brush *gfx.BasicBrush, exportDirectory string) *gfx.View {
+func NewCanvasControls(canvas *gfx.Canvas, brush gfx.Brush, exportDirectory string) *gfx.View {
 	bgColorPreview := gfx.NewView()
 	bgColorPreview.
 		SetFillColor(gfx.White).
@@ -381,8 +386,8 @@ func NewCanvasView(exportDirectory ...string) gfx.WindowObject {
 
 	canvas.AddChild(brush) // ...not this; this is just convenient for life-cycle management
 
-	brushControls := newBrushControls(brush)
-	canvasControls := newCanvasControls(canvas, brush, exportDir)
+	brushControls := NewBrushControls(brush)
+	canvasControls := NewCanvasControls(canvas, brush, exportDir)
 
 	container := gfx.NewWindowObject()
 	container.AddChildren(brushControls, canvasControls, canvas)
