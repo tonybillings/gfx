@@ -150,10 +150,10 @@ func (t *Texture2D) createFromColor(rgba color.RGBA) {
 	gl.GenTextures(1, &name)
 	gl.BindTexture(gl.TEXTURE_2D, name)
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(t.width), int32(t.height), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
 	gl.BindTexture(gl.TEXTURE_2D, 0)

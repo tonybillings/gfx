@@ -27,6 +27,8 @@ type TabGroup struct {
 	tranQuadHiding  bool
 	tranQuadOpacity float64
 	tranSpeed       float64
+
+	recursive bool
 }
 
 /******************************************************************************
@@ -179,8 +181,10 @@ func (g *TabGroup) deactivate(child WindowObject) {
 		child.SetEnabled(false)
 	}
 
-	for _, c := range child.Children() {
-		g.deactivate(c)
+	if g.recursive {
+		for _, c := range child.Children() {
+			g.deactivate(c)
+		}
 	}
 }
 
@@ -195,8 +199,10 @@ func (g *TabGroup) activate(child WindowObject) {
 		child.SetVisibility(true)
 	}
 
-	for _, c := range child.Children() {
-		g.activate(c)
+	if g.recursive {
+		for _, c := range child.Children() {
+			g.activate(c)
+		}
 	}
 }
 
@@ -350,6 +356,20 @@ func (g *TabGroup) SetNavKeys(keys NavKeys) *TabGroup {
 	g.navKeys = keys
 	g.stateMutex.Unlock()
 	g.updateNav()
+	return g
+}
+
+func (g *TabGroup) RecursiveMode() (recursive bool) {
+	g.stateMutex.Lock()
+	recursive = g.recursive
+	g.stateMutex.Unlock()
+	return
+}
+
+func (g *TabGroup) SetRecursiveMode(recursive bool) *TabGroup {
+	g.stateMutex.Lock()
+	g.recursive = recursive
+	g.stateMutex.Unlock()
 	return g
 }
 

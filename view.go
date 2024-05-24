@@ -83,13 +83,6 @@ func (v *View) Resize(newWidth, newHeight int) {
  WindowObject Implementation
 ******************************************************************************/
 
-func (v *View) SetWindow(window *Window) WindowObject {
-	v.WindowObjectBase.SetWindow(window)
-	v.fill.SetWindow(window)
-	v.border.SetWindow(window)
-	return v
-}
-
 func (v *View) SetColor(rgba color.RGBA) WindowObject {
 	v.SetFillColor(rgba)
 	return v.SetBorderColor(rgba)
@@ -120,26 +113,17 @@ func (v *View) SetBlurIntensity(intensity float32) WindowObject {
 	return v
 }
 
-func (v *View) AddChild(child WindowObject) WindowObject {
-	if child == nil {
-		return v
-	}
-	v.WindowObjectBase.AddChild(child)
-	child.SetParent(v)
+func (v *View) SetWindow(window *Window) WindowObject {
+	v.WindowObjectBase.SetWindow(window)
+	v.fill.SetWindow(window)
+	v.border.SetWindow(window)
 	return v
 }
 
-func (v *View) AddChildren(children ...WindowObject) WindowObject {
-	if children == nil || len(children) == 0 {
-		return v
-	}
-
-	v.WindowObjectBase.AddChildren(children...)
-	v.stateMutex.Lock()
-	for _, c := range v.children {
-		c.SetParent(v)
-	}
-	v.stateMutex.Unlock()
+func (v *View) SetParent(parent WindowObject, recursive ...bool) WindowObject {
+	v.WindowObjectBase.SetParent(parent, recursive...)
+	v.fill.SetParent(v, recursive...)
+	v.border.SetParent(v, recursive...)
 	return v
 }
 
@@ -155,6 +139,7 @@ func (v *View) defaultLayout() {
 }
 
 func (v *View) SetTexture(texture *Texture2D) *View {
+	v.fill.SetColor(White)
 	v.fill.SetTexture(texture)
 	return v
 }

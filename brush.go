@@ -2,6 +2,7 @@ package gfx
 
 import (
 	"github.com/go-gl/gl/v4.1-core/gl"
+	"image/color"
 	"sync"
 )
 
@@ -21,6 +22,9 @@ type Brush interface {
 	// Canvas shall return the canvas to which this brush is assigned.
 	Canvas() *Canvas
 	SetCanvas(*Canvas) Brush
+
+	// Undo shall revert the last change made to the Canvas.
+	Undo()
 }
 
 /******************************************************************************
@@ -38,6 +42,8 @@ type BasicBrush struct {
 	canvasBuffer  []uint8
 	canvasBackup  []uint8
 	undoRequested bool
+
+	updateFunc func(*MouseState)
 
 	stateMutex sync.Mutex
 }
@@ -66,12 +72,9 @@ func (b *BasicBrush) Update(deltaTime int64) (ok bool) {
 				b.backupCanvas()
 			}
 
-			switch b.brushHead {
-			case RoundBrushHead:
-				b.updateCanvasRoundHead(mouse)
-			case SquareBrushHead:
-				b.updateCanvasSquareHead(mouse)
-			}
+			b.stateMutex.Unlock()
+			b.updateFunc(mouse)
+			return true
 		} else if mouse != nil && !mouse.PrimaryDown {
 			if b.drawing {
 				b.drawing = false
@@ -105,6 +108,73 @@ func (b *BasicBrush) SetCanvas(canvas *Canvas) Brush {
  BasicBrush Functions
 ******************************************************************************/
 
+func (b *BasicBrush) updateCanvas(mouse *MouseState) {
+	surface := b.Canvas().Surface()
+	width := surface.Width()
+	height := surface.Height()
+
+	textureColor := b.Color()
+	tx := int((mouse.X + 1) / 2 * float32(width))
+	ty := int((mouse.Y + 1) / 2 * float32(height))
+	radius := int(b.Size() * (float32(width) * 0.5))
+
+	b.stateMutex.Lock()
+
+	if b.canvasBuffer == nil {
+		b.canvasBuffer = make([]uint8, width*height*4)
+	}
+
+	gl.BindTexture(gl.TEXTURE_2D, surface.GlName())
+	gl.GetTexImage(gl.TEXTURE_2D, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(&b.canvasBuffer[0]))
+
+	switch b.brushHead {
+	case RoundBrushHead:
+		b.updateCanvasRoundHead(width, height, textureColor, radius, tx, ty)
+	case SquareBrushHead:
+		b.updateCanvasSquareHead(width, height, textureColor, radius, tx, ty)
+	}
+
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(width), int32(height), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(b.canvasBuffer))
+	gl.BindTexture(gl.TEXTURE_2D, 0)
+
+	b.stateMutex.Unlock()
+}
+
+func (b *BasicBrush) updateCanvasRoundHead(surfaceWidth, surfaceHeight int, textureColor color.RGBA, radius, tx, ty int) {
+	for i := -radius; i <= radius; i++ {
+		for j := -radius; j <= radius; j++ {
+			if i*i+j*j <= radius*radius {
+				px := tx + i
+				py := ty + j
+				if px >= 0 && px < surfaceWidth && py >= 0 && py < surfaceHeight {
+					index := (py*surfaceWidth + px) * 4
+					b.paintCanvas(index, &textureColor)
+				}
+			}
+		}
+	}
+}
+
+func (b *BasicBrush) updateCanvasSquareHead(surfaceWidth, surfaceHeight int, textureColor color.RGBA, radius, tx, ty int) {
+	for i := -radius; i <= radius; i++ {
+		for j := -radius; j <= radius; j++ {
+			px := tx + i
+			py := ty + j
+			if px >= 0 && px < surfaceWidth && py >= 0 && py < surfaceHeight {
+				index := (py*surfaceWidth + px) * 4
+				b.paintCanvas(index, &textureColor)
+			}
+		}
+	}
+}
+
+func (b *BasicBrush) paintCanvas(index int, textureColor *color.RGBA) {
+	b.canvasBuffer[index] = textureColor.R
+	b.canvasBuffer[index+1] = textureColor.G
+	b.canvasBuffer[index+2] = textureColor.B
+	b.canvasBuffer[index+3] = textureColor.A
+}
+
 func (b *BasicBrush) backupCanvas() {
 	surface := b.canvas.Surface()
 
@@ -116,78 +186,6 @@ func (b *BasicBrush) backupCanvas() {
 
 	gl.BindTexture(gl.TEXTURE_2D, surface.GlName())
 	gl.GetTexImage(gl.TEXTURE_2D, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(&b.canvasBackup[0]))
-}
-
-func (b *BasicBrush) updateCanvasRoundHead(mouse *MouseState) {
-	surface := b.canvas.Surface()
-	width := surface.Width()
-	height := surface.Height()
-
-	tx := int((mouse.X + 1) / 2 * float32(width))
-	ty := int((mouse.Y + 1) / 2 * float32(height))
-
-	if b.canvasBuffer == nil {
-		b.canvasBuffer = make([]uint8, width*height*4)
-	}
-	gl.BindTexture(gl.TEXTURE_2D, surface.GlName())
-	gl.GetTexImage(gl.TEXTURE_2D, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(&b.canvasBuffer[0]))
-
-	textureRadius := int(b.size * (float32(width) * 0.5))
-	textureColor := FloatArrayToRgba(b.color)
-
-	for i := -textureRadius; i <= textureRadius; i++ {
-		for j := -textureRadius; j <= textureRadius; j++ {
-			if i*i+j*j <= textureRadius*textureRadius {
-				px := tx + i
-				py := ty + j
-				if px >= 0 && px < width && py >= 0 && py < height {
-					index := (py*width + px) * 4
-					b.canvasBuffer[index] = textureColor.R
-					b.canvasBuffer[index+1] = textureColor.G
-					b.canvasBuffer[index+2] = textureColor.B
-					b.canvasBuffer[index+3] = textureColor.A
-				}
-			}
-		}
-	}
-
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(width), int32(height), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(b.canvasBuffer))
-	gl.BindTexture(gl.TEXTURE_2D, 0)
-}
-
-func (b *BasicBrush) updateCanvasSquareHead(mouse *MouseState) {
-	surface := b.canvas.Surface()
-	width := surface.Width()
-	height := surface.Height()
-
-	tx := int((mouse.X + 1) / 2 * float32(width))
-	ty := int((mouse.Y + 1) / 2 * float32(height))
-
-	if b.canvasBuffer == nil {
-		b.canvasBuffer = make([]uint8, width*height*4)
-	}
-	gl.BindTexture(gl.TEXTURE_2D, surface.GlName())
-	gl.GetTexImage(gl.TEXTURE_2D, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(&b.canvasBuffer[0]))
-
-	textureHalfSize := int(b.size * (float32(width) * 0.5))
-	textureColor := FloatArrayToRgba(b.color)
-
-	for i := -textureHalfSize; i <= textureHalfSize; i++ {
-		for j := -textureHalfSize; j <= textureHalfSize; j++ {
-			px := tx + i
-			py := ty + j
-			if px >= 0 && px < width && py >= 0 && py < height {
-				index := (py*width + px) * 4
-				b.canvasBuffer[index] = textureColor.R
-				b.canvasBuffer[index+1] = textureColor.G
-				b.canvasBuffer[index+2] = textureColor.B
-				b.canvasBuffer[index+3] = textureColor.A
-			}
-		}
-	}
-
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(width), int32(height), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(b.canvasBuffer))
-	gl.BindTexture(gl.TEXTURE_2D, 0)
 }
 
 func (b *BasicBrush) undo() {
@@ -233,6 +231,14 @@ func (b *BasicBrush) Undo() {
 	b.stateMutex.Unlock()
 }
 
+// OverrideUpdateCanvas Structs embedding this type can use this function
+// to provide custom behavior, without having to override Update() or
+// otherwise re-implement its logic. Not thread-safe, so call this during
+// initialization/instantiation.
+func (b *BasicBrush) OverrideUpdateCanvas(updateFunc func(ms *MouseState)) {
+	b.updateFunc = updateFunc
+}
+
 /******************************************************************************
  New BasicBrush Function
 ******************************************************************************/
@@ -244,6 +250,7 @@ func NewBasicBrush() *BasicBrush {
 		brushHead:        RoundBrushHead,
 	}
 
+	b.OverrideUpdateCanvas(b.updateCanvas)
 	b.SetName(defaultBasicBrushName)
 
 	return b

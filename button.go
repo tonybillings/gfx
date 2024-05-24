@@ -168,6 +168,15 @@ func (b *Button) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	return b
 }
 
+func (b *Button) SetParent(parent WindowObject, recursive ...bool) WindowObject {
+	b.View.SetParent(parent, recursive...)
+	b.fill.SetParent(b)
+	b.border.SetParent(b)
+	b.text.SetParent(b)
+	b.bounds.SetParent(b)
+	return b
+}
+
 /******************************************************************************
  Button Functions
 ******************************************************************************/

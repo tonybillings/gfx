@@ -33,8 +33,6 @@ type Canvas struct {
 	surface    *Shape2D
 	surfaceTex *Texture2D
 
-	mouse *MouseState
-
 	clearRequested  bool
 	exportRequested bool
 	exportDirectory string
@@ -65,14 +63,14 @@ func (c *Canvas) Init() (ok bool) {
 }
 
 func (c *Canvas) Update(deltaTime int64) (ok bool) {
-	if !c.View.Update(deltaTime) {
+	if !c.enabled.Load() || !c.initialized.Load() {
 		return false
 	}
 
 	c.surface.Update(deltaTime)
 	c.bounds.Update(deltaTime)
 
-	return true
+	return c.View.Update(deltaTime)
 }
 
 func (c *Canvas) Close() {
@@ -132,6 +130,12 @@ func (c *Canvas) Resize(newWidth, newHeight int) {
  WindowObject Implementation
 ******************************************************************************/
 
+func (c *Canvas) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
+	c.View.SetMaintainAspectRatio(maintainAspectRatio)
+	c.bounds.SetMaintainAspectRatio(maintainAspectRatio)
+	return c
+}
+
 func (c *Canvas) SetWindow(window *Window) WindowObject {
 	c.View.SetWindow(window)
 	c.surface.SetWindow(window)
@@ -139,9 +143,10 @@ func (c *Canvas) SetWindow(window *Window) WindowObject {
 	return c
 }
 
-func (c *Canvas) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
-	c.View.SetMaintainAspectRatio(maintainAspectRatio)
-	c.bounds.SetMaintainAspectRatio(maintainAspectRatio)
+func (c *Canvas) SetParent(parent WindowObject, recursive ...bool) WindowObject {
+	c.View.SetParent(parent, recursive...)
+	c.surface.SetParent(c, recursive...)
+	c.bounds.SetParent(c, recursive...)
 	return c
 }
 
@@ -150,20 +155,20 @@ func (c *Canvas) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 ******************************************************************************/
 
 func (c *Canvas) defaultLayout() {
+	c.View.defaultLayout()
 	c.surface.SetParent(c)
 	c.bounds.SetParent(c)
-	c.View.defaultLayout()
 }
 
 func (c *Canvas) initSurface() (ok bool) {
-	c.surface.SetWindow(c.window)
+	c.surface.SetWindow(c.Window())
 	c.surface.SetMaintainAspectRatio(c.maintainAspectRatio)
 	c.surface.SetTexture(c.surfaceTex)
 	if !c.surface.Init() {
 		return false
 	}
 
-	c.bounds.SetWindow(c.window)
+	c.bounds.SetWindow(c.Window())
 	c.bounds.SetMaintainAspectRatio(c.maintainAspectRatio)
 	if !c.bounds.Init() {
 		return false

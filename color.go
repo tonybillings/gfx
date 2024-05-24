@@ -19,6 +19,7 @@ var (
 	Teal                    = color.RGBA{R: 118, G: 215, B: 196, A: 255}
 	Maroon                  = color.RGBA{R: 146, G: 43, B: 33, A: 255}
 	SkyBlue                 = color.RGBA{R: 174, G: 170, B: 241, A: 255}
+	Brown                   = color.RGBA{R: 101, G: 67, B: 33, A: 255}
 	DefaultNormalMapColor   = color.RGBA{R: 127, G: 127, B: 255, A: 255}
 	DefaultSpecularMapColor = color.RGBA{R: 127, G: 127, B: 127, A: 255}
 )

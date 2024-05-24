@@ -109,7 +109,7 @@ func (s *Slider) Draw(deltaTime int64) (ok bool) {
 }
 
 /******************************************************************************
- DrawableObject Implementation
+ WindowObject Implementation
 ******************************************************************************/
 
 func (s *Slider) SetWindow(window *Window) WindowObject {

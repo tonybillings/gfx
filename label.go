@@ -20,11 +20,11 @@ type Label struct {
 	font      Font
 	alignment TextAlignment
 
-	cache        map[string]*Texture2D
+	cache        map[string]*Texture2D // can also point to a cache on Window
 	cacheEnabled bool
 
-	texture  *Texture2D
-	textView *View
+	texture   *Texture2D
+	textShape *Shape2D
 
 	stateChanged atomic.Bool
 }
@@ -38,8 +38,8 @@ func (l *Label) Init() (ok bool) {
 		return true
 	}
 
-	l.textView.fill.FlipUV(true)
-	if ok = l.textView.Init(); !ok {
+	l.textShape.FlipUV(true)
+	if ok = l.textShape.Init(); !ok {
 		return
 	}
 
@@ -54,12 +54,12 @@ func (l *Label) Update(deltaTime int64) (ok bool) {
 		return false
 	}
 
-	return l.textView.Update(deltaTime)
+	return l.textShape.Update(deltaTime)
 }
 
 func (l *Label) Close() {
 	l.View.Close()
-	l.textView.Close()
+	l.textShape.Close()
 	if l.texture != nil {
 		l.texture.Close()
 	}
@@ -96,11 +96,11 @@ func (l *Label) Draw(deltaTime int64) (ok bool) {
 				l.cache)
 			l.texture.Init()
 			l.stateMutex.Unlock()
-			l.textView.SetTexture(l.texture)
+			l.textShape.SetTexture(l.texture)
 		}
 	}
 
-	return l.textView.Draw(deltaTime)
+	return l.textShape.Draw(deltaTime)
 }
 
 /******************************************************************************
@@ -110,7 +110,7 @@ func (l *Label) Draw(deltaTime int64) (ok bool) {
 func (l *Label) Resize(newWidth, newHeight int) {
 	l.stateChanged.Store(true)
 	l.View.Resize(newWidth, newHeight)
-	l.textView.Resize(newWidth, newHeight)
+	l.textShape.Resize(newWidth, newHeight)
 }
 
 /******************************************************************************
@@ -125,19 +125,25 @@ func (l *Label) SetColor(rgba color.RGBA) WindowObject {
 
 func (l *Label) SetMaintainAspectRatio(maintainAspectRatio bool) WindowObject {
 	l.View.SetMaintainAspectRatio(maintainAspectRatio)
-	l.textView.SetMaintainAspectRatio(maintainAspectRatio)
+	l.textShape.SetMaintainAspectRatio(maintainAspectRatio)
 	l.stateChanged.Store(true)
 	return l
 }
 
 func (l *Label) RefreshLayout() {
 	l.WindowObjectBase.RefreshLayout()
-	l.textView.RefreshLayout()
+	l.textShape.RefreshLayout()
 }
 
 func (l *Label) SetWindow(window *Window) WindowObject {
 	l.View.SetWindow(window)
-	l.textView.SetWindow(window)
+	l.textShape.SetWindow(window)
+	return l
+}
+
+func (l *Label) SetParent(parent WindowObject, recursive ...bool) WindowObject {
+	l.View.SetParent(parent, recursive...)
+	l.textShape.SetParent(l, recursive...)
 	return l
 }
 
@@ -146,11 +152,13 @@ func (l *Label) SetWindow(window *Window) WindowObject {
 ******************************************************************************/
 
 func (l *Label) defaultLayout() {
+	l.textShape.SetParent(l)
+
 	l.SetColor(White)
 	l.SetFillColor(color.RGBA{})
 
-	l.textView.SetFillColor(White)
-	l.textView.SetAnchor(Center)
+	l.textShape.SetColor(White)
+	l.textShape.SetAnchor(Center)
 }
 
 func (l *Label) initFont() {
@@ -241,30 +249,22 @@ func (l *Label) SetCacheEnabled(enabled bool) *Label {
 }
 
 func (l *Label) SetPaddingTop(padding float32) *Label {
-	l.stateMutex.Lock()
-	l.textView.margin.Top = padding
-	l.stateMutex.Unlock()
+	l.textShape.SetMarginTop(padding)
 	return l
 }
 
 func (l *Label) SetPaddingRight(padding float32) *Label {
-	l.stateMutex.Lock()
-	l.textView.margin.Right = padding
-	l.stateMutex.Unlock()
+	l.textShape.SetMarginRight(padding)
 	return l
 }
 
 func (l *Label) SetPaddingBottom(padding float32) *Label {
-	l.stateMutex.Lock()
-	l.textView.margin.Bottom = padding
-	l.stateMutex.Unlock()
+	l.textShape.SetMarginBottom(padding)
 	return l
 }
 
 func (l *Label) SetPaddingLeft(padding float32) *Label {
-	l.stateMutex.Lock()
-	l.textView.margin.Left = padding
-	l.stateMutex.Unlock()
+	l.textShape.SetMarginLeft(padding)
 	return l
 }
 
@@ -279,16 +279,12 @@ func (l *Label) SetFillColor(rgba color.RGBA) *Label {
 
 func NewLabel() *Label {
 	l := &Label{
-		View:     *NewView(),
-		textView: NewView(),
+		View:      *NewView(),
+		textShape: NewQuad(),
 	}
 
 	l.SetName(defaultLabelName)
 	l.SetCacheEnabled(true)
-	l.fill.SetParent(l)
-	l.border.SetParent(l)
-	l.textView.SetParent(l)
-
 	l.defaultLayout()
 
 	return l
