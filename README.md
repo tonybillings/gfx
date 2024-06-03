@@ -42,9 +42,10 @@ using [GLFW](https://www.glfw.org/).
 Developed/tested on:
 
 
-| Operating System                       | Kernel               |
-|:---------------------------------------|:---------------------|
-| Ubuntu Base 22.04.3 + GNOME 42.9 / X11 | 5.15.0-86-lowlatency |
+| Operating System                           | Kernel               |
+|:-------------------------------------------|:---------------------|
+| Ubuntu Base 22.04.3 + GNOME 42.9 / X11     | 5.15.0-86-lowlatency |
+| Ubuntu Base 24.04.0 + GNOME 46.0 / Wayland | 6.8.0-31-lowlatency  |
 
 <br/>
 
@@ -59,9 +60,13 @@ Compiler (**Go v1.20**):
 For more assistance installing Go, check out the [docs](https://go.dev/doc/install).
 
 Install required packages (Debian/Ubuntu):
-
 ```shell
 sudo apt install libgl1-mesa-dev libglfw3-dev libfreetype6-dev  
+```
+
+If using Wayland instead of X11, you will also need to install these packages:
+```shell
+sudo apt install pkg-config libxcursor-dev libxinerama-dev libxi-dev libxxf86vm-dev
 ```
 
 ---
